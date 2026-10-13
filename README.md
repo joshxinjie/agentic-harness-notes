@@ -1,2 +1,39 @@
-# agentic-harness-notes
-Agentic engineering learning plan
+# Agentic & Harness Engineering — Notes
+
+These are my notes from a 12-week, self-paced course on building AI agents and the "harness" around them: the prompts, tools, loop, memory, guardrails and evals that turn a language model into something that does work.
+
+The course arrives as a short daily email (one concept, about five minutes to read, plus a small exercise). Every week, those emails are rewritten here into one chapter in plainer language, with each exercise's worked answer placed right after the exercise.
+
+## How to read this
+
+Read the weeks in order. Each chapter builds on the one before it and links back when it reuses an idea. Each lesson follows the same shape: the idea, an example, where it lives in the harness, common mistakes, a "try it" exercise, the worked answer, and sources. Each week ends with a review: a recap, a self-quiz with answers, and one exercise that ties the week together.
+
+Most examples use one running scenario: an agent that investigates forecast errors at ENGIE solar sites and drafts a ticket for a human to approve.
+
+## Contents
+
+| Week | Topic | Status |
+|---|---|---|
+| 1 | [What an agent is](weeks/week-01-what-an-agent-is.md) | Done |
+| 2 | [Core mechanics](weeks/week-02-core-mechanics.md) | Done |
+| 3 | [State and memory](weeks/week-03-state-and-memory.md) | Done |
+| 4 | [Prompt and tool design](weeks/week-04-prompt-and-tool-design.md) | Done |
+| 5 | [Control, safety and reliability](weeks/week-05-control-safety-reliability.md) | Done |
+| 6 | [Evaluation I](weeks/week-06-evaluation-1.md) | In progress |
+| 7 | Evaluation II and iteration | Coming |
+| 8 | Multi-agent systems | Coming |
+| 9 | Frameworks and protocols | Coming |
+| 10 | Advanced capabilities | Coming |
+| 11 | Safety, alignment and governance | Coming |
+| 12 | Capstone | Coming |
+
+Reference:
+
+- [Glossary](glossary.md) — every term, in plain words, linked to the lesson that introduces it.
+- [Reading list](reading-list.md) — all sources, grouped by week.
+- [Changelog](CHANGELOG.md) — what each weekly update added.
+- [Style guide](STYLE.md) — how the notes are written.
+
+## How it's updated
+
+A scheduled task runs every Saturday morning (Singapore time). It reads that week's brief emails, rewrites them into the matching chapter using the style guide, fills in answers that were still pending, updates the glossary and reading list, and commits to this repo.
