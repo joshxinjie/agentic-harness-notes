@@ -126,3 +126,12 @@ Every source the notes use, grouped by the week that relies on it. Each source a
 - [OpenAI — Why we no longer evaluate SWE-bench Verified (Feb 2026)](https://openai.com/index/why-we-no-longer-evaluate-swe-bench-verified/) — An audit of 138 hard problems (59.4% with flawed tests), gold patches reproduced word for word, saturation, and the move to SWE-bench Pro.
 - [Zhu et al. — Establishing Best Practices for Building Rigorous Agentic Benchmarks (ABC, NeurIPS 2025)](https://arxiv.org/abs/2507.02825) — Task and outcome validity plus a reporting checklist; an empty-answer agent scored 38% on impossible τ-bench tasks.
 - [Merrill et al. — Terminal-Bench: Benchmarking Agents on Hard, Realistic Tasks in Command Line Interfaces (Jan 2026)](https://arxiv.org/abs/2601.11868) ([2.0 announcement](https://www.tbench.ai/news/announcement-2-0)) — 89 checked container tasks, the Harbor harness, and frontier models under 65%.
+- [Barres et al. — τ²-Bench: Evaluating Conversational Agents in a Dual-Control Environment](https://arxiv.org/abs/2506.07982) — The τ²-bench paper: a telecom domain where the simulated user also has tools on the shared state (dual control). Used in the Week 6 review's benchmark translation table.
+
+## Week 7 — Evaluation II and iteration
+
+- [Zhang et al. — Which Agent Causes Task Failures and When? (Who&When, ICML 2025)](https://arxiv.org/abs/2505.00212) — Defines the decisive error step, and shows how hard it is to find automatically (53.5% for the agent, 14.2% for the step).
+- [Langfuse — Error analysis to evaluate LLM applications](https://langfuse.com/blog/2025-08-29-error-analysis-to-evaluate-llm-applications) — A practical walk-through of reading traces and writing down what went wrong, before building evals.
+- [Cemri et al. — Why Do Multi-Agent LLM Systems Fail? (MAST, NeurIPS 2025)](https://arxiv.org/abs/2503.13657) — 14 failure modes in 3 groups from 200+ multi-agent traces, and how annotator agreement rose from κ 0.24 to 0.88 by refining definitions.
+- [Zhu et al. — Where LLM Agents Fail and How They Can Learn from Failures (AgentErrorTaxonomy / AgentDebug, 2025)](https://arxiv.org/abs/2509.25370) — A module-by-module error taxonomy for single agents, and re-running from the earliest decisive error.
+- [Hamel Husain — Why is error analysis so important, and how is it performed?](https://hamel.dev/blog/posts/evals-faq/why-is-error-analysis-so-important-in-llm-evals-and-how-is-it-performed.html) — Open coding, then axial coding ("the most important step"), then counting, until saturation.

@@ -642,7 +642,36 @@ Use public numbers to pick 2–3 candidate models. Then run them through your ow
 
 ### Worked answer
 
-*Answer coming in the next brief.*
+**1. Sanity agents.** The eight tasks split into six should-file tasks and two should-not-file tasks:
+
+- should-file: curtailment, pipeline-stale, SG-05 budget, forged-38, vague-ticket, and bad-weather-but-meter;
+- should-not-file: the quiet day and the 5% curtailment red herring.
+
+The **null agent** files nothing and claims success. It scores 0/6 on should-file and 2/2 on should-not-file. Its overall pass@1 is 25%, for doing nothing. That is why you report the two halves separately.
+
+The **shotgun agent** files five tickets, all with value 0.0. It should score 0/8. "Exactly one ticket" stops it on every should-file task, and a non-empty sink fails both should-not-file tasks. Tolerance and provenance stop it a second time, because no tool in that trial ever returned 0.0.
+
+If the shotgun agent passes anything, a gate is missing. The likeliest leak is the vague-ticket task, if that task is graded only by the actionability judge with the code gates skipped.
+
+**2. τ²-bench vs the investigator**, in five rows:
+
+| Row | τ²-bench | Investigator |
+|---|---|---|
+| Task | A customer request under a policy document | A site and window with an unknown root cause |
+| Environment | A domain DB plus an LLM-simulated user, who in telecom also has tools on the shared state (dual control) | A frozen DB snapshot and tool cassette, with no user |
+| Grader | Final DB state vs goal state | The ticket sink, checked by code gates |
+| Aggregate | pass^k | Macro pass^3 |
+| Harness | The benchmark's or vendor's scaffold | Our `run_site`, with skills, guards and caching |
+
+A 10-point gain predicts more reliable policy-following tool use across turns. It does not predict root-cause reasoning over time series, provenance discipline, or cost on our tools.
+
+**3. Three questions for the vendor:**
+
+1. Which scaffold, how many attempts, and which split? (Is it pass@1 on Verified, a split OpenAI retired over contamination?)
+2. What are its pass^k and cost per task on a benchmark closer to our task, such as τ²-bench or Terminal-Bench 2.0?
+3. Can we run it through our own suite, on our fixtures and under our harness, within our data-handling rules?
+
+Typical slips: quoting the null agent's 25% as one number. And reading the shotgun agent's 0 as a pass for the suite without checking *why* it scored 0. If it ended in error, the gates were never exercised.
 
 ### Sources
 
@@ -652,4 +681,74 @@ Use public numbers to pick 2–3 candidate models. Then run them through your ow
 
 ---
 
-*Week 6 review coming soon.*
+## Week 6 review
+
+*Day 43 · 2026-10-14*
+
+Week 6 turned "illustrative numbers" into measured ones. We went from what an agent eval is, through tasks, graders and metrics, to deciding whether a harness change ships and reading other people's leaderboards. [Week 7](week-07-evaluation-2-and-iteration.md) picks up from here: what to do when the numbers say something broke.
+
+### The week in six paragraphs
+
+**6.1 Agent evals are experiments.** A task runs in a fresh, isolated environment for several trials. Each trial is graded on the *outcome*: the ticket in the sink, not the agent's claim that it filed one. Path checks are only for real constraints (no side effects, budget, provenance). Because runs are not deterministic, you must choose between pass@k (any trial succeeds) and pass^k (every trial succeeds). What you test is model + harness, so every trial carries the harness hash. Graders have bugs too.
+
+**6.2 Eval sets from real failures.** Start with 20–50 tasks drawn from review rejections, provenance trips and budget/stuck runs. Each task is a triad: inputs with unambiguous criteria, a fixture frozen from the failing trajectory, and an outcome grader. A task is valid only when the empty sink fails and the reference passes; for should-not-file tasks that check flips. Pair every should-file task with should-not-file cases, record each task's source, and keep separate capability and regression sets, with tasks graduating from one to the other.
+
+**6.3 Graders.** Use code where possible: enums, tolerances, outcome queries and provenance. Use a model where necessary: one binary judge per fuzzy dimension, with a critique and an Unknown option. Use people to calibrate both. Check judges by TPR and TNR separately on a frozen test split, never by raw agreement, and test for verbosity and position bias. Combine as hard gates, plus partial credit reported separately.
+
+**6.4 Metrics.** Use the unbiased estimators, pass@k = 1 − C(n−c,k)/C(n,k) and pass^k = C(c,k)/C(n,k), computed per task and then macro-averaged. Report them next to median and p90 turns, cost per success and the status mix. Tool-call precision and recall are diagnostics, never gates. With 8 tasks, one flip moves the score 12.5 points.
+
+**6.5 Regression testing.** Change one thing and freeze everything else, infrastructure included. Compare A and B per task, with the task as the cluster, using a t-based CI. Apply two gates (a per-task regression gate and a capability CI above zero) plus guard metrics. Run an A/A test first to measure the noise floor and the MDE (≈ 2.8 × SE). Climb the ladder: exact replay → fork replay → full suite.
+
+**6.6 Public benchmarks.** These are frozen triads that score a whole system: model, scaffold, infrastructure and version. They decay through outcome-validity bugs, task-validity bugs, and contamination or saturation. Use them to shortlist 2–3 models. Gate on your own suite, after checking it with the null and shotgun agents.
+
+### Self-quiz
+
+1. The nightly suite reports pass@1 0.80 and pass@3 0.98. Your manager asks whether the investigator is reliable enough to run unattended. Which metric answers that? Compute it for one task with 8 successes out of 10 trials, and say why the other two numbers mislead here.
+2. A newly added task scores 0% across 20 trials. Before you touch the harness, which two checks do you run, and what does each possible result tell you?
+3. Your actionability judge agrees with human labels on 94% of 200 tickets. Why is that not enough? Which two numbers would you report instead, and which bias test matters when ticket length varies?
+4. Candidate B scores +6 points of mean pass^3 over A, with paired SE 0.04 across 8 tasks. One regression-set task fell from 10/10 to 7/10. Give the 95% CI, the verdict and the deciding reason.
+5. Model X sits 4 points above model Y on Terminal-Bench 2.0. Name three things to check before the gap means anything, and say what you would do instead to choose a model for the investigator.
+
+### Self-quiz answers
+
+1. **pass^3** answers "reliable unattended". At 8 of 10: C(8,3)/C(10,3) = 56/120 ≈ 0.47. pass@1 (0.80) is an average over runs. pass@3 (0.98) assumes something picks the best of three tries, and a nightly run gets one try.
+2. **First, run the reference solution.** If it fails, the task or grader is broken. **Then read a few failing transcripts.** They show whether the agent made a real mistake or the grader rejected a valid answer. (Running the null agent is a useful third check.)
+3. When most tickets are good, a judge that always says pass still agrees with the labels most of the time, so 94% agreement proves little. **Report TPR and TNR** on a frozen test split. Then run a **verbosity test**: pad vague tickets with extra text and check whether TNR holds.
+4. 0.06 ± 2.36 × 0.04 gives a **CI of [−0.03, +0.15]**. Verdict: **block**. A regression-set task at 7/10 fails the per-task gate (failing 2 or more of 10), whatever the mean shows. The CI also includes zero.
+5. Before trusting a 4-point gap, check: (a) the same scaffold, tools and attempt policy; (b) the same resources, timeouts and benchmark version; (c) whether 4 points is bigger than infrastructure noise, which reached 6 points on Terminal-Bench 2.0. **To actually choose**, shortlist both models and compare them paired on your own suite.
+
+### Integrative exercise
+
+Write `eval_release(baseline, candidate)`, about 100 lines with fake tools. It is the CI job that decides whether an investigator change ships, and it combines the whole week in five steps:
+
+1. **Validate the suite:** every task's empty sink fails and its reference passes; the null agent scores 0 on should-file tasks; the shotgun agent scores 0 everywhere.
+2. **Run** 10 isolated trials per task per harness, each with a fresh `Env.from_fixture` and the harness hash recorded.
+3. **Grade** with code gates first, then the actionability judge as a separate dimension.
+4. **Build a scorecard** with per-task pass^3, cost per success, p90 turns and status mix.
+5. **Run `compare()`:** paired deltas, a t-based CI, the MDE from a stored A/A run, the regression gate and the guard metrics, ending in ship, hold or block.
+
+Then plant three faults, one at a time:
+
+- the deciding-value check changed to exact float equality;
+- `memory/` not reset between trials;
+- the tool timeout silently changed from 60 s to 30 s in B's container only.
+
+For each fault, say which step catches it and what the report shows. If nothing catches it, say what a person would have to notice. Finish with one paragraph: which of the three faults could only have been found by reading transcripts? (That is the topic of 7.1.)
+
+### Integrative answer
+
+The pipeline is: validate the suite → run 10 isolated trials per task per harness → apply code gates, then the judge → build the scorecard → `compare()` → ship, hold or block. The three planted faults play out like this.
+
+- **`memory/` not reset between trials.** Median turns collapse after trial 1, because the agent reads its own answer from memory, and success rises with trial index. A cheap check catches it before any trial runs: hash the environment at start and assert that it equals the fixture hash.
+- **A 30 s timeout in B's container only.** The weather-outage and stale-pipeline tasks drop, more runs end in error, and `compare()` blocks. But it blames the prompt change. The fix is to record the infrastructure config next to the harness hash, and refuse to compare when the two runs differ.
+- **Exact float equality on the deciding value.** No automated step catches this one. The reference ticket copies the fixture value exactly, so suite validation passes. The grader is shared by A and B, so the paired delta stays near 0. Only the absolute pass rates fall. Reading a failing transcript gives it away: the root cause is right, and 3.19 was compared with 3.1900001.
+
+So the float-equality fault is the one you could only find in transcripts. That is the subject of [lesson 7.1](week-07-evaluation-2-and-iteration.md#71-reading-a-transcript).
+
+Common slip: trusting an eval report because A and B moved together. Shared bugs cancel out in a paired delta.
+
+### Sources
+
+- [Anthropic — Demystifying evals for AI agents](https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents)
+- [Anthropic — A statistical approach to model evaluations](https://www.anthropic.com/research/statistical-approach-to-model-evals)
+- [Barres et al. — τ²-Bench: Evaluating Conversational Agents in a Dual-Control Environment](https://arxiv.org/abs/2506.07982)

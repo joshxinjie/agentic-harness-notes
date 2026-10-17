@@ -39,6 +39,9 @@ The stable start of the assembled document the model reads on every turn, next t
 **Agent-computer interface (ACI)**  
 "an abstraction layer between the LM agent and computer" (SWE-agent): the whole channel of observations and actions — which actions exist and how much each does, what each observation looks like, which state is visible, and which guardrails sit on actions. Tool design (4.2) is about one tool; the ACI is the interface as a whole. Anthropic: put as much effort into ACI as into HCI. See [4.4](weeks/week-04-prompt-and-tool-design.md#44-agent-computer-interface-aci).
 
+**AgentErrorTaxonomy / AgentDebug**  
+A taxonomy built from 500+ failed single-agent trajectories, grouping errors by module: memory, reflection, planning, action and system. Its AgentDebug method finds the earliest decisive error in 45% of cases (baselines 28%), and re-running from that step improved ALFWorld success by up to 26% relative. See [7.2](weeks/week-07-evaluation-2-and-iteration.md#72-error-taxonomies-and-common-failure-modes).
+
 **Agentic search**  
 Retrieval as a tool call inside the loop. The model sends a query (`grep`, `glob`, `read_file`, SQL, `search(q)`), reads the result, and searches again with what it learned, so it handles several hops by design. Claude Code's index-free ripgrep-plus-read is the standard example; Anthropic's just-in-time retrieval (2.1) is the same idea. See [3.3](weeks/week-03-state-and-memory.md#33-retrieval-for-agents-rag-vs-agentic-search).
 
@@ -47,6 +50,9 @@ A session should have at most two of: (A) handles untrusted input, (B) can reach
 
 **AGENTS.md / CLAUDE.md**  
 Instruction files kept in a repository that a coding-agent harness puts into the prompt. Best kept short (about 100–200 lines), as a map to fuller docs rather than a dump. Details in 3.4. See [1.4](weeks/week-01-what-an-agent-is.md#14-what-a-harness-is).
+
+**Annotator agreement (κ)**  
+κ (kappa) measures how often two labellers give the same label, beyond what chance would give. MAST's annotators started at κ = 0.24 and reached 0.88 only after several rounds of refining definitions; check it before you trust your own taxonomy. See [7.2](weeks/week-07-evaluation-2-and-iteration.md#72-error-taxonomies-and-common-failure-modes).
 
 **APITimeoutError**  
 Raised by the Python SDK when a request takes longer than the timeout (10 minutes by default; can be set per client or per request). Timed-out requests are retried by default. See [2.6](weeks/week-02-core-mechanics.md#26-error-handling-retries-backoff-and-feeding-tool-errors-back-to-the-model).
@@ -81,6 +87,9 @@ The choice of how much control flow to hard-code and how much to hand to the mod
 **Average tools per tool-calling message**  
 The health metric for parallel calls: total `tool_use` blocks ÷ assistant messages that contain any. It should be above 1.0 if parallel calls are happening. See [5.6](weeks/week-05-control-safety-reliability.md#56-latency-and-cost-budgets-parallel-tool-calls-streaming).
 
+
+**Axial coding**  
+The step after open coding: grouping one-line failure notes into named categories, each with a definition and an include and exclude example. Hamel Husain calls it "the most important step". See [7.2](weeks/week-07-evaluation-2-and-iteration.md#72-error-taxonomies-and-common-failure-modes).
 
 ## B
 
@@ -240,6 +249,9 @@ The written reason attached to a pass/fail label. Detailed enough to serve as a 
 **Deciding-number provenance check**  
 A policy guardrail on the final output: any number a ticket cites as evidence must equal a value returned by one of this run's own tool calls (traceable by tool_use_id), never a figure taken from a document. This catches a well-typed lie that gets through the quarantine schema. See [5.4](weeks/week-05-control-safety-reliability.md#54-prompt-injection-and-untrusted-content).
 
+**Decisive error step**  
+The earliest step in a failed run where a correction would have turned the failure into a success (Who&When). It is rarely the last bad step, because errors compound. See [7.1](weeks/week-07-evaluation-2-and-iteration.md#71-reading-a-transcript).
+
 **Degrees of freedom (skills)**  
 Anthropic's writing rule for how strict a skill should be. Low freedom (exact steps, scripts) for fragile operations where order matters — a "narrow bridge with cliffs on both sides". High freedom (general direction) where many approaches work — an "open field". See [4.5](weeks/week-04-prompt-and-tool-design.md#45-skills-procedural-knowledge-loaded-on-demand).
 
@@ -252,6 +264,9 @@ The tool on the parent's side (`delegate(name, task)`, Claude Code's Agent/Task 
 **Delivery path**  
 How a search result reaches the model: inline in the transcript (shaped, 2.1) or written to a file the agent must open (restorable offload, 3.2). Sen et al. show it changes accuracy as much as the choice of searcher. A search tool that returns full text inline "to save a turn" gets the worst of both. See [3.3](weeks/week-03-state-and-memory.md#33-retrieval-for-agents-rag-vs-agentic-search).
 
+**Detector (failure category)**  
+A code check or calibrated judge that finds more cases of one failure category in traces automatically. Every category in your own taxonomy should have one. See [7.2](weeks/week-07-evaluation-2-and-iteration.md#72-error-taxonomies-and-common-failure-modes).
+
 **disable_parallel_tool_use**  
 A `tool_choice` flag. With `auto`, the model makes at most one tool call per response; with `any`/`tool`, exactly one (that combination is not supported on Opus 5.5, Sonnet 5.5, Fable 5.1, Mythos 5.1). See [5.6](weeks/week-05-control-safety-reliability.md#56-latency-and-cost-budgets-parallel-tool-calls-streaming).
 
@@ -263,6 +278,9 @@ The "already done?" guard for tools with side effects. If a `tool_use_id` is alr
 
 **Draft-then-file**  
 The shape for a gated side effect in an unattended run: the agent's tool only writes a draft (always allowed), and filing is a separate step a person does. This takes the live "ask" out of the run completely. See [5.2](weeks/week-05-control-safety-reliability.md#52-human-in-the-loop-approval-gates-interrupts-escalation).
+
+**Dual control**  
+In τ²-bench's telecom domain, the simulated user also has tools that act on the shared state, so both agent and user can change the environment. See [Week 6 review](weeks/week-06-evaluation-1.md#week-6-review).
 
 **Durability mode (LangGraph)**  
 The safety-versus-speed setting on `invoke`. `"exit"` saves only when the graph finishes (nothing to resume mid-run); `"async"` saves in the background (fast, but the last step can be lost); `"sync"` waits for the write before each step (needed when a missed checkpoint would repeat a real-world side effect). The one tool with side effects decides which mode you need. See [3.5](weeks/week-03-state-and-memory.md#35-checkpointing-and-resumability).
@@ -299,6 +317,9 @@ Reading production traces (at least 100, the first ~30 annotated by hand) and wr
 
 **Error result as prompt**  
 An `is_error` tool result is prompt text. It lands where a successful result would, is re-read on every later turn, and is the model's only clue to why the action failed. The design question: what must the model read to choose a *different* action in one turn? See [4.3](weeks/week-04-prompt-and-tool-design.md#43-tool-error-messages-as-instructions-designing-for-recovery).
+
+**Error taxonomy**  
+A counted list of named failure categories, built by open-coding failing traces and then grouping the codes. Count one root category per trace and rank by count × severity; it tells you what to fix first. See [7.2](weeks/week-07-evaluation-2-and-iteration.md#72-error-taxonomies-and-common-failure-modes).
 
 **Error-exhausted run**  
 When retries run out, the loop returns status `error` with the exception type and `request_id`, not a traceback. Partial findings and cost are kept, as for any other end state. See [2.6](weeks/week-02-core-mechanics.md#26-error-handling-retries-backoff-and-feeding-tool-errors-back-to-the-model).
@@ -498,6 +519,9 @@ A variant that writes the plan as a task graph (DAG) and runs independent steps 
 **Macro average**  
 Work out a metric for each task, then average across tasks, so tasks with more trials do not dominate. See [6.4](weeks/week-06-evaluation-1.md#64-trajectory-level-metrics-passk-steps-cost-tool-call-accuracy).
 
+**MAST (Multi-Agent System Failure Taxonomy)**  
+Cemri et al.'s taxonomy from 200+ traces across 7 multi-agent frameworks: 14 failure modes in 3 groups (specification issues 41.8%, inter-agent misalignment 36.9%, task verification 21.3%). Useful as a checklist, but its labels describe the agent, not where the harness fix lives. See [7.2](weeks/week-07-evaluation-2-and-iteration.md#72-error-taxonomies-and-common-failure-modes).
+
 **max_retries**  
 An SDK client setting. The official SDKs retry short-lived failures twice by default with a short exponential backoff (Python: connection errors, 408, 409, 429, ≥500). Set it on the client or per request with `with_options`. See [2.6](weeks/week-02-core-mechanics.md#26-error-handling-retries-backoff-and-feeding-tool-errors-back-to-the-model).
 
@@ -563,6 +587,9 @@ Sanity-check agents for an eval suite: one does nothing and claims success; the 
 
 
 ## O
+
+**Open code**  
+A one-line diagnosis of a failed run, naming the first thing that went wrong, e.g. "T3: hourly pull → memory cleared → weather blamed". Open codes are later grouped into a taxonomy. See [7.1](weeks/week-07-evaluation-2-and-iteration.md#71-reading-a-transcript).
 
 **Orchestrator–worker (lead agent + sub-agents)**  
 Anthropic's Research architecture: a lead agent plans, starts sub-agents that "operate in parallel with their own context windows", and combines their short results. About 4× a chat's tokens for a single agent and about 15× for multi-agent; token usage explained 80% of the difference in performance; an Opus 4 lead with Sonnet 4 sub-agents beat a single Opus 4 by 90.2% on an internal breadth-first research eval. Covered fully in 8.1. See [3.6](weeks/week-03-state-and-memory.md#36-sub-agents-and-context-isolation).
@@ -683,6 +710,9 @@ Yao et al. (2022): mix reasoning steps with actions — *Thought → Action → 
 
 **Read-heavy vs write-heavy delegation**  
 Reading splits safely across sub-agents (each result stands alone). Writing conflicts, because "actions carry implicit decisions, and conflicting decisions carry bad results" (Cognition). Hand out investigation; keep combining results, memory writes and side effects in one agent. See [3.6](weeks/week-03-state-and-memory.md#36-sub-agents-and-context-isolation).
+
+**Rebuilt context**  
+The exact request the model received at a given turn, reconstructed after clearing, compaction and skill loading. It is what you diagnose from, because the trajectory log is not what the model saw. See [7.1](weeks/week-07-evaluation-2-and-iteration.md#71-reading-a-transcript).
 
 **Recitation**  
 Manus's attention trick: the agent rewrites a `todo.md` at the end of the context each step, "reciting its objectives into the end of the context" so the goals stay in the model's recent attention. A plan-as-state (2.3) that also works as an anchor compaction cannot remove. See [3.2](weeks/week-03-state-and-memory.md#32-context-management-summarisation-compaction-truncation).
@@ -975,6 +1005,9 @@ Time to first token + output generation + tool running time for one loop pass. A
 **Unbiased pass@k estimator**  
 `1 − C(n−c, k)/C(n, k)` from n ≥ k trials with c successes (Chen et al. 2021). It varies less than checking "any pass" in exactly k runs. See [6.4](weeks/week-06-evaluation-1.md#64-trajectory-level-metrics-passk-steps-cost-tool-call-accuracy).
 
+**Unfair failure**  
+A failure caused by the grader, the task or the infrastructure rather than the agent. Rule these out first when reading a transcript, and count them in their own categories so they never count against the agent. See [7.1](weeks/week-07-evaluation-2-and-iteration.md#71-reading-a-transcript).
+
 **Unknown option**  
 An explicit "not enough information" verdict offered to a judge so it does not guess. See [6.3](weeks/week-06-evaluation-1.md#63-graders-exact-match-rubric-llm-as-judge-outcome-checks).
 
@@ -998,6 +1031,9 @@ Any independent check the agent can run on its own work, such as a `bash` tool t
 
 
 ## W
+
+**Who&When**  
+Zhang et al.'s benchmark (ICML 2025) for finding which agent caused a failure and at which step. The best automated method found the agent 53.5% of the time but the decisive step only 14.2%. See [7.1](weeks/week-07-evaluation-2-and-iteration.md#71-reading-a-transcript).
 
 **Windowed viewer**  
 A viewer for a file (or a data series) that shows a fixed window with line numbers, the path, the total length and a count of what is hidden, plus scroll and goto commands. SWE-agent's default is 100 lines. The alternative to dumping whole files. See [4.4](weeks/week-04-prompt-and-tool-design.md#44-agent-computer-interface-aci).
