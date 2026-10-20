@@ -1,0 +1,20 @@
+%%{init: {"flowchart": {"rankSpacing": 26}}}%%
+flowchart TD
+    C["Context near the limit"] --> A(["Compaction"])
+    A --> D
+    subgraph D["Re-injected in full"]
+        direction TB
+        D1["System prompt, CLAUDE.md,<br>auto memory, plan"]
+        D2["Up to 5 recent files<br>(big ones as a path)"]
+        D3["Invoked skills (capped)"]
+        D1 ~~~ D2 ~~~ D3
+    end
+    D ~~~ S
+    subgraph S["Only summarised"]
+        direction TB
+        S1["The conversation"]
+        S2["Earlier tool results"]
+        S3["Hook output,<br>path-scoped rules"]
+        S1 ~~~ S2 ~~~ S3
+    end
+    A --> S

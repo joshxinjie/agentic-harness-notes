@@ -23,6 +23,7 @@ for f in files:
 bad=0
 for f in files:
     txt=open(f).read()
+    txt=re.sub(r'```.*?```','',txt,flags=re.S); txt=re.sub(r'`[^`\n]*`','',txt)
     for m in re.finditer(r'\]\(([^)\s]+)\)',txt):
         u=m.group(1)
         if u.startswith('http') or u.startswith('mailto'): 
@@ -30,6 +31,8 @@ for f in files:
             continue
         p,_,a=u.partition('#')
         t=os.path.abspath(os.path.join(os.path.dirname(f),p)) if p else os.path.abspath(f)
-        if t not in anchors: print('NOFILE',f,u); bad+=1; continue
+        if t not in anchors:
+            if not p.endswith('.md') and os.path.exists(t): continue
+            print('NOFILE',f,u); bad+=1; continue
         if a and a not in anchors[t]: print('NOANCHOR',os.path.basename(f),u); bad+=1
 print('bad',bad)
