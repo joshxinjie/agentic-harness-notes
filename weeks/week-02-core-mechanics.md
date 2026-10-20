@@ -777,7 +777,7 @@ Strict tool use ([2.4](#24-structured-outputs-and-schemas)) removes the missing-
 
 ![Where did it fail? A model-call failure is checked for retryability (429, 500, 504, 529, connection errors, and 409 once the conflict is resolved): if yes, wait with backoff and full jitter and call again with the transcript unchanged. If not, once retries run out, or on a 429 with no retry-after header (a spend cap), the run ends with status error. A failure inside a tool is first retried inside the tool if it is an infrastructure error; once those retries run out it becomes an error result saying what went wrong and what to try next, and the model picks a different action.](../diagrams/error-two-paths.svg)
 
-*Figure: the model never sees the left path; it must see the right one. (*409 only once the conflict is resolved.)*
+*Figure: the model never sees the left path; it must see the right one.*
 
 **API details**
 

@@ -1,5 +1,5 @@
 flowchart TD
-    F{"Where did it fail?"} -->|"model call"| I{"Retryable?<br>429, 500, 504, 529,<br>connection, 409*"}
+    F{"Where did it fail?"} -->|"model call"| I{"Retryable?<br>429, 500, 504, 529,<br>connection,<br>409 once resolved"}
     F -->|"inside a tool"| TR["Infra error: retry<br>inside the tool"]
     TR -->|"retries run out"| TE["Error result:<br>what went wrong,<br>what to try next"]
     I -->|"yes"| W["Wait: backoff<br>with full jitter"]
