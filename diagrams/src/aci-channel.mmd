@@ -1,0 +1,16 @@
+flowchart TD
+    M["Agent (model)"]
+    subgraph A["Agent-computer interface"]
+        direction TB
+        ACT["Simple, efficient actions"]
+        OBS["Concise feedback,<br>windowed view"]
+        S["Held state:<br>open file, cursor"]
+        G["Guardrail: linter"]
+    end
+    EN["Environment<br>(files, shell, data)"]
+    M -->|"acts"| ACT
+    ACT --> G
+    G --> EN
+    EN --> OBS
+    S -.-> OBS
+    OBS -->|"reads"| M

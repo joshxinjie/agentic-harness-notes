@@ -55,7 +55,7 @@ Only when the information was present, clear and allowed is it a model reasoning
 
 ![A flowchart: check the failure is fair, walk back to the earliest decisive step, ask three questions of the rebuilt context to name the layer, then confirm with a five-run fork replay.](../diagrams/transcript-diagnosis.svg)
 
-*Figure: "model reasoning error" is what is left only after the three context questions all come back yes, and every branch still ends in a fork replay.*
+*Figure: "model reasoning error" is what is left only after the fairness check and the three context questions; a fork replay then tests the suspected step.*
 
 ### An example
 
@@ -88,7 +88,7 @@ Fork at T3 with `agg=daily`: 5 of 5 runs file meter. Confirmed.
 
 ### Where it lives in the harness
 
-Layer 6 (feedback and evals). It uses the observability from [lesson 5.5](week-05-control-safety-reliability.md#55-observability-tracing-logging-trajectories-replaying-runs), which sits in layer 5 (guardrails and permissions): traces (timed records of each step) joined to trajectories by the tool call's id, plus fork replay.
+Layer 6 (feedback and evals). It uses the observability from [lesson 5.5](week-05-control-safety-reliability.md#55-observability-tracing-logging-trajectories-replaying-runs), which is also part of layer 6: traces (timed records of each step) joined to trajectories by the tool call's id, plus fork replay.
 
 Write each diagnosis as one line, called an **open code**. For example: "T3: hourly pull → memory cleared → weather blamed". In [7.2](#72-error-taxonomies-and-common-failure-modes) those lines get grouped into a taxonomy.
 
@@ -220,7 +220,7 @@ Keep separate "unfair" categories (grader bug, task bug, infrastructure), so the
 
 ![A tree: your failure taxonomy splits into categories that each need a definition, a harness layer and owner, and a detector, and separate unfair categories for grader bugs, task bugs and infrastructure.](../diagrams/taxonomy-category-anatomy.svg)
 
-*Figure: the published labels give you the definition; the layer, owner and detector are what make a category point at a fix.*
+*Figure: a category is useful when it has a definition, a layer, an owner and a detector, so it points at where the fix lives.*
 
 ### An example
 
