@@ -1,8 +1,21 @@
 # Week 2 — Core mechanics
 
-Week 1 ended on one fact: the transcript is the agent's only memory. A model is stateless, and the harness around it re-sends the whole conversation on every call ([Week 1](week-01-what-an-agent-is.md)). Week 2 is about the mechanics that let that loop survive real work. We start with how much memory the transcript really is (2.1). Then we look at the reasoning step between observing and acting (2.2), and at making the model plan a whole task (2.3). Next comes getting output that code can trust (2.4), deciding when the loop should stop (2.5), and handling failures (2.6). The week ends with a review that pulls all six into one function.
+Week 1 ended on one fact: the transcript (the running list of messages and tool results the model is sent each turn) is the agent's only memory. A model is stateless, and the harness (all the code around the model) re-sends the whole conversation on every call ([Week 1](week-01-what-an-agent-is.md)). Week 2 is about the mechanics that let that loop survive real work:
 
-Most of this week lives in layer 3 of the harness, loop control, with edges into the other layers introduced in [1.4](week-01-what-an-agent-is.md).
+- how much memory the transcript really is (2.1);
+- the reasoning step between observing and acting (2.2);
+- making the model plan a whole task (2.3);
+- getting output that code can trust (2.4);
+- deciding when the loop should stop (2.5);
+- handling failures (2.6).
+
+The week ends with a review that pulls all six into one function.
+
+Most of this week lives in layer 3 (loop control), with edges into the other layers introduced in [1.4](week-01-what-an-agent-is.md#14-what-a-harness-is).
+
+![The six layers of a harness, stacked below the stateless model they wrap: prompts, tools and the executor, loop control, state, guardrails and permissions, feedback and evals.](../diagrams/harness-layers.svg)
+
+*Figure: the six harness layers from [1.4](week-01-what-an-agent-is.md#14-what-a-harness-is). This week is mostly about layer 3 (loop control).*
 
 ---
 
@@ -10,7 +23,10 @@ Most of this week lives in layer 3 of the harness, loop control, with edges into
 
 *Day 8 · 2026-09-10*
 
-**The context window is a large but leaky working memory. The more you put in it, the less reliably the model recalls any one item. So the harness's job is to put in less, not more.**
+> **In short**
+> - The context window is a large but leaky working memory, and the loop makes it grow every turn.
+> - The more you put in it, the less reliably the model recalls any one item.
+> - So the harness's job is to put in less, not more.
 
 ### The idea
 
@@ -19,20 +35,34 @@ The *context window* is the total token budget of one model call, input and outp
 - the system prompt
 - the tool definitions
 - every message, including tool results and images
-- extended-thinking blocks
+- extended-thinking blocks (the model's reasoning text, covered in [2.2](#22-react-and-reasoning-then-acting-extended-thinking-in-the-loop))
 - the output being generated right now
 
-On current Claude models the window is 1M tokens (200k on older ones). `max_tokens` is a separate knob. It caps only the single response.
+On current Claude models the window is 1M tokens (200k on older ones). A separate setting, the output cap, limits only the single response.
 
-The loop re-sends the whole transcript every turn, so usage adds up. Turn N's input is turn N−1's input, plus its output, plus the tool results. The API's `usage` field on every response tells you exactly where you are.
+The loop re-sends the whole transcript every turn, so usage adds up. Turn N's input is turn N−1's input, plus its output, plus the tool results. Every response reports its token counts, so you always know exactly where you are.
 
 The naive view is "a bigger window means more memory, so fill it". Two facts break that view.
 
-**Context rot.** Chroma's July 2025 study ran 18 models (GPT-4.1, Claude 4, Gemini 2.5 and Qwen3 families). The tasks stayed the same; only the input length grew. They found that "models do not use their context uniformly; performance grows increasingly unreliable as input length grows". This held even for trivially simple tasks, such as repeating a list of words. It got worse in two cases: when the needed fact is semantically distant from the question, and when there are topically similar distractors. That is exactly what a long agent transcript looks like: lots of near-duplicate tool results.
+**Context rot** (answers getting less reliable as the input grows). Chroma's July 2025 study ran 18 models (GPT-4.1, Claude 4, Gemini 2.5 and Qwen3 families). The tasks stayed the same; only the input length grew. They found that "models do not use their context uniformly; performance grows increasingly unreliable as input length grows". This held even for trivially simple tasks, such as repeating a list of words.
+
+It got worse in two cases:
+
+- when the needed fact is semantically distant from the question;
+- when there are topically similar distractors.
+
+That is exactly what a long agent transcript looks like: lots of near-duplicate tool results.
 
 **The attention budget.** Anthropic's context-engineering post treats every token as spending from a finite budget. Attention forms n² pairwise relationships between tokens, so it stretches thin as n grows. In their framing, context is a finite resource with diminishing returns.
 
 So "working memory" is the right analogy. The window is large, but recall of any one item gets worse as it fills. The harness should curate the smallest set of high-signal tokens that gives the best chance of the outcome you want. It should not stuff the window.
+
+**API details**
+
+| What | Value |
+|---|---|
+| Output cap for one response | `max_tokens` |
+| Token counts on every response | `usage` field |
 
 ### An example
 
@@ -45,11 +75,22 @@ Take the "why is SG-03 off?" investigator for the solar portfolio:
 
 By turn 9, each call is about 31k input tokens. The number that matters is the 09:00 cloud-cover value for station 4 on the 7th. It is one row inside the turn-2 dump, surrounded by 143 near-identical rows. That is Chroma's failure case, reproduced by accident.
 
+![A stacked bar of the investigator's turn-9 input: 3k prompt and tools, 6k metrics, 9k weather, 13k re-queries, about 31k in total, with the one row that matters buried in the 9k weather dump.](../diagrams/investigator-context-budget.svg)
+
+*Figure: the fact the model needs is a sliver of one dump, re-sent on every turn.*
+
 Three harness moves fix it, each in a different layer:
 
-1. **Shape at the source** (layer 2). `get_weather_history` returns per-station daily aggregates plus anomalies, with a `detail=true` path for the hourly rows. This is the result shaping from [1.3](week-01-what-an-agent-is.md#13-tool--function-calling), now motivated by recall and not only by cost.
-2. **Just-in-time retrieval** (layers 1–2). Give the model identifiers — site codes, date ranges, a list of available metrics — and let it fetch what it needs when it needs it. Don't pre-load the whole picture. Anthropic's post describes agents keeping "lightweight identifiers (file paths, stored queries, web links)" and loading data at runtime.
-3. **Clear what is spent** (layers 3–4). Once a tool result has been digested into a stated hypothesis, drop or summarise it. The Anthropic API now offers this server-side: tool-result clearing, thinking-block clearing and server-side compaction. On Sonnet 4.5+ and Haiku 4.5, the model is even told its remaining budget after each tool call, through an injected tag such as `<system_warning>Token usage: 35000/200000</system_warning>`. That lets it budget itself.
+1. **Shape at the source** (layer 2, tools and the executor). `get_weather_history` returns per-station daily aggregates plus anomalies, with a `detail=true` path for the hourly rows. This is the result shaping from [1.3](week-01-what-an-agent-is.md#13-tool--function-calling), now motivated by recall and not only by cost.
+2. **Just-in-time retrieval** (layers 1–2, prompts and tools). Give the model identifiers — site codes, date ranges, a list of available metrics — and let it fetch what it needs when it needs it. Don't pre-load the whole picture. Anthropic's post describes agents keeping "lightweight identifiers (file paths, stored queries, web links)" and loading data at runtime.
+3. **Clear what is spent** (layers 3–4, loop control and state). Once a tool result has been digested into a stated hypothesis, drop or summarise it. The Anthropic API now offers this server-side: tool-result clearing, thinking-block clearing and server-side compaction ([3.2](week-03-state-and-memory.md#32-context-management-summarisation-compaction-truncation)). On some models the API even tells the model its remaining budget after each tool call, through an injected tag. That lets it budget itself.
+
+**API details**
+
+| What | Value |
+|---|---|
+| Remaining-budget tag: models | Sonnet 4.5+ and Haiku 4.5 |
+| Remaining-budget tag: example | `<system_warning>Token usage: 35000/200000</system_warning>` |
 
 ### Where it lives in the harness
 
@@ -57,8 +98,15 @@ Layer 4 (state) decides what exists. Layers 1–2 (prompts and tools) decide wha
 
 Two mechanics your loop code must handle:
 
-- **Overflow.** If the input alone is over the window, you get an immediate 400 error. If input plus `max_tokens` is over it, Claude 4.5+ accepts the request and stops with `stop_reason: "model_context_window_exceeded"`. Your loop must handle that stop reason.
-- **Thinking blocks count in full.** Older models strip thinking from earlier turns. Opus 4.5+, Sonnet 4.6+ and the 5-series keep it unless cleared. So a thinking-heavy agent grows faster than its visible transcript suggests.
+- **Overflow.** If the input alone is over the window, you get an immediate 400 error. If input plus the output cap is over it, newer Claude models accept the request and stop with a stop reason (the field that says why the model stopped) meaning "context window exceeded". Your loop must handle that stop reason.
+- **Thinking blocks count in full.** Older models strip thinking from earlier turns. Newer ones keep it unless cleared (see the table). So a thinking-heavy agent grows faster than its visible transcript suggests.
+
+**API details**
+
+| What | Value |
+|---|---|
+| Input plus `max_tokens` over the window | Claude 4.5+ stops with `stop_reason: "model_context_window_exceeded"` |
+| Models that keep earlier thinking | Opus 4.5+, Sonnet 4.6+ and the 5-series |
 
 ### Common mistakes
 
@@ -66,12 +114,12 @@ Most "the agent ignored the obvious clue" bugs are a clue that was present but d
 
 - treat the window as free storage and dump raw payloads;
 - assume that because a fact is in the transcript, the model will use it;
-- never read the `usage` field, so they only notice growth when a run fails;
+- never read the token counts on each response, so they only notice growth when a run fails;
 - forget that a 1M window is billed per token on every turn. A fat transcript is slow and expensive before it is inaccurate.
 
 ### Try it
 
-Take your agent from [1.5](week-01-what-an-agent-is.md) and add one line after each model call:
+Take your agent from [1.5](week-01-what-an-agent-is.md#15-anatomy-of-a-real-agent) and add one line after each model call:
 
 ```python
 log(turn, resp.usage.input_tokens, resp.usage.output_tokens)
@@ -91,7 +139,9 @@ Bonus: on run 2, ask the model for the actual value at row 500 and see whether i
 
 **Run 2** (720 rows per file). Same shape, but the turn-3 step is ~15–20k tokens, and every later turn pays it again. Turn 5 is roughly ten times run 1's.
 
-**Run 3** (`read_file` capped at 20 rows plus "…700 rows omitted; use full=True"). The curve is back to run 1's scale, and the model still gets the right MAE. It never needed the rows in context. It needed a script that reads the files. Python computes the MAE over the whole file; the transcript only ever held a sample. That is "shape at the source" (layer 2): the tool decides what enters the window, with an escape hatch the model can choose to use.
+**Run 3** (`read_file` capped at 20 rows plus "…700 rows omitted; use full=True"). The curve is back to run 1's scale, and the model still gets the right MAE. It never needed the rows in context. It needed a script that reads the files. Python computes the MAE over the whole file; the transcript only ever held a sample.
+
+That is "shape at the source" (layer 2): the tool decides what enters the window, with an escape hatch the model can choose to use.
 
 **Bonus.** Asked for row 500 from the run-2 dump, models often answer confidently with a neighbouring row. That is Chroma's distractor case in one question.
 
@@ -114,11 +164,14 @@ Beginner mistakes:
 
 *Day 9 · 2026-09-11*
 
-**Agents do better when they reason between each observation and the next action. That reasoning used to be prompt text; now it is a thinking block the model emits itself, and the harness must pass it back untouched.**
+> **In short**
+> - Agents do better when they reason between each observation and the next action.
+> - That reasoning used to be prompt text; now it is a thinking block the model emits itself.
+> - The harness must pass thinking blocks back untouched, and count what they cost.
 
 ### The idea
 
-Reasoning is the "reason" step in the perceive → reason → act → observe loop from [1.2](week-01-what-an-agent-is.md). It is the one step that is pure model behaviour, though the harness still shapes it.
+Reasoning is the "reason" step in the perceive → reason → act → observe loop from [1.2](week-01-what-an-agent-is.md#12-the-agent-loop). It is the one step that is pure model behaviour, though the harness still shapes it.
 
 *ReAct* (Yao et al., 2022) observed that a model does better when it interleaves reasoning traces with actions. The alternatives are doing all the reasoning up front (chain-of-thought) or acting without reflection. The paper's format was literal text, repeated:
 
@@ -126,15 +179,31 @@ Reasoning is the "reason" step in the perceive → reason → act → observe lo
 - *Action:* `Search[…]`
 - *Observation:* the tool result, appended by the harness
 
-The paper's claim is that the two directions feed each other. Reasoning "helps the model induce, track, and update action plans as well as handle exceptions". Actions ground the reasoning in real information, which cuts the hallucination and error propagation of pure chain-of-thought. On ALFWorld and WebShop they reported +34 and +10 absolute points over baselines, with one or two in-context examples.
+The paper's claim is that the two directions feed each other:
+
+- Reasoning "helps the model induce, track, and update action plans as well as handle exceptions".
+- Actions ground the reasoning in real information, which cuts the hallucination and error propagation of pure chain-of-thought.
+
+On ALFWorld and WebShop they reported +34 and +10 absolute points over baselines, with one or two in-context examples.
 
 This is the 1.2 loop with the Thought made explicit. In 2022 the harness pulled "Action: Search[…]" out of free text with a regex and stopped generation at "Observation:". That was fragile, and it is why early agent frameworks broke constantly. Tool calling ([1.3](week-01-what-an-agent-is.md#13-tool--function-calling)) replaced the parsing. What survived of ReAct is the insight: a reasoning step belongs between each observation and the next action.
 
-**Reasoning models moved that step from prompt text into the model.** On the Claude API, the Thought is now a `thinking` content block emitted before the `tool_use` blocks.
+**Reasoning models moved that step from prompt text into the model.** On the Claude API, the Thought is now a thinking block that the model emits before its tool-call blocks.
+
+![The ReAct cycle: an observation feeds a thought, the thought picks an action (a tool call), the harness runs the tool and appends the next observation; when the thought has enough, it gives the final answer. Today the thought is a thinking block emitted before the tool call.](../diagrams/react-thought-action-observation.svg)
+
+*Figure: the reasoning step sits between every observation and the next action; only its container changed.*
+
+**API details**
+
+| What | Value |
+|---|---|
+| Thinking block type | `thinking` |
+| Tool-call block type | `tool_use` |
 
 ### An example
 
-The loop with adaptive thinking:
+The loop with adaptive thinking switched on:
 
 ```python
 resp = client.messages.create(
@@ -158,17 +227,28 @@ The thinking block is where the SG-03 investigator decides to move from weather 
 
 Three harness facts follow.
 
-1. **Pass thinking back untouched.** When the model calls a tool, it "pauses construction of its response to await external information". So the thinking block before the tool call must be passed back "complete and unmodified" with the tool result. It carries the reasoning behind the call. If your executor rebuilds assistant messages from scratch, or filters on `block.type == "thinking"` and drops `redacted_thinking`, the request fails.
-2. **Adaptive thinking and effort.** On current models, thinking is adaptive and interleaves with tool use automatically. Older 4.x models needed the `interleaved-thinking-2025-05-14` beta header and a fixed `budget_tokens`. The `effort` parameter is soft guidance. At low effort the model may skip thinking on easy turns.
-3. **Cost.** Thinking tokens are billed as output (read `usage.output_tokens_details.thinking_tokens`). On Opus 4.5+, Sonnet 4.6+ and the 5-series, earlier turns' thinking stays in context and is billed as input. So the growth curve from 2.1 gets a second component that the transcript length does not show.
+1. **Pass thinking back untouched.** When the model calls a tool, it "pauses construction of its response to await external information". So the thinking block before the tool call must be passed back "complete and unmodified" with the tool result. It carries the reasoning behind the call. If your executor (the code that runs tool calls) rebuilds assistant messages from scratch, or keeps ordinary thinking blocks but drops redacted ones, the request fails.
+2. **Adaptive thinking and effort.** On current models, thinking is adaptive and interleaves with tool use automatically. Older 4.x models needed a beta header and a fixed thinking budget. The effort setting is soft guidance. At low effort the model may skip thinking on easy turns.
+3. **Cost.** Thinking tokens are billed as output. On newer models (see the table), earlier turns' thinking stays in context and is billed as input. So the growth curve from [2.1](#21-context-window-as-working-memory) gets a second component that the transcript length does not show.
 
-**The "think" tool.** The old text-scratchpad idea still earns its keep in one form. Anthropic's "think" tool is a no-op tool. Its description says: "It will not obtain new information or change the database, but just append the thought to the log." On τ-bench airline, with a prompt telling the model when to use it, it scored 0.584 pass^1, against 0.332 for the baseline and 0.412 for extended thinking alone.
+**The "think" tool.** The old text-scratchpad idea still earns its keep in one form. Anthropic's "think" tool is a no-op tool. Its description says: "It will not obtain new information or change the database, but just append the thought to the log." On τ-bench airline, with a prompt telling the model when to use it, it scored 0.584 pass^1 (the share of tasks passed on a single try), against 0.332 for the baseline and 0.412 for extended thinking alone.
 
-The difference from built-in thinking is timing. Built-in thinking happens before the response. The think tool is a deliberate pause mid-trajectory, after a tool result. It suits policy-heavy, sequential tasks where the model must check "do I have enough to act?" It is a layer-2 lever (a tool) that changes layer-1 behaviour (how the model follows instructions).
+The difference from built-in thinking is timing. Built-in thinking happens before the response. The think tool is a deliberate pause mid-trajectory, after a tool result. It suits policy-heavy, sequential tasks where the model must check "do I have enough to act?" It is a layer 2 (tools) lever that changes layer 1 (prompts) behaviour: how the model follows instructions.
+
+**API details**
+
+| What | Value |
+|---|---|
+| Redacted thinking block type | `redacted_thinking` (must be passed back too) |
+| A filter that breaks it | `block.type == "thinking"` (drops `redacted_thinking`) |
+| Interleaved thinking on older 4.x models | beta header `interleaved-thinking-2025-05-14`, fixed `budget_tokens` |
+| Effort setting | `effort` |
+| Thinking token count | `usage.output_tokens_details.thinking_tokens` |
+| Models that keep earlier thinking (billed as input) | Opus 4.5+, Sonnet 4.6+ and the 5-series |
 
 ### Common mistakes
 
-The reasoning step is where the agent picks its next move, so it is where investigations go right or wrong. It is also visible, which makes transcripts diagnosable (7.1). Mistakes:
+The reasoning step is where the agent picks its next move, so it is where investigations go right or wrong. It is also visible, which makes transcripts diagnosable ([7.1](week-07-evaluation-2-and-iteration.md#71-reading-a-transcript)). Mistakes:
 
 - Writing a "Thought:/Action:" prompt for a tool-calling model. You get the fragile 2022 protocol back for nothing.
 - Stripping thinking blocks when re-sending history during tool use.
@@ -217,11 +297,14 @@ Two common slips:
 
 *Day 11 · 2026-09-12*
 
-**A step-by-step loop drifts on long tasks. An explicit plan — owned by the harness, stored outside the transcript, revised as results come in — keeps it on track and makes its work reviewable before it acts.**
+> **In short**
+> - A step-by-step loop drifts on long tasks; an explicit plan keeps it on track and makes its work reviewable before it acts.
+> - The plan should be owned by the harness, stored outside the transcript, and revised as results come in.
+> - Plan when the approach is uncertain; if you could describe the diff in one sentence, skip the plan.
 
 ### The idea
 
-A ReAct loop is short-sighted by design. Every turn asks "what next?" given the transcript. That adapts well, but on long tasks it loses the thread. The HORIZON paper ([1.6](week-01-what-an-agent-is.md)) found that planning failures dominate as the task horizon grows.
+A ReAct loop is short-sighted by design. Every turn asks "what next?" given the transcript. That adapts well, but on long tasks it loses the thread. The HORIZON paper ([1.6](week-01-what-an-agent-is.md#16-when-not-to-build-an-agent)) found that planning failures dominate as the task horizon grows.
 
 *Planning* means making the decomposition explicit: subgoals, their order, their dependencies. There are two extremes.
 
@@ -231,7 +314,14 @@ A ReAct loop is short-sighted by design. Every turn asks "what next?" given the 
 - cost, because steps can go to smaller models;
 - quality, "by forcing the planner to explicitly think through all the steps required".
 
-Two variants: *ReWOO* lets plan steps reference earlier outputs by variable (`#E2`) without replanning. *LLMCompiler* emits the plan as a DAG (a dependency graph) and runs independent steps in parallel.
+![Plan-and-execute: a planner call turns the task into a plan object held by the harness; an executor runs the next step in a small inner loop and leaves a step note; a replanner either revises the remaining steps or finishes.](../diagrams/plan-execute-replan.svg)
+
+*Figure: the plan lives with the harness, not in the transcript; only step notes flow back to the replanner.*
+
+Two variants:
+
+- *ReWOO* lets plan steps reference earlier outputs by variable (`#E2`) without replanning.
+- *LLMCompiler* emits the plan as a DAG (a dependency graph) and runs independent steps in parallel.
 
 **Incremental.** No separate plan; the model's thinking block each turn is the plan. This is the cheapest and most adaptive. It is worst when early observations should have changed the whole approach and nothing forces a re-think.
 
@@ -255,7 +345,7 @@ Suppose step 2 returns "all six stations null since the 7th". The replanner drop
 
 Two things to notice:
 
-- The inner loop is short and its transcript is thrown away. Only the step note goes forward. So the plan is also a context-management device (2.1).
+- The inner loop is short and its transcript is thrown away. Only the step note goes forward. So the plan is also a context-management device ([2.1](#21-context-window-as-working-memory)).
 - The harness reads the plan object to decide the next call. The model proposes edits to it, but never owns it.
 
 ### Where it lives in the harness
@@ -263,10 +353,12 @@ Two things to notice:
 Everywhere except the model:
 
 - **Layer 1 (prompts):** the plan-first instruction and the plan format.
-- **Layer 3 (loop):** the planner and replanner are control flow. The harness decides when planning happens and when it is revisited.
-- **Layer 4 (state):** the plan is state. Kept only in the transcript, it decays like any other tool result (2.1) and vanishes at compaction. Kept as a structured object outside the transcript, it survives. Anthropic's long-running harness uses a feature-list JSON, with every item initially "failing" and one picked per session. Just as important, the agent then cannot quietly redefine "done".
-- **Layer 5 (guardrails):** plan mode is a permission phase. The approval gate sits between the plan and any side effects.
-- **Layer 6 (feedback):** a plan is a checklist to verify against ("review the diff against PLAN.md").
+- **Layer 3 (loop control):** the planner and replanner are control flow. The harness decides when planning happens and when it is revisited.
+- **Layer 4 (state):** the plan is state. Kept only in the transcript, it decays like any other tool result (2.1) and vanishes at compaction ([3.2](week-03-state-and-memory.md#32-context-management-summarisation-compaction-truncation)). Kept as a structured object outside the transcript, it survives.
+- **Layer 5 (guardrails and permissions):** plan mode is a permission phase. The approval gate sits between the plan and any side effects (actions that change something outside the agent).
+- **Layer 6 (feedback and evals):** a plan is a checklist to verify against ("review the diff against PLAN.md").
+
+On layer 4: Anthropic's long-running harness uses a feature-list JSON, with every item initially "failing" and one picked per session. Just as important, the agent then cannot quietly redefine "done".
 
 ### Common mistakes
 
@@ -307,7 +399,7 @@ So replanning needs two things: a plan-editing tool, and tool results that surfa
 
 Beginner mistakes:
 
-- Parsing the plan JSON with a regex and crashing on a code fence (2.4 fixes this).
+- Parsing the plan JSON with a regex and crashing on a code fence ([2.4](#24-structured-outputs-and-schemas) fixes this).
 - Letting the model both write the plan and declare it done.
 
 ### Sources
@@ -324,28 +416,44 @@ In 2.3 the planner returned JSON and we parsed it "somehow". 2.4 is the somehow:
 
 *Day 12 · 2026-09-13*
 
-**Schema-constrained decoding makes it impossible for the model to emit JSON that breaks your schema. It guarantees the shape, not the truth. Checking meaning is still the executor's job.**
+> **In short**
+> - Schema-constrained decoding makes it impossible for the model to emit JSON that breaks your schema.
+> - It guarantees the shape, not the truth.
+> - Checking meaning is still the executor's job.
 
 ### The idea
 
 There are three strengths of "give me JSON":
 
 1. **Prompted JSON.** "Respond only with JSON like this." It fails through preambles, code fences, trailing commas and missing fields. The harness grows regexes and retries.
-2. **JSON mode** (OpenAI's older `json_object`). Syntactically valid JSON is guaranteed; keys and types are not.
+2. **JSON mode** (an older OpenAI option). Syntactically valid JSON is guaranteed; keys and types are not.
 3. **Schema-constrained output.** You supply a JSON Schema, and the output is guaranteed to conform.
 
-The third works by *grammar-constrained sampling*. The schema is compiled to a grammar. At each decoding step, the sampler masks out every token that cannot continue a valid document. The model never decides to conform; it cannot do otherwise. Anthropic's docs say strict tool use "guarantees Claude's tool inputs match your JSON Schema by constraining the model's token sampling to schema-valid outputs". OpenAI's Structured Outputs (`strict: true`) is the same mechanism. Their guide notes that JSON mode only guarantees valid JSON and "only Structured Outputs ensure schema adherence".
+The third works by *grammar-constrained sampling*. The schema is compiled to a grammar. At each decoding step, the sampler masks out every token that cannot continue a valid document. The model never decides to conform; it cannot do otherwise.
+
+- Anthropic's docs say strict tool use "guarantees Claude's tool inputs match your JSON Schema by constraining the model's token sampling to schema-valid outputs".
+- OpenAI's Structured Outputs is the same mechanism. Their guide notes that JSON mode only guarantees valid JSON and "only Structured Outputs ensure schema adherence".
 
 On the Claude API you can apply it in two places, matching two harness jobs:
 
-- **JSON outputs** — `output_config.format = {"type": "json_schema", "schema": …}` — constrain the final text: your plan, a ticket draft, a classification.
-- **Strict tool use** — `"strict": true` on a tool — constrains the input of every `tool_use` block.
+- **JSON outputs** constrain the final text: your plan, a ticket draft, a classification.
+- **Strict tool use** constrains the input of every tool call.
 
-In the docs' words: "JSON outputs control Claude's response format; strict tool use validates tool parameters." You can use both in one request. Forcing `tool_choice` ([1.3](week-01-what-an-agent-is.md#13-tool--function-calling)) was already a form of structured output. Strict mode closes the gap between "called the tool" and "the arguments match the schema".
+In the docs' words: "JSON outputs control Claude's response format; strict tool use validates tool parameters." You can use both in one request. Forcing a tool call ([1.3](week-01-what-an-agent-is.md#13-tool--function-calling)) was already a form of structured output. Strict mode closes the gap between "called the tool" and "the arguments match the schema".
+
+**API details**
+
+| What | Value |
+|---|---|
+| OpenAI JSON mode | `json_object` |
+| OpenAI Structured Outputs | `strict: true` |
+| Claude JSON outputs | `output_config.format = {"type": "json_schema", "schema": …}` |
+| Claude strict tool use | `"strict": true` on a tool; constrains each `tool_use` block's input |
+| Forcing a tool call | `tool_choice` |
 
 ### An example
 
-The 2.3 planner, done properly. The SDK turns the Pydantic model into `output_config.format`, and the tool is marked strict:
+The 2.3 planner, done properly. The SDK turns the Pydantic model into the JSON-outputs format setting, and the tool is marked strict:
 
 ```python
 class Step(BaseModel):
@@ -378,40 +486,57 @@ TOOLS = [{
 
 **Mechanics to know:**
 
-- Only a subset of JSON Schema compiles: `type`, `properties`, `required`, `enum`, `const`, `additionalProperties: false`. Not `minimum`/`maximum`, `minLength` or `pattern`. The SDKs strip those and append them to the field description. So `minimum: 1` becomes a hint, not a guarantee.
+- Only a subset of JSON Schema compiles: types, properties, required keys, enums, constants, and a ban on extra properties. Range, length and pattern limits do not compile. The SDKs strip those and append them to the field description. So a minimum of 1 becomes a hint, not a guarantee.
 - The grammar covers direct output only — "not tool use calls, tool results, or thinking tags" — and resets between sections. The model thinks freely, then emits constrained JSON.
 - A new schema pays a one-off compilation delay. Compiled grammars are cached for 24 hours.
-- Structured output adds a hidden system prompt. Changing the format invalidates the prompt cache for that thread.
-- Limits per request: 20 strict tools, 24 optional parameters, 16 union-typed parameters.
+- Structured output adds a hidden system prompt. Changing the format invalidates the prompt cache (the stored copy of an unchanged prompt prefix that makes repeat calls cheaper) for that thread.
+- There are per-request limits on how many strict tools and parameters you can use (see the table).
 
 **The guarantee is shape, not truth.** This is what makes it harness engineering. Constrained decoding promises that `{"site": "SG-99", "date": "2026-13-45"}` is two strings. It does not know SG-99 is not a site, or that month 13 does not exist. So validation keeps two layers:
 
 - **Syntactic** — types, required keys, enums. This is now the API's job; delete that retry code.
-- **Semantic** — allow-lists, date ranges, an id that exists in the plan. This is still the executor's job. It returns `is_error` with the fix, as in [1.3](week-01-what-an-agent-is.md#13-tool--function-calling).
+- **Semantic** — allow-lists, date ranges, an id that exists in the plan. This is still the executor's job. It returns an error result (a tool result marked as an error) with the fix, as in [1.3](week-01-what-an-agent-is.md#13-tool--function-calling).
 
 The docs list three holes in the guarantee:
 
-- A safety refusal (`stop_reason: "refusal"`) may ignore the schema.
-- A `max_tokens` cutoff leaves truncated JSON.
+- A safety refusal may ignore the schema.
+- Hitting the output cap leaves truncated JSON.
 - Enum values may come back with different capitalisation.
 
-Check `stop_reason` before touching `parsed_output`.
+Check the stop reason before touching the parsed result.
+
+![Model output passes through constrained sampling, so its shape is guaranteed. The harness first checks why the model stopped: on a refusal or the output cap it handles the case and does not parse. Otherwise the executor checks whether the values make sense: yes, run the tool; no, return an error result naming the fix, which the model sees next turn.](../diagrams/schema-shape-vs-meaning.svg)
+
+*Figure: the API guarantees the shape; the stop-reason check and the meaning check are still yours.*
+
+**API details**
+
+| What | Value |
+|---|---|
+| Keywords that compile | `type`, `properties`, `required`, `enum`, `const`, `additionalProperties: false` |
+| Keywords that do not (moved to the description) | `minimum`/`maximum`, `minLength`, `pattern` |
+| Grammar cache | 24 hours |
+| Limits per request | 20 strict tools, 24 optional parameters, 16 union-typed parameters |
+| Error result | `is_error` |
+| Refusal | `stop_reason: "refusal"` |
+| Output cap | `max_tokens` |
+| Parsed result | `parsed_output` |
 
 ### Where it lives in the harness
 
-Mostly layer 2: schemas are the contract, and the executor still checks meaning. It touches three other layers:
+Mostly layer 2 (tools and the executor): schemas are the contract, and the executor still checks meaning. It touches three other layers:
 
-- **Layer 1:** field descriptions steer values, the way tool descriptions steer tool choice.
-- **Layer 3:** the loop branches on parsed objects, so a parse failure must be a handled path.
-- **Layer 5:** a schema whose enum lists only read-only tools is a permission, enforced at sampling time.
+- **Layer 1 (prompts):** field descriptions steer values, the way tool descriptions steer tool choice.
+- **Layer 3 (loop control):** the loop branches on parsed objects, so a parse failure must be a handled path.
+- **Layer 5 (guardrails and permissions):** a schema whose enum lists only read-only tools is a permission, enforced at sampling time.
 
 ### Common mistakes
 
 Every hand-off from model to code used to break on formatting. Constrained decoding removes that class of failure, the way exact-match `edit_file` removed silent code loss. What remains is confusing shape with correctness:
 
 - Skipping the allow-list because the call was strict.
-- Believing `minimum` or `pattern` is enforced.
-- Ignoring the refusal and `max_tokens` branches.
+- Believing range or pattern limits are enforced.
+- Ignoring the refusal and output-cap branches.
 - Flattening a reasoning task into a schema with no room to think. On Claude, let thinking run (it sits outside the grammar) and constrain only the answer.
 
 ### Try it
@@ -454,23 +579,26 @@ Beginner slips:
 
 ---
 
-2.4 guaranteed the shape of what the model hands to code. 2.5 is the other end of layer 3: the decision, made before every call, about whether to call the model at all.
+2.4 guaranteed the shape of what the model hands to code. 2.5 is the other end of layer 3 (loop control): the decision, made before every call, about whether to call the model at all.
 
 ## 2.5 Stopping conditions, step budgets and loop detection
 
 *Day 13 · 2026-09-14*
 
-**"The model didn't ask for a tool" is the weakest definition of done. A production loop checks four things before every call: the stop reason, the budgets, whether it is stuck, and whether the task was explicitly submitted.**
+> **In short**
+> - "The model didn't ask for a tool" is the weakest definition of done.
+> - A production loop checks four things before every call: the stop reason, the budgets, whether it is stuck, and whether the task was explicitly submitted.
+> - Hitting a budget must be a handled path with its own status, so every run ends in exactly one known way.
 
 ### The idea
 
-The loop from [1.2](week-01-what-an-agent-is.md) ends on `stop_reason != "tool_use"`, meaning "the model did not ask for a tool". That fails in three ways:
+The loop from [1.2](week-01-what-an-agent-is.md#12-the-agent-loop) ends when the stop reason (the field that says why the model stopped) is anything other than a tool call — "the model did not ask for a tool". That fails in three ways:
 
-- **Stall.** Anthropic's docs note that Claude sometimes returns an empty 2–3-token response with `end_turn`. Typically the harness added text after tool results and taught the model to expect user input.
+- **Stall.** Anthropic's docs note that Claude sometimes returns an empty 2–3-token response with a normal end-of-turn stop. Typically the harness added text after tool results and taught the model to expect user input.
 - **Loop.** Same tool, same arguments, same result, forever — because nothing changed what the model sees.
 - **Keep going.** Correctly and expensively, on a task with no natural end.
 
-All three are layer-3 problems. The model never sees the loop, only the transcript.
+All three are layer 3 (loop control) problems. The model never sees the loop, only the transcript.
 
 A production loop checks four kinds of stop condition before each call.
 
@@ -483,13 +611,17 @@ A production loop checks four kinds of stop condition before each call.
 | `max_tokens` | Truncated. If it contains a half-written `tool_use` block, retry with a higher `max_tokens`. Never execute it. |
 | `pause_turn` | Server-side tools hit their own iteration limit (default 10). Send the response back as-is. |
 | `refusal` | Do not re-ask in a loop. |
-| `model_context_window_exceeded` | Treat as truncated; compact (3.2). |
+| `model_context_window_exceeded` | Treat as truncated; compact ([3.2](week-03-state-and-memory.md#32-context-management-summarisation-compaction-truncation)). |
 
-**2. Budgets: steps, cost, wall-clock.** mini-swe-agent checks all three before every `query()` and turns `LimitsExceeded` into an exit message. The Claude Agent SDK offers `max_turns` (counting tool-use turns only) and `max_budget_usd`, both unlimited by default. It ends with a `ResultMessage` of subtype `error_max_turns` or `error_max_budget_usd`, which carries cost and turn count but no result. OpenAI's Agents SDK defaults to `max_turns=10` and raises `MaxTurnsExceeded`.
+**2. Budgets: steps, cost, wall-clock.** Frameworks handle them differently (exact names in the table):
 
-The exact number matters less than this: hitting the budget must be a handled path with its own status. The graceful form, from [1.4](week-01-what-an-agent-is.md): append "Budget reached — answer now from what you have and say what is unverified", make one final call with `tool_choice="none"`, and label the result budget-terminated.
+- mini-swe-agent checks all three before every model query and turns a limit into an exit message.
+- The Claude Agent SDK offers a turn cap (counting tool-use turns only) and a dollar cap, both unlimited by default. Hitting one ends the run with an error result message that carries cost and turn count but no result.
+- OpenAI's Agents SDK defaults to a cap of 10 turns and raises an exception.
 
-**3. Loop detection.** A budget catches a runaway loop only after you have paid for it. OpenHands' `StuckDetector` (on by default) scans the events since the last user message for five patterns:
+The exact number matters less than this: hitting the budget must be a handled path with its own status. The graceful form, from [1.4](week-01-what-an-agent-is.md#14-what-a-harness-is): append "Budget reached — answer now from what you have and say what is unverified", make one final call with tools switched off, and label the result budget-terminated.
+
+**3. Loop detection.** A budget catches a runaway loop only after you have paid for it. OpenHands' stuck detector (on by default) scans the events since the last user message for five patterns:
 
 - the same action with the same observation, 4+ times;
 - the same action with an error, 3+ times;
@@ -499,7 +631,23 @@ The exact number matters less than this: hitting the budget must be a handled pa
 
 Actions are compared by tool name and input, observations by content, ignoring ids.
 
-**4. Explicit completion.** For batch runs, do not infer done from `end_turn`. Give the model a `submit(result)` tool, or a magic string like mini-swe-agent's `COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT`. Then an `end_turn` without a submit is a stall. The harness replies "Not submitted — call submit or continue" instead of returning a half answer. The Agent SDK's Stop hook is the same idea from the other side: validate before accepting the stop.
+**4. Explicit completion.** For batch runs, do not infer done from an end-of-turn stop. Give the model a `submit(result)` tool, or a magic string like mini-swe-agent's (see the table). Then an end-of-turn stop without a submit is a stall. The harness replies "Not submitted — call submit or continue" instead of returning a half answer. The Agent SDK's Stop hook is the same idea from the other side: validate before accepting the stop.
+
+![Before each call: if no budget is left, make a final call without tools and end with status budget. If stuck, nudge once, and stop with status stuck if it persists. Then call the model and branch on the stop reason: tool call, run tools and take the next turn; truncated, retry with a bigger output cap; refusal, end with status refusal; end of turn, check whether the task was submitted, ending in success if yes, or replying "not submitted" if no.](../diagrams/stop-checks-per-turn.svg)
+
+*Figure: an end-of-turn stop is only a candidate for done; every exit carries its own status.*
+
+**API details**
+
+| What | Value |
+|---|---|
+| The weak test from 1.2 | `stop_reason != "tool_use"` |
+| mini-swe-agent | checks before every `query()`; raises `LimitsExceeded`; magic string `COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT` |
+| Claude Agent SDK caps | `max_turns`, `max_budget_usd` (both unlimited by default) |
+| Claude Agent SDK end of run | `ResultMessage` with subtype `error_max_turns` or `error_max_budget_usd` |
+| OpenAI Agents SDK | `max_turns=10` by default; raises `MaxTurnsExceeded` |
+| Final call without tools | `tool_choice="none"` |
+| OpenHands stuck detector | `StuckDetector` |
 
 ### An example
 
@@ -523,17 +671,20 @@ The point is escalation. First a nudge, because it changes what the model sees �
 
 ### Where it lives in the harness
 
-All four checks are layer 3. The nudge text is layer 1. The submit tool is layer 2. The run status (success / budget / stuck / refusal) is what layer 6 aggregates.
+- All four checks are layer 3 (loop control).
+- The nudge text is layer 1 (prompts).
+- The submit tool is layer 2 (tools and the executor).
+- The run status (success / budget / stuck / refusal) is what layer 6 (feedback and evals) aggregates.
 
 ### Common mistakes
 
-Every run ends in exactly one of these ways. An eval that cannot tell "finished" from "ran out of turns" from "stuck" measures nothing (6.4). Classic mistakes:
+Every run ends in exactly one of these ways. An eval that cannot tell "finished" from "ran out of turns" from "stuck" measures nothing ([6.4](week-06-evaluation-1.md#64-trajectory-level-metrics-passk-steps-cost-tool-call-accuracy)). Classic mistakes:
 
 - No budget ("it usually finishes").
 - A budget that raises an exception and loses the run's cost and partial findings.
-- Treating `end_turn` as success.
-- Executing a truncated `tool_use` block.
-- A stuck detector keyed on `tool_use` id, which is never the same twice.
+- Treating an end-of-turn stop as success.
+- Executing a truncated tool call.
+- A stuck detector keyed on the tool-call id, which is never the same twice.
 
 ### Try it
 
@@ -550,7 +701,9 @@ Then one paragraph for the SG-03 investigator: when it runs nightly over 40 site
 
 **Submit tool.** The loop exits only on `submit`. A text-only `end_turn` gets "Not submitted yet — call submit when done." The clean run becomes five tool turns plus one submit call.
 
-**Lying bash.** The pattern is: edit → bash (error) → re-read/edit → bash (identical) → bash (identical). The nudge fires on the third identical (tool, input, result), around turn 6–7. A capable model then probes with `ls` or `pwd`. Those are new keys, so the streak breaks. `bash` keeps lying, the model re-runs `python mae.py`, and the hard stop lands around turn 9–10 with status `stuck`. With a bare budget it runs to turn 15.
+**Lying bash.** The pattern is: edit → bash (error) → re-read/edit → bash (identical) → bash (identical). The nudge fires on the third identical (tool, input, result), around turn 6–7.
+
+A capable model then probes with `ls` or `pwd`. Those are new keys, so the streak breaks. `bash` keeps lying, the model re-runs `python mae.py`, and the hard stop lands around turn 9–10 with status `stuck`. With a bare budget it runs to turn 15.
 
 Some models instead call `submit` with "mae.py written but cannot be executed here". That is a *success* with an honest summary — the better outcome.
 
@@ -583,7 +736,10 @@ Two slips:
 
 *Day 14 · 2026-09-15*
 
-**There are two kinds of failure, and they need opposite treatment. Infrastructure errors are hidden from the model and retried by the harness. Task errors go back to the model as instructions it can act on.**
+> **In short**
+> - There are two kinds of failure, and they need opposite treatment.
+> - Infrastructure errors are hidden from the model and retried by the harness.
+> - Task errors go back to the model as instructions it can act on.
 
 ### The idea
 
@@ -591,34 +747,51 @@ Two slips:
 
 **Task errors** happen inside a tool the model asked for: a bad site code, a crashed script. The model *must* see these, because it is the only party that can choose a different action.
 
-The beginner's mistake is to cross the wires. They retry a bad tool call three times (and get the same bad result three times). Or they paste a 529 into the transcript, where it has nothing to do with the task and only confuses the model.
+The beginner's mistake is to cross the wires:
+
+- retrying a bad tool call three times (and getting the same bad result three times);
+- pasting a 529 into the transcript, where it has nothing to do with the task and only confuses the model.
 
 **Infrastructure: retry with backoff and jitter.** Anthropic's error docs sort status codes into two bins:
 
 - **Retryable:** 429, 500, 504, 529, connection errors, and 409 once the conflict is resolved.
-- **Not retryable:** 400 (bad request, including an over-long context), 401, 403, 404, 413 — and a 429 *without* a `retry-after` header. That one is a spend cap, and it keeps failing until access resumes.
+- **Not retryable:** 400 (bad request, including an over-long context), 401, 403, 404, 413 — and a 429 *without* a retry-after header. That one is a spend cap, and it keeps failing until access resumes.
 
-The official SDKs already retry the transient bin "twice by default, with a short exponential backoff", honouring `retry-after`. Set `max_retries` on the client. The Python SDK's default timeout is 10 minutes, and `APITimeoutError` is retried too.
+The official SDKs already retry the transient bin "twice by default, with a short exponential backoff", honouring the retry-after header. You can change the retry count on the client. The Python SDK's default timeout is 10 minutes, and timeouts are retried too.
 
-If you roll your own, apply the AWS result. Plain exponential backoff makes all clients retry at the same instants. Use *full jitter* instead — a random wait up to the backoff limit:
+If you roll your own, apply the AWS result. Plain exponential backoff (doubling the wait after each failure) makes all clients retry at the same instants. Use *full jitter* instead — a random wait up to the backoff limit:
 
 ```
 sleep = random(0, min(cap, base * 2**attempt))
 ```
 
-In AWS's simulation this saved more than half the total calls. Log each retry with its `request_id`. When retries run out, the run ends with status `error`, not a traceback.
+In AWS's simulation this saved more than half the total calls. Log each retry with its request id. When retries run out, the run ends with status `error`, not a traceback.
 
-**Task errors: feed them back as instructions.** The mechanism is the one from [1.3](week-01-what-an-agent-is.md#13-tool--function-calling): catch the exception and return a `tool_result` with `is_error: true`. What matters is the text.
+**Task errors: feed them back as instructions.** The mechanism is the one from [1.3](week-01-what-an-agent-is.md#13-tool--function-calling): catch the exception and return a tool result marked as an error. What matters is the text.
 
 - The docs' rule: instead of "failed", say what went wrong and what Claude should try next. "Rate limit exceeded. Retry after 60 seconds." rather than "Error".
 - The tools guide adds that errors should "clearly communicate specific and actionable improvements, rather than opaque error codes or tracebacks". They can steer the model toward cheaper strategies (filters, pagination) or show a correctly formatted input.
 - The model's side is documented too. On a missing or invalid parameter it "will retry 2-3 times with corrections before apologizing". So an error that carries the correction succeeds on the first retry, while a bare "invalid input" burns all three.
 
-Strict tool use (2.4) removes the missing-parameter class. What remains is semantic, and only the executor can explain it.
+Strict tool use ([2.4](#24-structured-outputs-and-schemas)) removes the missing-parameter class. What remains is semantic, and only the executor (the code that runs tool calls) can explain it.
+
+![Where did it fail? A model-call failure is checked for retryability (429, 500, 504, 529): if yes, wait with backoff and full jitter and call again with the transcript unchanged; if not, or once retries run out, the run ends with status error. A failure inside a tool becomes an error result saying what went wrong and what to try next, and the model picks a different action.](../diagrams/error-two-paths.svg)
+
+*Figure: the model never sees the left path; it must see the right one.*
+
+**API details**
+
+| What | Value |
+|---|---|
+| Header that says when to retry | `retry-after` |
+| Retry count on the client | `max_retries` (default: 2 retries) |
+| Python SDK default timeout | 10 minutes; `APITimeoutError` is retried |
+| Id to log with each retry | `request_id` |
+| Error tool result | `tool_result` with `is_error: true` |
 
 ### An example
 
-Two paths, side by side. `call_model` is the infrastructure path (layer 3). `execute` is the task path (layer 2).
+Two paths, side by side. `call_model` is the infrastructure path (layer 3, loop control). `execute` is the task path (layer 2, tools and the executor).
 
 ```python
 def call_model(messages):                          # infrastructure path (layer 3)
@@ -651,17 +824,19 @@ def execute(block):                                # task path (layer 2)
 
 ### Where it lives in the harness
 
-The retry wrapper is layer 3. The error text is layer-1 content (instructions to the model) written by layer 2. Errors per tool is a layer-6 metric, and an error that recurs across runs is a tool-design bug (4.3).
+- The retry wrapper is layer 3 (loop control).
+- The error text is layer 1 (prompts) content — instructions to the model — written by layer 2 (tools and the executor).
+- Errors per tool is a layer 6 (feedback and evals) metric, and an error that recurs across runs is a tool-design bug ([4.3](week-04-prompt-and-tool-design.md#43-tool-error-messages-as-instructions-designing-for-recovery)).
 
 One subtlety. Retrying a *model* call is safe, because the failed call had no side effects. Retrying a *tool* that timed out is not safe if the tool writes anywhere. Say so in the error text.
 
 ### Common mistakes
 
-This is where the compounding-error arithmetic from [1.6](week-01-what-an-agent-is.md) is fought, turn by turn: a good error message turns a wasted turn into a corrected one. Recurring mistakes:
+This is where the compounding-error arithmetic from [1.6](week-01-what-an-agent-is.md#16-when-not-to-build-an-agent) is fought, turn by turn: a good error message turns a wasted turn into a corrected one. Recurring mistakes:
 
 - Retrying 400s until the budget is gone.
 - Letting a tool exception escape the loop, so the run dies with no status and no partial findings.
-- Returning an empty result on failure, so the model concludes "no data". This is the null-weather case from the [Week 1 review](week-01-what-an-agent-is.md).
+- Returning an empty result on failure, so the model concludes "no data". This is the null-weather case from the [Week 1 review](week-01-what-an-agent-is.md#week-1-review).
 - Leaking a 40-line traceback where one sentence with the fix would do.
 
 ### Try it
@@ -676,7 +851,9 @@ Finally, one paragraph for the SG-03 investigator: the weather vendor rate-limit
 
 ### Worked answer
 
-**(a) Retry with full jitter.** Wrap only the model call. Catch `RateLimitError`, `InternalServerError`, `APIConnectionError` and `APITimeoutError`; sleep `random.uniform(0, min(30, 2**attempt))`; give up after 4 attempts. With `messages.create` patched to fail twice per turn, the run completes with a byte-identical transcript. A failed call appends nothing to `messages`, so the model never knows. The log shows two "retry" lines per turn (attempt, exception type, `request_id`). Only wall-clock time changes.
+**(a) Retry with full jitter.** Wrap only the model call. Catch `RateLimitError`, `InternalServerError`, `APIConnectionError` and `APITimeoutError`; sleep `random.uniform(0, min(30, 2**attempt))`; give up after 4 attempts.
+
+With `messages.create` patched to fail twice per turn, the run completes with a byte-identical transcript. A failed call appends nothing to `messages`, so the model never knows. The log shows two "retry" lines per turn (attempt, exception type, `request_id`). Only wall-clock time changes.
 
 **(b) BadRequestError.** It is not in the `except` tuple, so it propagates to the top of the loop. The loop returns `{status: "error", reason: "BadRequestError", turns, cost_proxy}` immediately: no sleep, no retry, partial findings preserved. A 400 will not fix itself; retrying it just burns budget.
 
@@ -697,7 +874,7 @@ Note the nuance: the rule is against *opaque* codes and 40-line dumps, not again
 
 Never route it through the model-call retry wrapper. It is not an Anthropic error, and the transcript is not the place for it.
 
-Log: tool name, attempts, total wait, vendor request id, whether `is_error` was emitted, and whether the model called the tool again later. That last one is the layer-6 signal that the message worked.
+Log: tool name, attempts, total wait, vendor request id, whether `is_error` was emitted, and whether the model called the tool again later. That last one is the layer 6 (feedback and evals) signal that the message worked.
 
 Beginner mistakes:
 
@@ -719,19 +896,52 @@ Beginner mistakes:
 
 Week 1 established that an agent is a stateless model plus a harness of six layers. Week 2 filled in the mechanics that let the loop survive contact with reality: the context budget, the reasoning step, explicit plans, guaranteed output shapes, stopping conditions and error handling. Week 3 moves on to state and memory.
 
-### The week in six paragraphs
+### Recap
 
-**2.1 Context window as working memory.** One call's budget covers the system prompt, tool definitions, the whole transcript, thinking and output. It grows every turn, because the loop re-sends everything. It is not free storage. Context rot (Chroma, 18 models) shows recall of any one fact gets worse as input grows, worst amid near-duplicate distractors — which is exactly what a transcript of raw tool dumps is. Three harness moves: shape results at the source (layer 2), retrieve just-in-time by handing the model identifiers instead of data (layers 1–2), and clear what is spent (layers 3–4). Read `usage` on every call, and handle `model_context_window_exceeded`.
+**2.1 Context window as working memory.** One call's budget covers the system prompt, tool definitions, the whole transcript, thinking and output. It grows every turn, because the loop re-sends everything. It is not free storage. Context rot (Chroma, 18 models) shows recall of any one fact gets worse as input grows, worst amid near-duplicate distractors — which is exactly what a transcript of raw tool dumps is. Three harness moves:
 
-**2.2 ReAct and reasoning in the loop.** A reasoning step between each observation and the next action makes the agent's choice of next move visible and correctable. Tool calling retired the regex-parsed Thought/Action/Observation text. Reasoning models moved the Thought into thinking blocks that interleave with tool use, under adaptive thinking and effort. Harness duties: pass `thinking` and `redacted_thinking` blocks back untouched during a tool-use turn, and budget for the re-billed input tokens on keep-all models. The no-op "think" tool is a deliberate mid-trajectory pause after a tool result (τ-bench airline 0.584 vs 0.332).
+- shape results at the source (layer 2);
+- retrieve just-in-time by handing the model identifiers instead of data (layers 1–2);
+- clear what is spent (layers 3–4).
 
-**2.3 Planning and task decomposition.** ReAct plans one step at a time and drifts on long tasks. Plan-and-execute makes the decomposition explicit (planner → executor → replanner). Claude Code's plan mode is the practical middle: explore read-only, write a plan, a human approves, then implement. The harness owns the plan as structured state outside the transcript, so it survives compaction and the model cannot redefine "done". Replanning needs both a plan-editing tool and tool results that surface the surprise. Skip planning when the diff fits in one sentence.
+Read `usage` on every call, and handle `model_context_window_exceeded`.
 
-**2.4 Structured outputs and schemas.** Grammar-constrained sampling (Claude's `output_config.format` and `strict: true` on tools; OpenAI Structured Outputs) makes non-conforming JSON impossible. That removes the formatting failure class, the way exact-match `edit_file` removed silent code loss. It guarantees shape, not truth. Syntactic validation moves to the API; semantic validation (allow-lists, ranges, ids that exist) stays in the executor. Unsupported keywords like `minimum` become description hints. Thinking runs outside the grammar. Check `refusal` and `max_tokens` before parsing. Keep values that change (site codes) out of enums.
+**2.2 ReAct and reasoning in the loop.** A reasoning step between each observation and the next action makes the agent's choice of next move visible and correctable. Tool calling retired the regex-parsed Thought/Action/Observation text. Reasoning models moved the Thought into thinking blocks that interleave with tool use, under adaptive thinking and effort. Harness duties:
 
-**2.5 Stopping conditions, budgets, loop detection.** `stop_reason != "tool_use"` is the weakest definition of done — stalls, loops and open-ended tasks all pass it. A production loop checks four things before each call. Handle every stop reason: retry a truncated `tool_use` on `max_tokens`, continue on `pause_turn`, never re-ask a refusal. Enforce step, cost and wall-clock budgets as a handled path with its own status. Detect stuck patterns by comparing (tool, input, result) with ids stripped, and nudge before hard-stopping (OpenHands thresholds: 4× same action and observation, 3× same error, 6 alternations). Require an explicit completion signal such as a submit tool. Every run ends with exactly one status: success, budget, stuck, refusal or error.
+- pass `thinking` and `redacted_thinking` blocks back untouched during a tool-use turn;
+- budget for the re-billed input tokens on keep-all models.
 
-**2.6 Error handling.** Two failure kinds, opposite treatment. Infrastructure errors on the model call — 429 with `retry-after`, 500, 504, 529, connection, timeout; never 400/401/403/404/413 or a spend-cap 429 — are invisible to the model. The harness retries them with exponential backoff plus full jitter, and ends with status `error` when retries run out. Task errors inside a tool go back as `is_error` tool results whose text names the problem, the fix and the data to apply it. The model retries 2–3 times with corrections, so an error that carries the correction costs one turn and "invalid input" costs three. Never retry a bad tool call blindly, never paste a 529 into the transcript, never return empty on failure.
+The no-op "think" tool is a deliberate mid-trajectory pause after a tool result (τ-bench airline 0.584 vs 0.332).
+
+**2.3 Planning and task decomposition.** ReAct plans one step at a time and drifts on long tasks. Plan-and-execute makes the decomposition explicit (planner → executor → replanner). Claude Code's plan mode is the practical middle: explore read-only, write a plan, a human approves, then implement.
+
+- The harness owns the plan as structured state outside the transcript, so it survives compaction and the model cannot redefine "done".
+- Replanning needs both a plan-editing tool and tool results that surface the surprise.
+- Skip planning when the diff fits in one sentence.
+
+**2.4 Structured outputs and schemas.** Grammar-constrained sampling (Claude's `output_config.format` and `strict: true` on tools; OpenAI Structured Outputs) makes non-conforming JSON impossible. That removes the formatting failure class, the way exact-match `edit_file` removed silent code loss. It guarantees shape, not truth.
+
+- Syntactic validation moves to the API; semantic validation (allow-lists, ranges, ids that exist) stays in the executor.
+- Unsupported keywords like `minimum` become description hints.
+- Thinking runs outside the grammar.
+- Check `refusal` and `max_tokens` before parsing.
+- Keep values that change (site codes) out of enums.
+
+**2.5 Stopping conditions, budgets, loop detection.** `stop_reason != "tool_use"` is the weakest definition of done — stalls, loops and open-ended tasks all pass it. A production loop checks four things before each call:
+
+- Handle every stop reason: retry a truncated `tool_use` on `max_tokens`, continue on `pause_turn`, never re-ask a refusal.
+- Enforce step, cost and wall-clock budgets as a handled path with its own status.
+- Detect stuck patterns by comparing (tool, input, result) with ids stripped, and nudge before hard-stopping (OpenHands thresholds: 4× same action and observation, 3× same error, 6 alternations).
+- Require an explicit completion signal such as a submit tool.
+
+Every run ends with exactly one status: success, budget, stuck, refusal or error.
+
+**2.6 Error handling.** Two failure kinds, opposite treatment.
+
+- Infrastructure errors on the model call — 429 with `retry-after`, 500, 504, 529, connection, timeout; never 400/401/403/404/413 or a spend-cap 429 — are invisible to the model. The harness retries them with exponential backoff plus full jitter, and ends with status `error` when retries run out.
+- Task errors inside a tool go back as `is_error` tool results whose text names the problem, the fix and the data to apply it. The model retries 2–3 times with corrections, so an error that carries the correction costs one turn and "invalid input" costs three.
+
+Never retry a bad tool call blindly, never paste a 529 into the transcript, never return empty on failure.
 
 ### Self-quiz
 
@@ -745,7 +955,7 @@ Week 1 established that an agent is a stateless model plus a harness of six laye
 
 **3.** A planner call returns a five-step JSON plan, which the loop stores in a Python variable and re-injects each turn. On turn 4 the model writes in text "we also need a step to handle the missing hours", then continues with step 4. Which two preconditions for replanning are missing, and which layer does each live in?
 
-> **Answer.** A tool that edits the plan object (layers 2 and 4), and a harness that re-reads the plan to choose the next step (layer 3). Text in a message changes nothing.
+> **Answer.** A tool that edits the plan object (layers 2 and 4: tools and state), and a harness that re-reads the plan to choose the next step (layer 3: loop control). Text in a message changes nothing.
 
 **4.** `draft_ticket` is a strict tool with `root_cause` as an enum over five hypotheses and `site` as a free string. The model calls it with `site: "SG-07"`, a site that does not exist. Which guarantees did strict mode give you here, which did it not, and what does the executor return?
 
@@ -764,7 +974,7 @@ Week 1 established that an agent is a stateless model plus a harness of six laye
 
 ### Integrative exercise
 
-Take the SG-03 investigator design from the [Week 1 review](week-01-what-an-agent-is.md) and upgrade its layer 3 into a single `run_site(site) -> RunResult` function that combines the whole week. Requirements:
+Take the SG-03 investigator design from the [Week 1 review](week-01-what-an-agent-is.md#week-1-review) and upgrade its layer 3 (loop control) into a single `run_site(site) -> RunResult` function that combines the whole week. Requirements:
 
 1. A tool-free planner call via `messages.parse(output_format=Plan)`, with `stop_reason` checked before `parsed_output`.
 2. An execution loop with adaptive thinking at medium effort, and assistant messages appended untouched.
