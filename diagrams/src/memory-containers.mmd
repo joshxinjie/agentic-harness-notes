@@ -1,0 +1,8 @@
+flowchart TD
+    S["Scratchpad notes<br>(this task only)"]
+    T["Transcript<br>(short-term memory)"]
+    L["Long-term store<br>(facts, history, rules)"]
+    E(["Run ends:<br>transcript gone"])
+    S <-->|"model writes;<br>harness re-injects"| T
+    T <-->|"tools read and write;<br>harness injects"| L
+    T -.-> E

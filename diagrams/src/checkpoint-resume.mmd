@@ -1,0 +1,7 @@
+flowchart TD
+    A["Call the model"] --> B["Run the tools"]
+    B --> C["Append tool results"]
+    C --> S[("Save checkpoint<br>(safe boundary)")]
+    S -->|"next turn"| A
+    X(["Process crashes"]) -.-> R["New process,<br>same run id"]
+    R -.->|"loads latest"| S

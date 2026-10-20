@@ -1,0 +1,14 @@
+%%{init: {"flowchart": {"rankSpacing": 22}}}%%
+flowchart TD
+    M(["The model (stateless)"])
+    subgraph H["The harness"]
+        direction TB
+        L1["1 · Prompts<br>job, limits, procedures"]
+        L2["2 · Tools and the executor<br>the model's hands and eyes"]
+        L3["3 · Loop control<br>budgets and stopping"]
+        L4["4 · State<br>what lives outside the transcript"]
+        L5["5 · Guardrails and permissions<br>what it may do"]
+        L6["6 · Feedback and evals<br>did a change help?"]
+        L1 ~~~ L2 ~~~ L3 ~~~ L4 ~~~ L5 ~~~ L6
+    end
+    M <--> H

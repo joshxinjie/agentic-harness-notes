@@ -1,0 +1,15 @@
+flowchart TD
+    subgraph R["Classic RAG: code decides, once"]
+        direction TB
+        R1["Question"] --> R2["Code fetches top-k chunks"]
+        R2 --> R3["Chunks pasted into prompt"]
+        R3 --> R4(["Model answers"])
+    end
+    subgraph G["Agentic search: model decides, in a loop"]
+        direction TB
+        G1["Model picks a query"] --> G2["Search tool"]
+        G2 --> G3["Small result:<br>ids and one-liners"]
+        G3 -->|"learn, search again"| G1
+        G3 --> G4(["Model answers"])
+    end
+    R ~~~ G

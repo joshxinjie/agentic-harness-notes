@@ -1,0 +1,7 @@
+flowchart TD
+    P["Main agent<br>(small context)"]
+    P -->|"task text"| C["Sub-agent:<br>fresh, empty context"]
+    C --> W["Heavy reading:<br>~22k tokens of rows"]
+    W --> R["Short summary<br>(~140 words)"]
+    W -.-> D(["Thrown away<br>on return"])
+    R -->|"tool result"| P2["Main agent continues<br>(~6k tokens, not 28k)"]
