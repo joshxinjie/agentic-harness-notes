@@ -1,0 +1,9 @@
+flowchart TD
+    Q["Aspect to grade"] --> D{"Can code check it?"}
+    D -->|"yes"| C["Code grader:<br>enum, tolerance,<br>outcome query"]
+    D -->|"no: a judgment"| J["LLM judge:<br>one per dimension,<br>pass / fail / unknown"]
+    C --> G(["Hard gates"])
+    J --> P(["Reported separately"])
+    H["Human labels:<br>calibrate both"]
+    H -.-> C
+    H -.-> J

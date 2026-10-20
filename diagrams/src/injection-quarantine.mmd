@@ -1,0 +1,11 @@
+flowchart TD
+    R["Incident report<br>(untrusted text)"]
+    Q["Quarantined call<br>(no tools)"]
+    F["Typed fields only<br>(no free text)"]
+    A["Privileged agent<br>(has tools)"]
+    T["Consequential action<br>(ticket_submit)"]
+    R -.->|"before: raw body<br>can steer agent"| A
+    R -->|"after"| Q
+    Q --> F
+    F --> A
+    A --> T

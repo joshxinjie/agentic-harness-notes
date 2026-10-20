@@ -1,0 +1,10 @@
+flowchart TD
+    M["Agent (model) acts"]
+    ACT["ACI: simple,<br>efficient actions"]
+    G["ACI guardrail: linter"]
+    EN["Environment<br>(files, shell, data)"]
+    OBS["ACI: concise feedback,<br>windowed view"]
+    S["ACI held state:<br>open file, cursor"]
+    N["Agent reads,<br>next turn"]
+    M --> ACT --> G --> EN --> OBS --> N
+    S -.-> OBS

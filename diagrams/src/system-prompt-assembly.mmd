@@ -1,0 +1,6 @@
+flowchart TD
+    ST["Same every run:<br>role, constraints,<br>procedures, examples"]
+    B(["Cache boundary"])
+    RUN["Per run: site, window,<br>triage table, memory index"]
+    T["Per turn: budget, notes"]
+    ST --> B --> RUN --> T

@@ -1,0 +1,11 @@
+flowchart TD
+    I(["User request"]) --> G1["1 Input check"]
+    G1 --> M["Model"]
+    M -->|"tool call"| G2["2 Tool input check"]
+    G2 --> T["Tool"]
+    T --> G3["3 Tool output check"]
+    G3 -->|"result"| M
+    M -->|"final answer"| G4["4 Final output check"]
+    G4 --> O(["Ticket, email,<br>forecast"])
+    classDef guard fill:#fdf3e1,stroke:#c98a1b
+    class G1,G2,G3,G4 guard

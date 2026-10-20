@@ -1,0 +1,7 @@
+flowchart TD
+    O(["Tool call outcome"]) --> E{"Executor decides"}
+    E -->|"passing glitch"| I["Retried inside tool,<br>never shown"]
+    E -->|"finding, e.g. no data"| F["Normal result"]
+    E -->|"real error"| R["Problem + fix + data"]
+    F --> M1["Model reasons on it"]
+    R --> M2["Model acts differently<br>next turn"]

@@ -1,0 +1,9 @@
+flowchart TD
+    L1["Level 1: every skill's<br>name + description<br>(always in system prompt)"]
+    D{"Model picks<br>a relevant skill"}
+    L2["Level 2: full SKILL.md body<br>read into transcript"]
+    L3a["Level 3: reference files<br>read only if body points"]
+    L3b["Level 3: scripts run;<br>only output costs tokens"]
+    L1 --> D --> L2
+    L2 --> L3a
+    L2 --> L3b

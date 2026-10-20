@@ -1,0 +1,8 @@
+flowchart TD
+    M["Model output"] --> G["Constrained sampling:<br>shape enforced"]
+    G --> SR{"Why did it stop?"}
+    SR -->|"refusal or<br>output cap"| H(["Handle it;<br>do not parse"])
+    SR -->|"normal"| V{"Executor:<br>does it make sense?"}
+    V -->|"yes"| OK(["Run the tool /<br>use the result"])
+    V -->|"no"| ER["Error result<br>naming the fix"]
+    ER -->|"next turn"| M

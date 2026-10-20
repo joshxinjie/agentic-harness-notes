@@ -1,8 +1,14 @@
 # Week 5 — Control, safety and reliability
 
-[Week 4](week-04-prompt-and-tool-design.md) made layers 1 and 2 a good interface: clear prompts, clear tools, useful errors. This week starts from a less comfortable assumption. The model will sometimes do the wrong thing, either by mistake or because text it read told it to. So we decide what it is *physically able* to do, and we build the machinery to catch, watch and pay for what it does.
+[Week 4](week-04-prompt-and-tool-design.md) made layers 1 (prompts) and 2 (tools and the executor) a good interface: clear prompts, clear tools, useful errors. This week starts from a less comfortable assumption. The model will sometimes do the wrong thing, either by mistake or because text it read told it to. So we decide what it is *physically able* to do, and we build the machinery to catch, watch and pay for what it does.
 
-Most of the week is layer 5, the control layer. It also reaches into layer 3 (the loop) and layer 6 (feedback). The lessons go in this order:
+Most of the week is layer 5 (guardrails and permissions), the control layer. It also reaches into layer 3 (loop control) and layer 6 (feedback and evals).
+
+![The six layers of a harness, stacked below the stateless model they wrap: prompts, tools and the executor, loop control, state, guardrails and permissions, feedback and evals.](../diagrams/harness-layers.svg)
+
+*Figure: the six harness layers from [1.4](week-01-what-an-agent-is.md#14-what-a-harness-is). This week is mostly layer 5 (guardrails and permissions), with parts of layers 3 and 6.*
+
+The lessons go in this order:
 
 - **5.1 Permissions and sandboxing** — what the agent may do, where, and with whose keys.
 - **5.2 Human-in-the-loop** — when a person decides, and how the run pauses and resumes.
@@ -19,7 +25,10 @@ The running example is the nightly investigator from earlier weeks: an agent tha
 
 *Day 30 · 2026-10-01*
 
-**Permissions answer three separate questions: what the agent may do, where it may do it, and with whose credentials. Each one is enforced at a different depth, and only the deeper ones are real walls.**
+> **In short**
+> - Permissions answer three separate questions: what the agent may do, where it may do it, and with whose credentials.
+> - Each one is enforced at a different depth, and only the deeper ones are real walls.
+> - Rules that match command text are filters; the sandbox and a secret that isn't there are walls.
 
 ### The idea
 
@@ -29,24 +38,42 @@ The running example is the nightly investigator from earlier weeks: an agent tha
 - **ask** — prompt a human;
 - **deny** — block.
 
-They are checked in a fixed order. In the docs' words: "deny, then ask, then allow. The first match in that order determines the outcome, and rule specificity doesn't change the order." So `Bash(aws *)` in deny beats `Bash(aws s3 ls)` in allow, even though the allow rule is more specific. A bare deny such as `Bash` removes the tool from the model's context altogether. That is the strongest form: a tool the model never sees cannot be called.
+They are checked in a fixed order. In the docs' words: "deny, then ask, then allow. The first match in that order determines the outcome, and rule specificity doesn't change the order." So a deny rule covering every `aws` command beats an allow rule for one exact `aws` command, even though the allow rule is more specific.
 
-*Permission modes* set the default behaviour:
+A bare deny on a whole tool removes that tool from the model's context altogether. That is the strongest form: a tool the model never sees cannot be called.
 
-- `manual`
-- `acceptEdits`
-- `plan` (read-only)
-- `auto` (a classifier reviews actions)
-- `dontAsk` (anything that would prompt is denied instead)
-- `bypassPermissions` ("only use this mode in isolated environments")
+![A tool call is checked against deny rules first, then ask rules, then allow rules; the first match decides, so a matching deny blocks, a matching ask goes to a human, a matching allow runs; with no match, the investigator's fallback sends it to a human.](../diagrams/permission-check-order.svg)
 
-**2. Where may it do it?** Rules that match command text are *filters, not walls*. If you deny `curl`, then `python -c "urllib…"` still gets through. The docs say this directly: Read/Edit deny rules don't apply to "a Python or Node script that opens files itself".
+*Figure: the order is fixed and the first match wins. The no-match branch shows the investigator's own fallback below, which sends the call to a human.*
 
-The *sandbox* is the wall. It works at the operating-system level (bubblewrap on Linux, Seatbelt on macOS), so it covers every child process the agent starts. It has two boundaries, and you need both: "without network isolation, a compromised agent could exfiltrate sensitive files like SSH keys; without filesystem isolation, a compromised agent could easily escape the sandbox."
+*Permission modes* set the default behaviour. Claude Code has six:
 
-OpenAI's Codex has the same shape. Its sandbox modes are `read-only`, `workspace-write` (the default, with `.git` protected) and `danger-full-access`. Network is off by default. An approval policy sits on top. Codex puts the split neatly: sandbox mode is "what Codex can do technically", and approval policy is "when Codex must ask you".
+- manual;
+- accept edits;
+- plan (read-only);
+- auto (a classifier reviews actions);
+- don't ask (anything that would prompt is denied instead);
+- bypass permissions ("only use this mode in isolated environments").
+
+**2. Where may it do it?** Rules that match command text are *filters, not walls*. If you deny `curl`, then `python -c "urllib…"` still gets through. The docs say this directly: Claude Code's file-read and file-edit deny rules don't apply to "a Python or Node script that opens files itself".
+
+The *sandbox* is the wall: a boundary the operating system enforces, so it covers every child process the agent starts. It has two boundaries, and you need both: "without network isolation, a compromised agent could exfiltrate sensitive files like SSH keys; without filesystem isolation, a compromised agent could easily escape the sandbox."
+
+OpenAI's Codex has the same shape. It has three sandbox modes, from read-only to full access. The default lets it write in the workspace, with the git folder protected. Network is off by default. An approval policy sits on top. Codex puts the split neatly: sandbox mode is "what Codex can do technically", and approval policy is "when Codex must ask you".
 
 **3. With whose credentials?** Keep the keys outside the box. In Claude Code on the web, git credentials never enter the sandbox. A proxy checks each operation and then attaches a scoped token (a key limited to just what that operation needs). Whatever code the model runs, it cannot read a secret that isn't there.
+
+**API details**
+
+| What | Value |
+|---|---|
+| Claude Code: deny beats a more specific allow | `Bash(aws *)` in deny beats `Bash(aws s3 ls)` in allow |
+| Claude Code: bare deny (tool removed from context) | `Bash` |
+| Claude Code permission modes | `manual`, `acceptEdits`, `plan` (read-only), `auto` (classifier), `dontAsk` (prompts become denials), `bypassPermissions` |
+| Claude Code: rules scripts walk around | Read/Edit deny rules |
+| Claude Code sandbox mechanism | bubblewrap on Linux, Seatbelt on macOS |
+| OpenAI Codex sandbox modes | `read-only`, `workspace-write` (the default, with `.git` protected), `danger-full-access` |
+| OpenAI Codex network | off by default |
 
 ### An example
 
@@ -66,9 +93,9 @@ def authorize(name, inp):
     return "ask"  # unknown tool -> a human decides
 ```
 
-Underneath the rules sits the sandbox. A `python_exec` tool runs in a container with `--network none`, the data mounted read-only, and only `/tmp` writable.
+Underneath the rules sits the sandbox. A `python_exec` tool runs in a container with no network, the data mounted read-only, and only `/tmp` writable.
 
-Above both sit the credentials. The metrics database user is a read-only role. The weather vendor's API key lives in the executor process, never in the container.
+Above both sit the credentials. The metrics database user is a read-only role. The weather vendor's API key lives in the executor process (the code that runs tool calls), never in the container.
 
 So the defence has three depths:
 
@@ -76,7 +103,13 @@ So the defence has three depths:
 2. **The executor rule** — deny / ask / allow.
 3. **The OS boundary plus the absent secret.**
 
-All three are layer 5. Only the first two show up in a transcript.
+All three are layer 5 (guardrails and permissions). Only the first two show up in a transcript (the running record of messages and tool results the model is sent each turn).
+
+**API details**
+
+| What | Value |
+|---|---|
+| Docker flag for no network | `--network none` |
 
 ### Why it matters
 
@@ -131,25 +164,50 @@ The rules, the sandbox and the credentials are limits the agent cannot cross. Bu
 
 *Day 31 · 2026-10-02*
 
-**Every kind of human-in-the-loop is the same mechanism underneath: a saved checkpoint with a tool call waiting for an answer, plus a way to resume that delivers the human's decision as that call's result. The design work is in where you gate, what the human sees, and what the model is told.**
+> **In short**
+> - Every kind of human-in-the-loop is one mechanism: a saved checkpoint with a tool call waiting for an answer.
+> - A resume path delivers the human's decision as that call's result, and the model carries on.
+> - The design work is in where you gate, what the human sees, and what the model is told.
 
 ### The idea
 
 Human-in-the-loop (HITL) comes in three shapes. Each has a different trigger.
 
-1. **Approval gate (the harness triggers it).** Before a chosen tool call runs, the run stops. A human approves it, approves it with edits, or rejects it with a reason.
-2. **Clarification (the model triggers it).** The agent calls a question tool. Claude's `AskUserQuestion` is one example: 1–4 questions with 2–4 options each, and the answers come back as the tool result.
+1. **Approval gate (the harness triggers it).** The harness is all the code around the model ([1.4](week-01-what-an-agent-is.md#14-what-a-harness-is)). Before a chosen tool call runs, the run stops. A human approves it, approves it with edits, or rejects it with a reason.
+2. **Clarification (the model triggers it).** The agent calls a question tool. Claude's built-in one is an example: a few multiple-choice questions, and the answers come back as the tool result.
 3. **Interrupt or escalation.** Either a human steers mid-run (streaming input), or the agent hands off because it is stuck, out of budget, or holding conflicting evidence.
 
-The engineering is the same in all three. A pause is a *checkpoint* (lesson 3.5) that holds a pending tool call. A resume path then delivers the human's answer as that call's `tool_result`. Three frameworks show the same design:
+The engineering is the same in all three. A pause is a *checkpoint* (the saved state of a run, [3.5](week-03-state-and-memory.md#35-checkpointing-and-resumability)) that holds a pending tool call. A resume path then delivers the human's answer as that call's tool result.
 
-- **LangGraph.** `interrupt(payload)` saves state through the checkpointer and returns the payload to the caller. You resume with `Command(resume=value)` on the *same* `thread_id`. Watch out: "the node restarts from the beginning". Any side effect earlier in that node runs again, so it must be *idempotent* (safe to run twice). Don't wrap `interrupt()` in `try/except`.
-- **OpenAI Agents SDK.** Set `needs_approval` (a bool, or a function that decides per call). The run returns with `result.interruptions`. Then call `state = result.to_state()`, then `state.approve()` or `state.reject(..., rejection_message=...)`, then `Runner.run(agent, state)`. For long waits, `state.to_json()` lets the process exit and come back later.
-- **Claude Agent SDK.** The `canUseTool` callback returns either allow (optionally with `updatedInput`) or deny with a message that "Claude sees". It fires only for calls that no rule or mode has already approved. It "can stay pending indefinitely". For waits longer than the process can live, a `PreToolUse` hook returns `defer` and the session resumes later.
+![A tool call that a rule marks "ask" is saved to disk with the checkpoint, a review card goes to a human and the run stops; hours later the human approves, edits or rejects, and the decision is delivered as that call's tool result so the model carries on.](../diagrams/approval-gate-pause-resume.svg)
+
+*Figure: the pause is a saved pending call, and the resume is just a tool result arriving late.*
+
+Three frameworks show the same design:
+
+- **LangGraph.** An interrupt call saves state through the checkpointer (LangGraph's save-state component) and returns a payload to the caller. You resume with a resume command on the *same* thread id. Watch out: "the node restarts from the beginning". Any side effect earlier in that node runs again, so it must be *idempotent* (safe to run twice). Don't wrap the interrupt call in a try/except block.
+- **OpenAI Agents SDK.** You mark a tool as needing approval, either always or through a function that decides per call. The run returns with a list of interruptions. You turn the result into a state, approve or reject each call (a rejection can carry a message), and run the agent again with that state. For long waits, the state can be saved as JSON, so the process can exit and come back later.
+- **Claude Agent SDK.** A permission callback returns either allow (optionally with edited input) or deny with a message that "Claude sees". It fires only for calls that no rule or mode has already approved. It "can stay pending indefinitely". For waits longer than the process can live, a pre-tool-use hook returns "defer" and the session resumes later.
+
+**API details**
+
+| What | Value |
+|---|---|
+| Claude API block names | `tool_use` (the call), `tool_result` (its answer) |
+| Claude question tool | `AskUserQuestion`: 1–4 questions with 2–4 options each |
+| LangGraph: pause | `interrupt(payload)`, saved through the checkpointer |
+| LangGraph: resume | `Command(resume=value)` on the same `thread_id` |
+| LangGraph: don't | wrap `interrupt()` in `try/except` |
+| OpenAI Agents SDK: mark a tool | `needs_approval` (a bool, or a function that decides per call) |
+| OpenAI Agents SDK: pending calls | `result.interruptions` |
+| OpenAI Agents SDK: decide and resume | `state = result.to_state()`, then `state.approve()` or `state.reject(..., rejection_message=...)`, then `Runner.run(agent, state)` |
+| OpenAI Agents SDK: long waits | `state.to_json()` |
+| Claude Agent SDK: permission callback | `canUseTool`; allow can carry `updatedInput` |
+| Claude Agent SDK: waits longer than the process | a `PreToolUse` hook returns `defer` |
 
 ### An example
 
-Here is a sketch for the investigator. When `authorize()` says "ask", the harness saves the pending call, puts a review card on a queue, and stops. Hours later, `resume()` loads the saved state, turns the human's decision into a tool result, and lets the model carry on.
+Here is a sketch for the investigator. When `authorize()` from [5.1](#51-permissions-and-sandboxing) says "ask", the harness saves the pending call, puts a review card on a queue, and stops. Hours later, `resume()` loads the saved state, turns the human's decision into a tool result, and lets the model carry on.
 
 ```python
 if authorize(name, inp) == "ask":
@@ -173,17 +231,17 @@ def resume(run_id, d):                   # hours later
 
 Three design decisions sit inside this sketch.
 
-**Where to gate.** Gate only actions that are irreversible or visible outside the system: filing tickets, sending emails, writing memory that steers future runs. Don't gate reads. Approval fatigue (5.1) turns a gate on every call into a rubber stamp.
+**Where to gate.** Gate only actions that are irreversible or visible outside the system: filing tickets, sending emails, writing memory that steers future runs. Don't gate reads. Approval fatigue (clicking "yes" by reflex, [5.1](#51-permissions-and-sandboxing)) turns a gate on every call into a rubber stamp.
 
 **What goes on the review card.** Show the action and its arguments, the evidence behind it (deciding numbers, notes), how reversible it is, and what happens if nobody answers. Don't show the transcript.
 
-**What the model sees.** A rejection is an instruction, so write it like a good error message from [lesson 4.3](week-04-prompt-and-tool-design.md): the problem, the fix, the data. One subtlety: with `updatedInput`, Claude "isn't told you changed anything". If an edit matters to later reasoning, say so in the result.
+**What the model sees.** A rejection is an instruction, so write it like a good error message from [4.3](week-04-prompt-and-tool-design.md#43-tool-error-messages-as-instructions-designing-for-recovery): the problem, the fix, the data. One subtlety: when the Claude Agent SDK's callback edits the input, Claude "isn't told you changed anything". If an edit matters to later reasoning, say so in the result.
 
 ### Common mistakes
 
 A gate held only in memory dies with the process. The approval then fires twice, or never. A durable pause plus a *done set* (the record of side effects already completed) is the minimum. Other mistakes:
 
-- Leaving a pending `tool_use` with no `tool_result`. The API rejects the next request.
+- Leaving a pending tool call with no tool result. The API rejects the next request.
 - Having no policy for what happens on timeout.
 - Letting the agent ask clarifying questions in an unattended run, where nobody will answer. Remove the tool there, or answer automatically with "no human available — proceed on stated assumptions".
 
@@ -226,43 +284,63 @@ Then write one paragraph: what goes on the morning review card for the nightly b
 
 ---
 
-So far we have decided *which actions* the agent may take (5.1), and put a human on the risky ones (5.2). But an action can be allowed and still carry the wrong content. That is what guardrails are for.
+So far we have decided *which actions* the agent may take ([5.1](#51-permissions-and-sandboxing)), and put a human on the risky ones (5.2). But an action can be allowed and still carry the wrong content. That is what guardrails are for.
 
 ## 5.3 Guardrails: input/output validation, policy checks, classifiers
 
 *Day 32 · 2026-10-03*
 
-**A guardrail is a check the harness runs on content as it crosses a boundary. Permissions check actions; guardrails check what is inside them. Run the cheap, certain checks first and the fuzzy ones last, and never let a fuzzy check decide on its own.**
+> **In short**
+> - A guardrail is a check the harness runs on content as it crosses a boundary. Permissions check actions; guardrails check what is inside them.
+> - A line in the prompt only shifts the odds; a guardrail removes a whole class of failure, or catches it.
+> - Run the cheap, certain checks first and the fuzzy ones last, and never let a fuzzy check decide on its own.
 
 ### The idea
 
-Guardrails cover the cases permissions and gates miss: the action is allowed, but the *content* of an input, an argument, a tool result or the final answer is wrong or unsafe. A guardrail sits in layer 5, beside permissions, and is wired in through layer 3's loop.
+Guardrails cover the cases permissions and gates miss: the action is allowed, but the *content* of an input, an argument, a tool result or the final answer is wrong or unsafe. A guardrail sits in layer 5 (guardrails and permissions), beside permissions, and is wired in through layer 3 (loop control).
 
 There are **four boundaries** where you can check:
 
 1. **Input**, before the run starts: off-topic, abusive or jailbreak requests, and malformed task parameters.
 2. **Tool input**, before a tool runs: is *this argument* acceptable? (A permission only asks whether the tool may run at all.)
-3. **Tool output**, before a result enters the context: secrets, personal data (PII), oversized dumps, and text that looks like instructions (the subject of 5.4).
+3. **Tool output**, before a result enters the context: secrets, personal data (PII), oversized dumps, and text that looks like instructions (the subject of [5.4](#54-prompt-injection-and-untrusted-content)).
 4. **Final output**, before anything leaves the system: the ticket, the email, the forecast.
+
+![A user request passes an input check before reaching the model; each tool call passes a tool-input check before the tool runs and a tool-output check before the result returns to the model; the final answer passes a final-output check before the ticket, email or forecast leaves.](../diagrams/guardrail-boundaries.svg)
+
+*Figure: four places content crosses a boundary, and a check can sit at each one.*
 
 There are **three kinds of check**, from cheapest and surest to most expensive and fuzzy:
 
-- **Validators** — schemas, ranges, regexes and allow-lists. They are deterministic (lesson 2.4).
+- **Validators** — schemas, ranges, regexes and allow-lists. They are deterministic ([2.4](week-02-core-mechanics.md#24-structured-outputs-and-schemas)).
 - **Policy checks** — business rules written as code, such as "a high-confidence ticket needs a deciding number".
-- **Classifiers** — a small model, or an LLM acting as judge, asked a narrow yes/no question. Anthropic's docs suggest a lightweight model as a "harmlessness screen" in front of the main one. Use a classifier only for what code cannot express. Because it is probabilistic, treat it as a *filter, not a wall* (5.1).
+- **Classifiers** — a small model, or an LLM acting as judge, asked a narrow yes/no question. Anthropic's docs suggest a lightweight model as a "harmlessness screen" in front of the main one. Use a classifier only for what code cannot express. Because it is probabilistic, treat it as a *filter, not a wall* ([5.1](#51-permissions-and-sandboxing)).
 
 When a check fails, the harness has **four responses**:
 
 - **block** — end the run with a status;
-- **reject with a message** — return an `is_error` result written like a [4.3](week-04-prompt-and-tool-design.md) error, so the model can fix it;
+- **reject with a message** — return an error result written like a [4.3](week-04-prompt-and-tool-design.md#43-tool-error-messages-as-instructions-designing-for-recovery) error, so the model can fix it;
 - **repair** — redact or truncate;
-- **escalate** — send it to a human (5.2).
+- **escalate** — send it to a human ([5.2](#52-human-in-the-loop-approval-gates-interrupts-escalation)).
 
-The OpenAI Agents SDK has the same shape. *Input guardrails* run on the first agent's input, and *output guardrails* on the last agent's output. A *tripwire* raises `InputGuardrailTripwireTriggered` or `OutputGuardrailTripwireTriggered`. *Tool guardrails* wrap function tools and can `allow`, `reject_content` (the model sees a message) or `raise_exception`.
+The OpenAI Agents SDK has the same shape:
 
-One trap: to save latency, input guardrails run *in parallel* with the agent by default. So the agent may already have spent tokens, or called tools, before the tripwire fires. Set `run_in_parallel=False` when the tools have side effects.
+- *Input guardrails* run on the first agent's input, and *output guardrails* on the last agent's output.
+- When one fails, its *tripwire* fires and the SDK raises an exception.
+- *Tool guardrails* wrap function tools. They can allow the call, reject the content (the model sees a message) or raise an exception.
+
+One trap: to save latency, input guardrails run *in parallel* with the agent by default. So the agent may already have spent tokens, or called tools, before the tripwire fires. Turn parallel running off when the tools have side effects.
 
 NVIDIA's NeMo Guardrails names the same points as input, retrieval, dialog, execution and output rails.
+
+**API details**
+
+| What | Value |
+|---|---|
+| Error flag on a tool result (Claude API) | `is_error` |
+| OpenAI Agents SDK tripwire exceptions | `InputGuardrailTripwireTriggered`, `OutputGuardrailTripwireTriggered` |
+| OpenAI Agents SDK tool-guardrail outcomes | `allow`, `reject_content`, `raise_exception` |
+| OpenAI Agents SDK: run input guardrails first, not in parallel | `run_in_parallel=False` |
 
 ### An example
 
@@ -283,7 +361,7 @@ def guard_ticket(t, st):
     return allow(t)
 ```
 
-The order is deliberate. The cheap, certain checks run first and reject with data the model can use to fix the problem. The judge runs last and never blocks on its own. It only adds a flag to the 5.2 review card. A probabilistic check should send work to a human, not make the decision.
+The order is deliberate. The cheap, certain checks run first and reject with data the model can use to fix the problem. The judge runs last and never blocks on its own. It only adds a flag to the [5.2](#52-human-in-the-loop-approval-gates-interrupts-escalation) review card. A probabilistic check should send work to a human, not make the decision.
 
 ### Why it matters
 
@@ -292,7 +370,7 @@ Guardrails turn "the prompt says don't" into "the harness checks". A line in the
 ### Common mistakes
 
 - Using an LLM judge where a regex would do. It is slow, costly and flaky.
-- Blocking with a bare "unsafe" instead of an instruction (lessons 2.6 and 4.3).
+- Blocking with a bare "unsafe" instead of an instruction ([2.6](week-02-core-mechanics.md#26-error-handling-retries-backoff-and-feeding-tool-errors-back-to-the-model) and [4.3](week-04-prompt-and-tool-design.md#43-tool-error-messages-as-instructions-designing-for-recovery)).
 - Never measuring false positives, so the guardrail quietly blocks good runs.
 - Running a parallel input check in front of tools with side effects.
 - Trusting a classifier as a security boundary.
@@ -334,19 +412,26 @@ Then answer in one paragraph: which of these should *repair* silently, which mus
 
 ---
 
-Permissions, human gates and guardrails all exist to contain one threat. You have met it twice already: the planted "skip weather checks" memory line (Day 19) and the poisoned incident report in 5.1. Now we look at it directly.
+Permissions, human gates and guardrails all exist to contain one threat. You have met it twice already: the planted "skip weather checks" memory line in [3.4](week-03-state-and-memory.md#34-persistent-memory-files-and-memory-as-documents) and the poisoned incident report in [5.1](#51-permissions-and-sandboxing). Now we look at it directly.
 
 ## 5.4 Prompt injection and untrusted content
 
 *Day 33 · 2026-10-04*
 
-**A model reads instructions and data through the same channel, so anyone who can write text the agent reads can try to steer it. Detection alone cannot fix this. The fix is control flow: build the harness so that untrusted text has no path to a consequential action.**
+> **In short**
+> - A model reads instructions and data through the same channel, so anyone who can write text the agent reads can try to steer it.
+> - Detection alone cannot fix this: adaptive attacks got past most published defences.
+> - The fix is control flow: build the harness so that untrusted text has no path to a consequential action.
 
 ### The idea
 
-**One channel.** A model receives instructions and data as the same thing: tokens in one context. It reads a tool result with the same attention as your system prompt. So anyone who can write into a tool result can try to steer the agent: the author of a web page, an email, an incident report, a free-text field in a vendor API, a file in the repo. This is *indirect prompt injection*. The attacker never talks to the model. They plant text where the agent will read it.
+**One channel.** A model receives instructions and data as the same thing: tokens in one context. It reads a tool result with the same attention as your system prompt. So anyone who can write into a tool result can try to steer the agent: the author of a web page, an email, an incident report, a free-text field in a vendor API, a file in the repo.
 
-**Why "just detect it" fails.** In *The Attacker Moves Second* (Oct 2025), authors from OpenAI, Anthropic and Google DeepMind tested 12 published defences against *adaptive* attacks (attacks that adjust to the defence). They bypassed most of them more than 90% of the time, and human red-teamers beat every defence. Training the model helps a lot: Anthropic reports a 1% attack success rate for Claude Opus 4.5 in browser use against an adaptive attacker. Anthropic also says plainly that 1% "still represents meaningful risk". So model robustness and classifiers are filters (5.1's word), not walls.
+This is *indirect prompt injection*. The attacker never talks to the model. They plant text where the agent will read it.
+
+**Why "just detect it" fails.** In *The Attacker Moves Second* (Oct 2025), authors from OpenAI, Anthropic and Google DeepMind tested 12 published defences against *adaptive* attacks (attacks that adjust to the defence). They bypassed most of them more than 90% of the time, and human red-teamers (people who attack the system on purpose to find weaknesses) beat every defence.
+
+Training the model helps a lot: Anthropic reports a 1% attack success rate for Claude Opus 4.5 in browser use against an adaptive attacker. Anthropic also says plainly that 1% "still represents meaningful risk". So model robustness and classifiers are filters ([5.1](#51-permissions-and-sandboxing)'s word), not walls.
 
 **The threat model.** Simon Willison's *lethal trifecta* is: private data + untrusted content + a way to communicate externally. Together they let an attacker steal data. Meta's *Agents Rule of Two* generalises it. A session should have at most two of these three properties:
 
@@ -359,7 +444,7 @@ If a session needs all three, a human must be in the loop.
 **The design answer.** Beurer-Kellner et al. (June 2025, authors from IBM, Google, Microsoft, ETH and others) state the principle: once an agent has taken in untrusted input, it must be constrained so that it is *impossible* for that input to trigger consequential actions. They give six patterns. All of them are harness control flow, not prompt text:
 
 - **Action-selector** — the model only picks from a fixed set of actions and never reads their results.
-- **Plan-then-execute** — the plan is fixed before any untrusted data arrives. (This is Day 11's plan object, now used as a security device.)
+- **Plan-then-execute** — the plan is fixed before any untrusted data arrives. (This is the plan object from [2.3](week-02-core-mechanics.md#23-planning-and-task-decomposition), now used as a security device.)
 - **Map-reduce** — each untrusted document goes to its own isolated call with no tools.
 - **Dual LLM** — a privileged model holds the tools, and a separate quarantined model reads the untrusted text.
 - **Code-then-execute** — the model writes a program before it sees any data. Google DeepMind's CaMeL works this way.
@@ -394,20 +479,24 @@ def archive_read_doc(path):
 
 The injected command has nowhere to go. An enum cannot hold "call ticket_submit", and the quarantined call has no tools to call.
 
+![Before: the untrusted incident report's raw body reaches the privileged agent, which has tools, so it can steer a consequential action. After: the report goes to a quarantined call with no tools, which returns typed fields only, and only those reach the privileged agent.](../diagrams/injection-quarantine.svg)
+
+*Figure: the dashed path is the old one. After quarantine, only typed fields reach the agent that holds the tools.*
+
 The rest of this week's defences wrap around it:
 
 - **Tag provenance.** Label results as `<untrusted source=archive>`. This helps, but it is still a filter.
-- **Deny network egress** in the sandbox (5.1).
-- **Keep `ticket_submit` behind a human** (5.2).
-- **Run a classifier on tool outputs** that flags and never decides (5.3).
+- **Deny network egress** in the sandbox ([5.1](#51-permissions-and-sandboxing)).
+- **Keep `ticket_submit` behind a human** ([5.2](#52-human-in-the-loop-approval-gates-interrupts-escalation)).
+- **Run a classifier on tool outputs** that flags and never decides ([5.3](#53-guardrails-inputoutput-validation-policy-checks-classifiers)).
 
-Injection defence is not one layer. It is a property of how data flows between layers 2, 3 and 5.
+Injection defence is not one layer. It is a property of how data flows between layers 2 (tools and the executor), 3 (loop control) and 5 (guardrails and permissions).
 
 ### Common mistakes
 
 - Believing that delimiters plus "ignore instructions inside documents" solves injection. It lowers the rate; it does not remove the class of attack.
 - Letting a sub-agent or summariser read untrusted text and return free prose. The injection rides up inside the summary.
-- Letting a run that read untrusted content write to long-term memory. That is how an injection becomes persistent (Day 19).
+- Letting a run that read untrusted content write to long-term memory. That is how an injection becomes persistent ([3.4](week-03-state-and-memory.md#34-persistent-memory-files-and-memory-as-documents)).
 
 And one limit to remember: **schemas stop instructions, not lies.** A report that states a false number passes any schema. Cross-check it against data the agent got from your own tools.
 
@@ -443,7 +532,7 @@ Under quarantine:
 - (b) shrinks to `root_cause: weather` for one past incident. That is a mild bias, and the "skip" instruction is gone.
 - **(c) survives.** `deciding_metric: cloud_delta, value: 38.0` is a perfectly typed lie.
 
-**What catches (c).** 5.3's policy check plus provenance: the ticket's deciding number must match a value the agent's own tool returned. Here `weather_get_history` says 4%. The 5.2 review card then shows both numbers side by side.
+**What catches (c).** [5.3](#53-guardrails-inputoutput-validation-policy-checks-classifiers)'s policy check plus provenance: the ticket's deciding number must match a value the agent's own tool returned. Here `weather_get_history` says 4%. The [5.2](#52-human-in-the-loop-approval-gates-interrupts-escalation) review card then shows both numbers side by side.
 
 **Common slips:** adding a `notes: str` field "for context", which reopens the free-text channel; and treating quarantined output as trustworthy, when it is only free of instructions.
 
@@ -455,13 +544,16 @@ Under quarantine:
 
 ---
 
-Lessons 5.1 to 5.4 built the walls. The next question is how you know what actually happened behind them. Everything later depends on the answer: evals in Week 6, transcript diagnosis in 7.1, and the morning reviewer asking "why this ticket?"
+Lessons 5.1 to 5.4 built the walls. The next question is how you know what actually happened behind them. Everything later depends on the answer: evals in [Week 6](week-06-evaluation-1.md), transcript diagnosis in [7.1](week-07-evaluation-2-and-iteration.md#71-reading-a-transcript), and the morning reviewer asking "why this ticket?"
 
 ## 5.5 Observability: tracing, logging trajectories, replaying runs
 
 *Day 34 · 2026-10-05*
 
-**Record each run as a tree of timed steps (a trace), and keep a separate log of the exact content (a trajectory). The trace tells you where time, tokens and errors went. The trajectory tells you what happened, and lets you replay the run.**
+> **In short**
+> - Record each run as a tree of timed steps (a trace), and keep a separate log of the exact content (a trajectory).
+> - The trace tells you where time, tokens and errors went. The trajectory tells you what happened, and lets you replay the run.
+> - Without traces, every failure is an anecdote and every fix is a guess.
 
 ### The idea
 
@@ -471,18 +563,18 @@ An agent run is a tree of timed operations, so record it as one.
 - **Spans** are its nested steps: the run, then each turn (one model call), then each tool call. A sub-agent's spans sit under the tool call that started it.
 - Each span carries timing and *attributes* (key–value details).
 
-This is layer 6 (feedback), with hooks into every other layer.
+This is layer 6 (feedback and evals), with hooks into every other layer.
 
 The frameworks have converged on this shape:
 
-- **Claude Agent SDK / Claude Code** export OpenTelemetry spans (beta: `CLAUDE_CODE_ENHANCED_TELEMETRY_BETA=1`). The span types are `claude_code.interaction` (one turn), `llm_request` (model, latency, tokens) and `tool`. A tool span has two children: `blocked_on_user` (the permission wait) and `execution`. Sub-agent spans nest under the parent's tool span. W3C `TRACEPARENT` is passed along, so the agent run sits inside your application's own trace.
-- **OpenAI Agents SDK** traces by default, using `workflow_name`, `trace_id`, and `group_id` to link a conversation. It records agent, generation, function, guardrail and handoff spans.
-- **OpenTelemetry GenAI conventions** give vendor-neutral names: `invoke_agent`, `execute_tool`, `gen_ai.conversation.id`, `gen_ai.usage.input_tokens`, `gen_ai.tool.call.id`. They are still marked "Development", so expect them to change.
+- **Claude Agent SDK / Claude Code** export OpenTelemetry spans (OpenTelemetry is an open standard for traces) when a beta setting is turned on. There are span types for one turn, one model request (model, latency, tokens) and one tool call. A tool span has two children: the permission wait and the execution. Sub-agent spans nest under the parent's tool span. The W3C trace-context header is passed along, so the agent run sits inside your application's own trace.
+- **OpenAI Agents SDK** traces by default. Each trace has a workflow name and a trace id, and a group id links a conversation. It records agent, generation, function, guardrail and handoff spans.
+- **OpenTelemetry GenAI conventions** give vendor-neutral names for invoking an agent, running a tool, the conversation id, input-token usage and the tool-call id. They are still marked "Development", so expect them to change.
 
 **Structure vs content.** This is the design split that matters most. Spans are *structural* by default: durations, tool names, token counts. Prompt text, tool arguments and tool outputs are *opt-in*.
 
-- Claude uses `OTEL_LOG_TOOL_DETAILS`, `OTEL_LOG_TOOL_CONTENT` and `OTEL_LOG_RAW_API_BODIES`.
-- OpenAI's `trace_include_sensitive_data` defaults to **true**. Check it before forecasts or vendor data reach a hosted backend.
+- Claude has three separate opt-in settings: tool details, tool content, and raw API bodies.
+- OpenAI's setting for including sensitive data defaults to **true**. Check it before forecasts or vendor data reach a hosted backend.
 
 That gives you two records:
 
@@ -492,7 +584,24 @@ That gives you two records:
 **Replay** comes in two kinds:
 
 - **Exact replay.** Re-run the harness with both the model and the tools stubbed from the log. It is deterministic and free. It tests *harness code*, for example "would the new guardrail have blocked last night's ticket?"
-- **Fork replay.** Load the transcript up to turn *k* (the checkpoint from 3.5), change one thing (a tool description, a prompt section, a poisoned result), and let the live model continue. Tools answer from the recorded results, looked up by (name, sorted input), like a test "cassette". This tests whether a harness change actually fixes the behaviour.
+- **Fork replay.** Load the transcript up to turn *k* (the checkpoint from [3.5](week-03-state-and-memory.md#35-checkpointing-and-resumability)), change one thing (a tool description, a prompt section, a poisoned result), and let the live model continue. Tools answer from the recorded results, looked up by (name, sorted input), like a test "cassette" (a recording that plays back saved responses). This tests whether a harness change actually fixes the behaviour.
+
+![One run produces a trace of spans, showing where time, tokens and errors went, and a trajectory log of exact requests, responses and results; the log feeds exact replay, which stubs model and tools and tests harness code, and fork replay, which continues with a live model from turn k with one change and tests whether a fix works.](../diagrams/trace-and-replay.svg)
+
+*Figure: spans answer "where"; the trajectory answers "what" and is the input to both kinds of replay.*
+
+**API details**
+
+| What | Value |
+|---|---|
+| Claude Code: turn on enhanced telemetry (beta) | `CLAUDE_CODE_ENHANCED_TELEMETRY_BETA=1` |
+| Claude Code span types | `claude_code.interaction` (one turn), `llm_request` (model, latency, tokens), `tool` |
+| Claude Code children of a tool span | `blocked_on_user` (the permission wait), `execution` |
+| Claude Code: trace context passed along | W3C `TRACEPARENT` |
+| OpenAI Agents SDK trace fields | `workflow_name`, `trace_id`, `group_id` (links a conversation) |
+| OpenTelemetry GenAI names (status: "Development") | `invoke_agent`, `execute_tool`, `gen_ai.conversation.id`, `gen_ai.usage.input_tokens`, `gen_ai.tool.call.id` |
+| Claude Code content opt-ins | `OTEL_LOG_TOOL_DETAILS`, `OTEL_LOG_TOOL_CONTENT`, `OTEL_LOG_RAW_API_BODIES` |
+| OpenAI Agents SDK content setting | `trace_include_sensitive_data` (default **true**) |
 
 ### An example
 
@@ -515,7 +624,7 @@ run SG-03  status=awaiting_approval  harness=a91f  42.1s
 
 In ten seconds you can see three things: the delegation takes 44% of the wall-clock time, the cache is working, and the ticket passed the provenance check.
 
-Note `harness=a91f`. It is a hash of the system prompt plus the tool definitions. It lets you split every metric by harness version, which is what makes regression testing in 6.5 possible.
+Note `harness=a91f`. It is a hash of the system prompt plus the tool definitions. It lets you split every metric by harness version, which is what makes regression testing in [6.5](week-06-evaluation-1.md#65-regression-testing-a-harness-change-ab-on-prompts-and-tools) possible.
 
 ### Why it matters
 
@@ -524,10 +633,17 @@ Without traces, every failure is an anecdote and every fix is a guess.
 ### Common mistakes
 
 - Logging only the final answer, so you can't tell "wrong root cause" from "never finished".
-- Logging `input_tokens` without the cache fields ([4.6](week-04-prompt-and-tool-design.md)).
+- Logging input tokens without the cache fields ([4.6](week-04-prompt-and-tool-design.md#46-prompt-caching-and-cost)).
 - No run status and no harness version on the spans.
 - Turning on content capture everywhere without deciding what may leave the building.
-- Assuming export worked. Claude's exporter fails silently unless `CLAUDE_CODE_OTEL_DIAG_STDERR=1` is set, and short runs can drop spans that haven't been flushed.
+- Assuming export worked. Claude's exporter fails silently unless its diagnostics setting is on, and short runs can drop spans that haven't been flushed.
+
+**API details**
+
+| What | Value |
+|---|---|
+| Input-token field | `input_tokens` |
+| Claude Code exporter diagnostics | `CLAUDE_CODE_OTEL_DIAG_STDERR=1` |
 
 ### Try it
 
@@ -585,7 +701,10 @@ Tracing made the run visible: every span now has a latency and a token count. Th
 
 *Day 35 · 2026-10-06*
 
-**Both time and cost grow with the number of turns. So the biggest wins come from removing turns, mainly by running independent tool calls in parallel. Then the harness enforces hard caps on cost and wall-clock time.**
+> **In short**
+> - Both time and cost grow with the number of turns, so the biggest wins come from removing turns, mainly by running independent tool calls in parallel.
+> - A turn you remove saves its own latency and every later re-send of its tokens.
+> - Then the harness enforces hard caps on cost and wall-clock time.
 
 ### The idea
 
@@ -596,15 +715,15 @@ wall-clock ≈ Σ over turns of (time to first token + output generation time + 
 cost       ≈ Σ over turns of (uncached input + cache reads at 0.1× + cache writes + output)
 ```
 
-Both grow with the number of turns. Input grows fastest, because every turn re-sends the whole transcript (lessons 1.2 and 4.6). That gives four levers.
+Both grow with the number of turns. Input grows fastest, because every turn re-sends the whole transcript ([1.2](week-01-what-an-agent-is.md#12-the-agent-loop) and [4.6](week-04-prompt-and-tool-design.md#46-prompt-caching-and-cost)). Cache reads are cheap because of the prompt cache (a stored copy of an unchanged prompt prefix). That gives four levers.
 
-**1. Fewer turns: parallel tool calls.** The model can put several `tool_use` blocks in one assistant message. The API does not set the order they run in, so the harness decides:
+**1. Fewer turns: parallel tool calls.** The model can put several tool calls in one assistant message. The API does not set the order they run in, so the harness decides:
 
 - run independent **read-only** calls at the same time;
 - run calls with **side effects** one after another, in order;
-- send **all** the `tool_result`s back together in **one** user message, before any text.
+- send **all** the tool results back together in **one** user message, before any text.
 
-Splitting results across several messages teaches the model to stop calling tools in parallel. Setting `tool_choice: {"type": "auto", "disable_parallel_tool_use": true}` limits the model to one call per turn. Check that parallel calls are really happening: the average number of tool calls per tool-calling message should be above 1.0.
+Splitting results across several messages teaches the model to stop calling tools in parallel. A request setting can also limit the model to one call per turn. Check that parallel calls are really happening: the average number of tool calls per tool-calling message should be above 1.0.
 
 ```python
 async def run_tools(blocks):
@@ -619,19 +738,35 @@ async def run_tools(blocks):
 
 The read-only calls run together with `asyncio.gather`. The side-effect calls run one by one. The results come back in the original order, ready to go in a single message.
 
-**2. Cheaper turns.** Caching ([4.6](week-04-prompt-and-tool-design.md)), shaping results at the source (2.1), and a smaller model for child agents (3.6). All covered already.
+**2. Cheaper turns.** Caching ([4.6](week-04-prompt-and-tool-design.md#46-prompt-caching-and-cost)), shaping results at the source ([2.1](week-02-core-mechanics.md#21-context-window-as-working-memory)), and a smaller model for child agents ([3.6](week-03-state-and-memory.md#36-sub-agents-and-context-isolation)). All covered already.
 
 **3. Overlap: streaming.** Streaming cuts *perceived* latency: a person sees the first token sooner. The total time barely changes.
 
-For harnesses, the useful variant is per-tool `eager_input_streaming: true`. It streams a large tool argument (a file, a report) before the API has buffered and validated it, so the harness can start a permission check or a preview early. The cost: the input can arrive as invalid JSON, or be cut off at `max_tokens`. Guard the parse. If it fails, send back an `is_error` result that wraps the raw text, built with a JSON library.
+For harnesses, the useful variant is a per-tool setting for eager input streaming. It streams a large tool argument (a file, a report) before the API has buffered and validated it, so the harness can start a permission check or a preview early.
 
-**4. Defer: batch.** The Message Batches API costs 50% of the standard price. Most batches finish in under an hour, the limit is 24 hours, and cache hits are best effort (30–98%). But each turn of an agent loop needs the previous turn's answer, so batching a loop adds the batch delay to *every* turn. Batching suits single-call stages: the nightly digest, and the quarantined document extractor from 5.4.
+The cost: the input can arrive as invalid JSON, or be cut off at the output-token limit. Guard the parse. If it fails, send back an error result that wraps the raw text, built with a JSON library.
 
-**Budgets live in layer 3.** Set three caps. Check each one before every model call, and end the run with status `budget` (lesson 2.5) when one is hit:
+**4. Defer: batch.** The Message Batches API costs 50% of the standard price. Most batches finish in under an hour, the limit is 24 hours, and cache hits are best effort (30–98%).
+
+But each turn of an agent loop needs the previous turn's answer, so batching a loop adds the batch delay to *every* turn. Batching suits single-call stages: the nightly digest, and the quarantined document extractor from [5.4](#54-prompt-injection-and-untrusted-content).
+
+**Budgets live in layer 3 (loop control).** Set three caps. Check each one before every model call, and end the run with a "budget" status ([2.5](week-02-core-mechanics.md#25-stopping-conditions-step-budgets-and-loop-detection)) when one is hit:
 
 - **cost per run**, computed from all usage fields, including those of child agents;
 - **wall-clock per run**;
 - **a batch-level deadline**, which sets how much time each site gets.
+
+**API details**
+
+| What | Value |
+|---|---|
+| Claude API block names | `tool_use` (a call), `tool_result` (its answer) |
+| Claude API: one tool call per turn | `tool_choice: {"type": "auto", "disable_parallel_tool_use": true}` |
+| Claude API: per-tool eager streaming | `eager_input_streaming: true` |
+| Output-token limit that can cut off streamed input | `max_tokens` |
+| Error flag on a tool result | `is_error` |
+| Batch API | Message Batches API (50% of standard price) |
+| Run status when a cap is hit | `budget` |
 
 ### An example
 
@@ -639,6 +774,10 @@ For harnesses, the useful variant is per-tool `eager_input_streaming: true`. It 
 
 - **Sequential:** 3 model calls + 8.3 s of tools ≈ 20 s.
 - **Parallel:** 1 model call + the slowest tool ≈ 10 s.
+
+![Timeline in seconds: sequentially, three model calls of about 4 seconds alternate with the three tools and finish at about 20 seconds; in parallel, one model call is followed by the three tools running side by side, finishing at about 10 seconds when the 6-second weather call ends.](../diagrams/parallel-tool-timeline.svg)
+
+*Figure (illustrative numbers): in parallel, the turn costs one model call plus the slowest tool, not the sum of everything.*
 
 The parallel run also has two fewer turns, each of which would have re-sent about 6k tokens. [Anthropic reported](https://www.anthropic.com/engineering/multi-agent-research-system) that parallel tool calling cut research time by up to 90% on complex queries in its research system.
 
@@ -662,7 +801,7 @@ Agents get slow because of the *number of turns*, not because the model generate
 
 ### Worked answer
 
-**(1) `run_tools`.** Split the turn's `tool_use` blocks using a `READ_ONLY` set. Run the read-only ones with `asyncio.gather(*(asyncio.to_thread(execute, b) for b in ro))`. Then run the side-effect ones one at a time, in message order, checking the done set (3.5). Put every result back in the original block order and send them all in **one** user message.
+**(1) `run_tools`.** Split the turn's `tool_use` blocks using a `READ_ONLY` set. Run the read-only ones with `asyncio.gather(*(asyncio.to_thread(execute, b) for b in ro))`. Then run the side-effect ones one at a time, in message order, checking the done set ([3.5](week-03-state-and-memory.md#35-checkpointing-and-resumability)). Put every result back in the original block order and send them all in **one** user message.
 
 **(2) Parallel vs disabled** (illustrative figures).
 
@@ -697,37 +836,67 @@ Send to the Batch API: the morning digest; extracting newly arrived archive docu
 
 *Day 36 · 2026-10-07*
 
-Week 4 made the interface good. Week 5 assumed the model will still sometimes do the wrong thing, by mistake or because injected text told it to. So we built layer 5, plus the layer 3 and layer 6 machinery around it. Next, Week 6 starts on evaluation.
+Week 4 made the interface good. Week 5 assumed the model will still sometimes do the wrong thing, by mistake or because injected text told it to. So we built layer 5 (guardrails and permissions), plus the layer 3 (loop control) and layer 6 (feedback and evals) machinery around it. Next, [Week 6](week-06-evaluation-1.md) starts on evaluation.
 
 ### The week in six paragraphs
 
-**5.1 Permissions and sandboxing.** Three questions, each enforced at a different depth. *What* may the agent do: allow/ask/deny rules, checked deny → ask → allow, first match wins; a bare deny removes the tool from the schema. *Where* may it do it: an OS sandbox with both filesystem *and* network boundaries. *With whose credentials*: secrets stay outside the box, and a proxy attaches scoped tokens. Rules on command text are filters (`python -c` walks around a `curl` deny); the sandbox and an absent credential are walls. Sandboxing also means prompting less (Anthropic: 84% fewer prompts), which keeps the remaining asks meaningful.
+**[5.1](#51-permissions-and-sandboxing) Permissions and sandboxing.** Three questions, each enforced at a different depth.
 
-**5.2 Human-in-the-loop.** Three shapes: approval gate, clarification, and interrupt/escalation. Mechanically they are one thing: a durable checkpoint holding a pending `tool_use`, plus a resume path that delivers the human's decision as that call's `tool_result`. The design work is: where to gate (irreversible or externally visible actions only); what goes on the review card (evidence, not the transcript); what the model is told (disclose edits; a rejection gives the problem, the fix and "do not resubmit unchanged"); and what happens on timeout (expire, never auto-approve). Unattended runs turn asks into a queue, or turn the side effect into a draft.
+- *What* may the agent do: allow/ask/deny rules, checked deny → ask → allow, first match wins; a bare deny removes the tool from the schema.
+- *Where* may it do it: an OS sandbox with both filesystem *and* network boundaries.
+- *With whose credentials*: secrets stay outside the box, and a proxy attaches scoped tokens.
 
-**5.3 Guardrails.** Guardrails check *content* at four boundaries: input, tool input, tool output and final output. Permissions check *actions*. Put cheap, certain checks first (validators, policy as code) and fuzzy ones last (a classifier or LLM judge). A failed check gets block, reject-with-instruction, repair or escalate, and a classifier on its own only flags. The OpenAI SDK trap: input guardrails run in parallel by default, so set `run_in_parallel=False` in front of side effects. Track false positives for every guardrail.
+Rules on command text are filters (`python -c` walks around a `curl` deny); the sandbox and an absent credential are walls. Sandboxing also means prompting less (Anthropic: 84% fewer prompts), which keeps the remaining asks meaningful.
 
-**5.4 Prompt injection.** Instructions and data share one token channel, and adaptive attacks beat every published detector. So the harness must make it impossible for untrusted text it has read to trigger consequential actions. Audit each run against the Rule of Two (untrusted input, sensitive data, state change: at most two without a human). Use control-flow patterns such as plan-then-execute and a dual LLM, where a tool-less quarantined extractor returns typed fields. Schemas stop instructions, not lies, so deciding numbers must come from the agent's own tools.
+**[5.2](#52-human-in-the-loop-approval-gates-interrupts-escalation) Human-in-the-loop.** Three shapes: approval gate, clarification, and interrupt/escalation. Mechanically they are one thing: a durable checkpoint holding a pending `tool_use`, plus a resume path that delivers the human's decision as that call's `tool_result`. The design work:
 
-**5.5 Observability.** A run is a tree of timed spans (run → turn → model call → tool call → child agent). Keep spans structural by default, and pair them with a separate trajectory log of exact content. Exact replay stubs everything and tests harness code. Fork replay continues from turn *k* with one change, a live model and a recorded tool cassette, and tests a fix. Every run carries a status, the cache fields and a harness-version hash, so metrics can be split by version.
+- where to gate (irreversible or externally visible actions only);
+- what goes on the review card (evidence, not the transcript);
+- what the model is told (disclose edits; a rejection gives the problem, the fix and "do not resubmit unchanged");
+- what happens on timeout (expire, never auto-approve).
 
-**5.6 Latency and cost.** Both scale with the number of turns. Four levers: fewer turns (parallel read-only calls, side effects in order, all results in one message, tools per message above 1.0); cheaper turns (caching, shaped results, smaller children); overlap (streaming cuts time to first token, not total time); and deferral (Batch API at 50%, single-call stages only). All are enforced as layer-3 caps on cost and wall-clock per run, derived from a batch deadline.
+Unattended runs turn asks into a queue, or turn the side effect into a draft.
+
+**[5.3](#53-guardrails-inputoutput-validation-policy-checks-classifiers) Guardrails.** Guardrails check *content* at four boundaries: input, tool input, tool output and final output. Permissions check *actions*. Put cheap, certain checks first (validators, policy as code) and fuzzy ones last (a classifier or LLM judge). A failed check gets block, reject-with-instruction, repair or escalate, and a classifier on its own only flags. The OpenAI SDK trap: input guardrails run in parallel by default, so set `run_in_parallel=False` in front of side effects. Track false positives for every guardrail.
+
+**[5.4](#54-prompt-injection-and-untrusted-content) Prompt injection.** Instructions and data share one token channel, and adaptive attacks beat every published detector. So the harness must make it impossible for untrusted text it has read to trigger consequential actions.
+
+Audit each run against the Rule of Two (untrusted input, sensitive data, state change: at most two without a human). Use control-flow patterns such as plan-then-execute and a dual LLM, where a tool-less quarantined extractor returns typed fields. Schemas stop instructions, not lies, so deciding numbers must come from the agent's own tools.
+
+**[5.5](#55-observability-tracing-logging-trajectories-replaying-runs) Observability.** A run is a tree of timed spans (run → turn → model call → tool call → child agent). Keep spans structural by default, and pair them with a separate trajectory log of exact content.
+
+Exact replay stubs everything and tests harness code. Fork replay continues from turn *k* with one change, a live model and a recorded tool cassette, and tests a fix. Every run carries a status, the cache fields and a harness-version hash, so metrics can be split by version.
+
+**[5.6](#56-latency-and-cost-budgets-parallel-tool-calls-streaming) Latency and cost.** Both scale with the number of turns. Four levers:
+
+- fewer turns (parallel read-only calls, side effects in order, all results in one message, tools per message above 1.0);
+- cheaper turns (caching, shaped results, smaller children);
+- overlap (streaming cuts time to first token, not total time);
+- deferral (Batch API at 50%, single-call stages only).
+
+All are enforced as layer 3 (loop control) caps on cost and wall-clock per run, derived from a batch deadline.
 
 ### Self-quiz
 
-1. A colleague adds the deny rule `Bash(curl *)` and says exfiltration is solved. Give the workaround, the two walls that actually hold, and which Rule-of-Two property you would remove instead if the run did not need it.
-2. The nightly `ticket_submit` is "ask", and the process restarts at 04:00. List what must be on disk for the resume to work. What does the model see after a reject-with-reason, and why must an approve-with-edits result disclose the edit?
-3. `guard_ticket`'s LLM judge says "root cause does not follow from the evidence" on 12% of runs, and reviewers approve most of those tickets. What should the judge's outcome be (block, reject or flag)? What metric would have told you this, and where is it logged?
-4. The quarantined extractor returns `{deciding_metric: cloud_delta, value: 38.0}` from a forged report. Why does the schema not stop it? Name the two mechanisms that do, and the layer each lives in.
-5. A nightly run took 9 minutes instead of 3. On harness hash `b27c` the trace shows tools-per-message at 1.0 and a cache hit rate of 0% (it was 84%). Name the two likely harness changes, and say whether you would confirm each with exact or fork replay.
+**1.** A colleague adds the deny rule `Bash(curl *)` and says exfiltration is solved. Give the workaround, the two walls that actually hold, and which Rule-of-Two property you would remove instead if the run did not need it.
 
-### Self-quiz answers
+> **Answer.** **The workaround** is `urllib` inside `python_exec`, or `wget`. A rule on command text is only a filter. **Two walls actually hold:** the OS sandbox (no network) and an absent credential (the key never enters the box). If the run doesn't need it, **remove C**, the ability to communicate externally or change state. Then untrusted input plus sensitive data can't leave the box.
 
-1. **The workaround** is `urllib` inside `python_exec`, or `wget`. A rule on command text is only a filter. **Two walls actually hold:** the OS sandbox (no network) and an absent credential (the key never enters the box). If the run doesn't need it, **remove C**, the ability to communicate externally or change state. Then untrusted input plus sensitive data can't leave the box.
-2. **On disk**, under the run id, you need the checkpoint: messages, plan, turn, the done set, and `st.pending` (the unanswered `tool_use`). **After a reject-with-reason**, the model sees that call's `tool_result` with `is_error`: "Rejected by reviewer: <reason>". **An edit must be disclosed**, or the model's summary will describe a ticket that was never filed.
-3. The judge should **only flag**. The metric is the **override rate**: the share of flagged tickets that reviewers approved anyway. You get it by joining the guard event with the gate decision in the trace.
-4. **A schema constrains shape, not truth.** Two mechanisms stop the forged value. First, a **provenance check**: the deciding number must equal a value from one of this run's own tools. It is a layer-5 guardrail in the executor. Second, the **review card**, which shows both numbers side by side (layer-5 human-in-the-loop).
-5. **Tools-per-message of 1.0** points to a dropped `<use_parallel_tool_calls>` block, or `disable_parallel_tool_use` being set. That changes the model's behaviour, so confirm it with **fork replay** over several runs. **A 0% cache hit rate** points to bytes that change on every run sitting above the cache boundary (a timestamp, or unsorted tools). Confirm that with **exact replay**: build two requests and diff the bytes.
+**2.** The nightly `ticket_submit` is "ask", and the process restarts at 04:00. List what must be on disk for the resume to work. What does the model see after a reject-with-reason, and why must an approve-with-edits result disclose the edit?
+
+> **Answer.** **On disk**, under the run id, you need the checkpoint: messages, plan, turn, the done set, and `st.pending` (the unanswered `tool_use`). **After a reject-with-reason**, the model sees that call's `tool_result` with `is_error`: "Rejected by reviewer: <reason>". **An edit must be disclosed**, or the model's summary will describe a ticket that was never filed.
+
+**3.** `guard_ticket`'s LLM judge says "root cause does not follow from the evidence" on 12% of runs, and reviewers approve most of those tickets. What should the judge's outcome be (block, reject or flag)? What metric would have told you this, and where is it logged?
+
+> **Answer.** The judge should **only flag**. The metric is the **override rate**: the share of flagged tickets that reviewers approved anyway. You get it by joining the guard event with the gate decision in the trace.
+
+**4.** The quarantined extractor returns `{deciding_metric: cloud_delta, value: 38.0}` from a forged report. Why does the schema not stop it? Name the two mechanisms that do, and the layer each lives in.
+
+> **Answer.** **A schema constrains shape, not truth.** Two mechanisms stop the forged value. First, a **provenance check**: the deciding number must equal a value from one of this run's own tools. It is a layer 5 (guardrails and permissions) guardrail in the executor. Second, the **review card**, which shows both numbers side by side (layer 5 human-in-the-loop).
+
+**5.** A nightly run took 9 minutes instead of 3. On harness hash `b27c` the trace shows tools-per-message at 1.0 and a cache hit rate of 0% (it was 84%). Name the two likely harness changes, and say whether you would confirm each with exact or fork replay.
+
+> **Answer.** **Tools-per-message of 1.0** points to a dropped `<use_parallel_tool_calls>` block, or `disable_parallel_tool_use` being set. That changes the model's behaviour, so confirm it with **fork replay** over several runs. **A 0% cache hit rate** points to bytes that change on every run sitting above the cache boundary (a timestamp, or unsorted tools). Confirm that with **exact replay**: build two requests and diff the bytes.
 
 ### Integrative exercise
 
@@ -748,7 +917,7 @@ Finally, one paragraph: if you could ship only one check, which would you ship f
 **The three faults:**
 
 - **Forged 38%.** The quarantined extractor passes it on as a well-typed value. `guard_ticket`'s provenance check rejects the ticket at submit, because no tool returned 38. The model then calls `weather_get_history` (4%) or escalates. The review card reads "provenance tripped: cited 38, own tools 4".
-- **Vendor down after 2 stations.** The tool client retries, then raises a `ToolError` with partial data (layer 2). The ticket marks weather as "2/6 stations, unverified".
+- **Vendor down after 2 stations.** The tool client retries, then raises a `ToolError` with partial data (layer 2, tools and the executor). The ticket marks weather as "2/6 stations, unverified".
 - **Empty review queue at 08:00.** Because the design is draft-then-file, nothing gets filed. The draft expires at 24 hours and is never auto-approved, and the morning digest pages on-call that N drafts are unreviewed.
 
 **If you ship only one check, ship provenance.** It is deterministic and costs nothing. It catches injected numbers and hallucinated numbers alike, and those are the wrong tickets that look most convincing.

@@ -1,0 +1,18 @@
+%%{init: {"flowchart": {"rankSpacing": 26}}}%%
+flowchart TD
+    T["Your failure taxonomy"] --> A
+    subgraph A["Every category needs"]
+        direction TB
+        A1["A definition"]
+        A2["A harness layer<br>and owner"]
+        A3["A detector:<br>code check or judge"]
+        A1 ~~~ A2 ~~~ A3
+    end
+    T --> N
+    subgraph N["Unfair, kept separate"]
+        direction TB
+        N1["Grader bug"]
+        N2["Task bug"]
+        N3["Infrastructure"]
+        N1 ~~~ N2 ~~~ N3
+    end

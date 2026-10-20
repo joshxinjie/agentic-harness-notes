@@ -1,0 +1,8 @@
+sequenceDiagram
+    participant H as Harness (your code)
+    participant M as Model
+    H->>M: tool definitions + messages
+    M-->>H: tool-use request: id, name, input
+    Note over H: the request is a proposal:<br>harness looks up, validates,<br>runs, shapes the result
+    H->>M: tool result, matched by id<br>(error flag if it failed)
+    M-->>H: next request, or final answer

@@ -1,0 +1,7 @@
+flowchart TD
+    RUN(["One run"]) --> S["Trace of spans:<br>where time, tokens,<br>errors went"]
+    RUN --> J["Trajectory log:<br>exact requests,<br>responses, results"]
+    J --> E["Exact replay:<br>model and tools<br>stubbed"]
+    J --> F["Fork replay:<br>live model from<br>turn k, one change"]
+    E --> EH["Tests harness code"]
+    F --> FH["Tests whether<br>a fix works"]

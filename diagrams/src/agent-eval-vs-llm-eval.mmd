@@ -1,0 +1,13 @@
+flowchart TD
+    subgraph L["LLM eval: a function"]
+        direction TB
+        L1["Fixed prompt"] --> L2["One completion"]
+        L2 --> L3(["Compare with reference"])
+    end
+    subgraph A["Agent eval: an experiment"]
+        direction TB
+        A1["Task starts a<br>fresh environment"] --> A2["Agent takes many turns,<br>changing the environment"]
+        A2 --> A3(["Grade the end state"])
+        A3 -->|"repeat: k trials"| A1
+    end
+    L ~~~ A
