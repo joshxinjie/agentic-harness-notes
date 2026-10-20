@@ -6,7 +6,7 @@ def slug(h):
     h=re.sub(r'[^\w\- ]','',h)
     return h.replace(' ','-')
 anchors={}
-files=glob.glob(root+'/*.md')+glob.glob(root+'/weeks/*.md')
+files=glob.glob(root+'/*.md')+glob.glob(root+'/weeks/*.md')+glob.glob(root+'/review/*.md')+glob.glob(root+'/reviews/*.md')
 for f in files:
     s=set();cnt={}
     inc=False
@@ -36,3 +36,4 @@ for f in files:
             print('NOFILE',f,u); bad+=1; continue
         if a and a not in anchors[t]: print('NOANCHOR',os.path.basename(f),u); bad+=1
 print('bad',bad)
+sys.exit(1 if bad else 0)

@@ -33,7 +33,19 @@ Reference:
 - [Reading list](reading-list.md) — all sources, grouped by week.
 - [Changelog](CHANGELOG.md) — what each weekly update added.
 - [Style guide](STYLE.md) — how the notes are written.
+- [Review procedure](REVIEW.md) — how a second model checks the notes; decisions in [reviews/decisions.md](reviews/decisions.md).
 
 ## How it's updated
 
-A scheduled task runs every Saturday morning (Singapore time). It reads that week's brief emails, rewrites them into the matching chapter using the style guide, fills in answers that were still pending, updates the glossary and reading list, and commits to this repo.
+A scheduled task runs every Saturday morning (Singapore time). It reads that week's brief emails, rewrites them into the matching chapter using the style guide, fills in answers that were still pending, updates the glossary and reading list, and opens a pull request on a `weekly/YYYY-MM-DD` branch. Nothing reaches `main` until I merge it.
+
+## How it's reviewed
+
+A different model (Fable) checks the notes against [REVIEW.md](REVIEW.md): technical accuracy, nothing lost or invented in the rewrite, the style guide, links, sources and diagrams. It only comments; it never approves or pushes.
+
+- **Weekly:** about 90 minutes after the update PR opens (Saturdays 11:23), Fable reviews it.
+- **Monthly:** on the 1st it reviews the whole repo and opens a `reviewer/` PR with its findings.
+- **On request:** comment `/review` on any PR (or `/review force` to re-review the same commit), or add the `review` label.
+- **Answering:** comment `/respond` on the reviewed PR. The author model decides on each finding (accept, modify, reject, defer), applies the fixes and opens a pull request into the reviewed branch. Merging it accepts the decisions; closing it rejects them.
+
+Every review is archived on the `reviewer/archive` branch. Machinery: [review/](review/), [scripts/review_harness/](scripts/review_harness/), [.github/workflows/](.github/workflows/). Ported from the dalio-debt-cycle repo.

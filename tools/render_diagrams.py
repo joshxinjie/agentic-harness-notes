@@ -11,7 +11,8 @@ import glob, os, re, subprocess, sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC, OUT = os.path.join(ROOT, "diagrams", "src"), os.path.join(ROOT, "diagrams")
 CFG = os.path.join(ROOT, "tools", "mermaid-config.json")
-PUP = os.path.join(ROOT, "tools", "puppeteer.json")
+# PUPPETEER_CONFIG overrides the Chromium path (the review workflow points it at the runner's Chrome).
+PUP = os.environ.get("PUPPETEER_CONFIG") or os.path.join(ROOT, "tools", "puppeteer.json")
 
 def add_background(path):
     svg = open(path, encoding="utf-8").read()
