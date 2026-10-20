@@ -1,6 +1,6 @@
 %%{init: {"flowchart": {"rankSpacing": 26}}}%%
 flowchart TD
-    T(["Task: the only state [4]"]) --> C
+    T(["Transcript, starting<br>with the task [4]"]) --> C
     C["Model call: system<br>prompt + tools [1]"] --> L["Log the turn [6]"]
     L --> Q{"Tool requested?"}
     Q -->|"no"| D(["Return the reply"])

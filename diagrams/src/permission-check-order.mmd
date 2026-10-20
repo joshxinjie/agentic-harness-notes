@@ -4,6 +4,6 @@ flowchart TD
     D -->|"no"| A{"Ask rule<br>matches?"}
     A -->|"yes"| H["A human decides"]
     A -->|"no"| L{"Allow rule<br>matches?"}
-    L -->|"yes"| R["Runs, inside<br>the sandbox"]
-    L -->|"no"| U["Unknown tool:<br>ask a human"]
+    L -->|"yes"| R["Tool runs"]
+    L -->|"no"| U["No match:<br>unknown tool"]
     U --> H

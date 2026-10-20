@@ -1,0 +1,7 @@
+flowchart TD
+    O["Observation:<br>tool result, appended<br>by the harness"] --> T["Thought:<br>what I know,<br>what to check next"]
+    T --> A["Action:<br>a tool call"]
+    A --> X(["Harness runs the tool"])
+    X --> O
+    T -.->|"enough to answer"| F(["Final answer"])
+    N["Today: the Thought is<br>a thinking block,<br>emitted before the tool call"] -.- T

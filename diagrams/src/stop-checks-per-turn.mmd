@@ -1,0 +1,13 @@
+flowchart TD
+    B{"Budget left?<br>steps, cost, time"} -->|"no"| BF(["Final call, no tools:<br>status budget"])
+    B -->|"yes"| K{"Stuck?"}
+    K -->|"yes"| NU["Nudge once;<br>still stuck: stop,<br>status stuck"]
+    K -->|"no"| C["Call the model"]
+    NU --> C
+    C --> R{"Stop reason?"}
+    R -->|"tool call"| TL["Run tools;<br>next turn"]
+    R -->|"truncated"| RT["Retry, bigger<br>output cap"]
+    R -->|"refusal"| RF(["Status<br>refusal"])
+    R -->|"end of turn"| SU{"Submitted?"}
+    SU -->|"yes"| OK(["Status success"])
+    SU -->|"no"| NS["Reply: not<br>submitted; next turn"]

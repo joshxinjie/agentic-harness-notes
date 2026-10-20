@@ -1,8 +1,12 @@
 # Week 7 — Evaluation II and iteration
 
-[Week 6](week-06-evaluation-1.md) turned runs into numbers you can trust: tasks, graders, metrics, and a paired comparison that says ship, hold or block. This week is about what you do when one of those numbers is bad.
+[Week 6](week-06-evaluation-1.md) turned runs into numbers you can trust: tasks, graders, metrics, and a paired comparison that says ship, hold or block. This week is about what you do when one of those numbers is bad. It stays in layer 6 (feedback and evals).
 
-Step one is always reading the run that produced it. A score tells you *that* something failed. The transcript tells you *where* and *why*. We start with how to read one failed transcript properly (7.1), then group many diagnoses into a counted list of failure types that tells you what to fix first (7.2).
+![The six layers of a harness, stacked below the stateless model they wrap: prompts, tools and the executor, loop control, state, guardrails and permissions, feedback and evals.](../diagrams/harness-layers.svg)
+
+*Figure: the six harness layers from [1.4](week-01-what-an-agent-is.md#14-what-a-harness-is). This week is about layer 6 (feedback and evals), and its diagnoses point back into the other five.*
+
+Step one is always reading the run that produced the bad number. A score tells you *that* something failed. The transcript tells you *where* and *why*. We start with how to read one failed transcript properly (7.1), then group many diagnoses into a counted list of failure types that tells you what to fix first (7.2).
 
 The running example is still the nightly investigator for Xin Jie's solar sites.
 
@@ -12,25 +16,46 @@ The running example is still the nightly investigator for Xin Jie's solar sites.
 
 *Day 44 · 2026-10-15*
 
-**Reading a failed transcript is a procedure, not skimming. Check the failure is fair, walk back to the earliest step that decided it, rebuild what the model actually saw at that step, and confirm the fix with a fork replay.**
+> **In short**
+> - Reading a failed transcript is a procedure, not skimming: check the failure is fair, walk back to the earliest step that decided it, rebuild what the model actually saw there, and confirm the fix with a fork replay.
+> - The last bad step is rarely the cause, and your log is not what the model saw.
+> - If a fork replay does not flip the outcome, you have a story, not a diagnosis.
 
 ### The idea
 
-Anthropic's eval guide ends with three words: "Read the transcripts!" Reading one well takes four steps.
+A **transcript** is the full record of one run: outputs, tool calls, reasoning and intermediate results ([6.1](week-06-evaluation-1.md#61-why-agent-evals-differ-from-llm-evals)). Anthropic's eval guide ends with three words: "Read the transcripts!" Reading one well takes four steps.
 
-**1. Check the failure is fair.** Before blaming the agent, rule out the grader, the task and the infrastructure. Does the reference solution pass? Is the expected answer right? Did a tool time out because of the environment? In Anthropic's words: "Failures should seem fair: it's clear what the agent got wrong and why."
+**1. Check the failure is fair.** Before blaming the agent, rule out the grader (the logic that scores the run), the task and the infrastructure:
 
-**2. Walk backwards to the decisive error.** The wrong ticket is the *symptom*. What you want is the **decisive error step**: the earliest step where a correction would have turned the failure into a success. That definition comes from the Who&When paper (Zhang et al., ICML 2025). Errors compound (the p<sup>n</sup> of [lesson 1.6](week-01-what-an-agent-is.md#16-when-not-to-build-an-agent)), so the last bad step is rarely the cause.
+- Does the reference solution pass?
+- Is the expected answer right?
+- Did a tool time out because of the environment?
 
-**3. Rebuild what the model saw at that step, then name the layer.** Your trajectory log is not the model's context. Clearing, compaction and skill loading all change what was actually sent. So rebuild the exact request at turn k and ask three questions:
+In Anthropic's words: "Failures should seem fair: it's clear what the agent got wrong and why."
 
-- Was the needed fact present, or buried among distractors? (Layers 2 and 4.)
-- Did the tool menu, the tool description or the error text point the right way? (Layer 2.)
-- Did the prompt or the loop control allow the right action? (Layers 1, 3 and 5.)
+**2. Walk backwards to the decisive error.** The wrong ticket is the *symptom*. What you want is the **decisive error step**: the earliest step where a correction would have turned the failure into a success. That definition comes from the Who&When paper (Zhang et al., ICML 2025).
+
+Errors compound: small per-step error rates multiply over many steps (the p<sup>n</sup> of [lesson 1.6](week-01-what-an-agent-is.md#16-when-not-to-build-an-agent)). So the last bad step is rarely the cause.
+
+**3. Rebuild what the model saw at that step, then name the layer.** Your trajectory log (the harness's own record of the run, [5.5](week-05-control-safety-reliability.md#55-observability-tracing-logging-trajectories-replaying-runs)) is not the model's context. Several things change what was actually sent:
+
+- clearing (old tool results removed, [3.2](week-03-state-and-memory.md#32-context-management-summarisation-compaction-truncation));
+- compaction (older turns replaced by a summary, also 3.2);
+- skill loading (instructions pulled in on demand, [4.5](week-04-prompt-and-tool-design.md#45-skills-procedural-knowledge-loaded-on-demand)).
+
+So rebuild the exact request at turn k and ask three questions:
+
+- Was the needed fact present, or buried among distractors? (Layers 2 and 4: tools and the executor, and state.)
+- Did the tool menu, the tool description or the error text point the right way? (Layer 2: tools and the executor.)
+- Did the prompt or the loop control allow the right action? (Layers 1, 3 and 5: prompts, loop control, and guardrails and permissions.)
 
 Only when the information was present, clear and allowed is it a model reasoning error.
 
-**4. Confirm with a fork replay.** Patch the suspected cause at turn k. Re-run five times, with tools served from the recorded cassette, and see whether the outcome flips. If it does not flip, you have a story, not a diagnosis.
+**4. Confirm with a fork replay.** A fork replay restarts the run from a saved turn with one thing changed, using the live model ([5.5](week-05-control-safety-reliability.md#55-observability-tracing-logging-trajectories-replaying-runs)). Patch the suspected cause at turn k. Re-run five times, with tools served from the recorded cassette (the saved tool responses), and see whether the outcome flips. If it does not flip, you have a story, not a diagnosis.
+
+![A flowchart: check the failure is fair, walk back to the earliest decisive step, ask three questions of the rebuilt context to name the layer, then confirm with a five-run fork replay.](../diagrams/transcript-diagnosis.svg)
+
+*Figure: "model reasoning error" is what is left only after the three context questions all come back yes, and every branch still ends in a fork replay.*
 
 ### An example
 
@@ -44,9 +69,9 @@ SG-03 was expected to be a meter fault. The run filed `root_cause=weather`, with
 | T4 | *thinking* | "station 4 cloud variability high…" |
 | T5 | `ticket_draft(weather, 22%)` | |
 
-Read forwards, T4 looks like a reasoning failure: the model "ignored the memory".
+(MAE is the mean absolute error of the forecast.) Read forwards, T4 looks like a reasoning failure: the model "ignored the memory".
 
-Rebuilding the T4 request shows something else. T3 pushed the context past 30k tokens, and `clear_tool_uses` ([lesson 3.2](week-03-state-and-memory.md#32-context-management-summarisation-compaction-truncation)) wiped the T1 result. Only `note` was excluded from clearing. The model never saw the meter fact.
+Rebuilding the T4 request shows something else. T3 pushed the context past 30k tokens, and the API's tool-result clearing ([lesson 3.2](week-03-state-and-memory.md#32-context-management-summarisation-compaction-truncation)) wiped the T1 result. Only `note` was excluded from clearing. The model never saw the meter fact.
 
 So the decisive step is T3: an hourly pull that both buried the evidence and triggered the clear. The fixes are in the harness, not the prompt:
 
@@ -55,15 +80,29 @@ So the decisive step is T3: an hourly pull that both buried the evidence and tri
 
 Fork at T3 with `agg=daily`: 5 of 5 runs file meter. Confirmed.
 
+**API details**
+
+| What | Value |
+|---|---|
+| Tool-result clearing (Claude API context editing) | `clear_tool_uses` |
+
 ### Where it lives in the harness
 
-Layer 6. It uses the layer-5 observability from [lesson 5.5](week-05-control-safety-reliability.md#55-observability-tracing-logging-trajectories-replaying-runs): traces joined to trajectories by `tool_use_id`, plus fork replay.
+Layer 6 (feedback and evals). It uses the observability from [lesson 5.5](week-05-control-safety-reliability.md#55-observability-tracing-logging-trajectories-replaying-runs), which sits in layer 5 (guardrails and permissions): traces (timed records of each step) joined to trajectories by the tool call's id, plus fork replay.
 
-Write each diagnosis as one line, called an **open code**. For example: "T3: hourly pull → memory cleared → weather blamed". In 7.2 those lines get grouped into a taxonomy.
+Write each diagnosis as one line, called an **open code**. For example: "T3: hourly pull → memory cleared → weather blamed". In [7.2](#72-error-taxonomies-and-common-failure-modes) those lines get grouped into a taxonomy.
+
+**API details**
+
+| What | Value |
+|---|---|
+| Join key between traces and trajectories (Claude API tool call id) | `tool_use_id` |
 
 ### Common mistakes
 
-Finding the error is hard even for models. On Who&When, the best automated method found the responsible agent 53.5% of the time, but the decisive step only 14.2% of the time. So people read first, and LLM tools (for example Transluce's Docent) help search and cluster many runs. Typical mistakes:
+Finding the error is hard even for models. On Who&When, the best automated method found the responsible agent 53.5% of the time, but the decisive step only 14.2% of the time. So people read first, and LLM tools (for example Transluce's Docent) help search and cluster many runs.
+
+Typical mistakes:
 
 - fixing the last bad step;
 - reading the log instead of the rebuilt context;
@@ -72,7 +111,7 @@ Finding the error is hard even for models. On Who&When, the best automated metho
 
 ### Try it
 
-*10 min.* MY-01 was expected to be `pipeline_stale`: the ETL was stuck and the actuals were forward-filled. The run filed `meter_drift`.
+*10 min.* MY-01 was expected to be `pipeline_stale`: the ETL (the data pipeline) was stuck and the actuals were forward-filled (the last value repeated). The run filed `meter_drift`.
 
 | Turn | Call | Result |
 |---|---|---|
@@ -93,7 +132,10 @@ Finding the error is hard even for models. On Who&When, the best automated metho
 
 **1. Open code:** "T3: `pipeline_get_status` timed out with a bare 'Error: timeout'; the agent dropped the pipeline hypothesis as n/a and read 36 h of flat actuals (forward-fill) as a stuck meter."
 
-**2. The decisive step is T3**, in layer 2 (the executor and its error text). The tool failed with no retry and no information. Fix T3 and the run flips. The fix could be a retry that returns "stale since 10-12 13:55", or an error that says "status UNKNOWN, do not rule pipeline out; flat actuals are also what forward-fill looks like".
+**2. The decisive step is T3**, in layer 2 (the executor, the code that runs tool calls, and its error text). The tool failed with no retry and no information. Fix T3 and the run flips. The fix could be either:
+
+- a retry that returns "stale since 10-12 13:55"; or
+- an error that says "status UNKNOWN, do not rule pipeline out; flat actuals are also what forward-fill looks like".
 
 T6 is only the symptom. By T6 the notes already said "pipeline: n/a". So even a perfect T6 could at best have produced an honest "unverified" meter ticket, never `pipeline_stale`. The thinking at T3 ("flat = stuck sensor") is anchoring, but the model only had one candidate explanation in front of it.
 
@@ -104,7 +146,13 @@ T6 is only the symptom. By T6 the notes already said "pipeline: n/a". So even a 
 3. **`metrics_get_site`** flags runs of identical consecutive actuals as "possible forward-fill / stuck sensor" (both, not one).
 4. **The note format** bans "n/a" and requires "untested (reason)".
 
-**4. Fork replay.** Take the messages up to T3 and replace the pipeline `tool_result` with the new error text. Run 5 times on the live model, with other tools served from the cassette. Decide up front what happens if the agent retries `pipeline_get_status`: serve a "stale" fixture, and mark the fork as partly synthetic. Run 5 unpatched forks as a control. Pass: at least 4 of 5 end in `pipeline_stale` or an escalation, not `meter_drift`.
+**4. Fork replay.**
+
+- Take the messages up to T3 and replace the pipeline `tool_result` with the new error text.
+- Run 5 times on the live model, with other tools served from the cassette.
+- Decide up front what happens if the agent retries `pipeline_get_status`: serve a "stale" fixture, and mark the fork as partly synthetic.
+- Run 5 unpatched forks as a control.
+- Pass: at least 4 of 5 end in `pipeline_stale` or an escalation, not `meter_drift`.
 
 **5. What the transcript can't tell you:** whether the timeout was a real API outage or a harness timeout set too short. Look at the span latency in the trace and at the pipeline service's own logs.
 
@@ -118,15 +166,20 @@ Common slips: calling T6 decisive, and fixing it with a prompt line ("always che
 
 ---
 
+7.1 turned one failed run into one open code. The next lesson turns a hundred open codes into a taxonomy, which tells the rest of Week 7's improvement loop what to fix first.
+
 ## 7.2 Error taxonomies and common failure modes
 
 *Day 45 · 2026-10-16*
 
-**7.1 turned one failed run into one open code. This lesson turns a hundred open codes into a taxonomy: a counted list of failure categories that tells the rest of Week 7's improvement loop what to fix first.**
+> **In short**
+> - A taxonomy is a counted list of failure categories, built by grouping many open codes (about a hundred).
+> - Counts tell the rest of Week 7's improvement loop what to fix first; rank by count × severity, not count alone.
+> - Give every category a definition, a harness layer and owner, and a detector; keep "unfair" categories separate.
 
 ### The idea
 
-An open code is one anecdote. A **taxonomy** is the same anecdotes grouped into named categories and counted. Hamel Husain calls the grouping step, **axial coding**, "the most important step". The procedure:
+An open code is one anecdote: a one-line diagnosis of the first thing that went wrong in a failed run ([7.1](#71-reading-a-transcript)). A **taxonomy** is the same anecdotes grouped into named categories and counted. Hamel Husain calls the grouping step, **axial coding**, "the most important step". The procedure:
 
 1. **Open-code** about 30 failing traces yourself: one line each about the *first* thing that went wrong.
 2. **Cluster** the lines into categories. An LLM can propose the clusters, but you decide them.
@@ -141,7 +194,7 @@ You don't have to start from a blank page. Two published agent taxonomies work a
 - **Inter-agent misalignment**, 36.9%. Includes reasoning–action mismatch (14.0%) and failing to ask for clarification (11.7%).
 - **Task verification**, 21.3%. Includes premature termination, missing verification and incorrect verification.
 
-The method matters as much as the list. Agreement between annotators (measured as κ, kappa) started at 0.24 and reached 0.88 only after several rounds of refining the definitions. An o1 judge given few-shot examples reached κ = 0.77 against the experts.
+The method matters as much as the list. Agreement between annotators is measured as κ (kappa): how often two labellers give the same label, beyond what chance would give. It started at 0.24 and reached 0.88 only after several rounds of refining the definitions. An o1 judge given few-shot examples reached κ = 0.77 against the experts.
 
 **AgentErrorTaxonomy** (Zhu et al., 2025) is built from 500+ failed single-agent trajectories. It groups errors by module:
 
@@ -153,7 +206,7 @@ The method matters as much as the list. Agreement between annotators (measured a
 | Action | format or parameter error, action–plan mismatch |
 | System | tool execution error, step limit, environment error |
 
-Even with step-level labels, its annotators only reached κ = 0.55. Its **AgentDebug** method finds the critical (earliest decisive) error in 45% of cases, against 28% for baselines. Re-running from that step improved ALFWorld success by up to 26% relative.
+Even with step-level labels, its annotators only reached κ = 0.55. Its **AgentDebug** method finds the critical (earliest decisive) error in 45% of cases, against 28% for baselines. Re-running from that step improved ALFWorld (a benchmark) success by up to 26% relative.
 
 Both papers make the same point as 7.1: early errors cascade, so you label the root, not the wreckage.
 
@@ -164,6 +217,10 @@ Both papers make the same point as 7.1: early errors cascade, so you label the r
 - a **detector**: a code check or a calibrated judge that can find more cases in traces automatically.
 
 Keep separate "unfair" categories (grader bug, task bug, infrastructure), so they never count against the agent.
+
+![A tree: your failure taxonomy splits into categories that each need a definition, a harness layer and owner, and a detector, and separate unfair categories for grader bugs, task bugs and infrastructure.](../diagrams/taxonomy-category-anatomy.svg)
+
+*Figure: the published labels give you the definition; the layer, owner and detector are what make a category point at a fix.*
 
 ### An example
 
@@ -178,14 +235,16 @@ A worked fragment from 40 nightly failures:
 | Vague ticket | 4 | 1 | actionability judge (TPR/TNR) |
 | Unfair: grader, fixture or infra | 4 | 6 | reference fails, or config diff |
 
+The layers are 1 (prompts), 2 (tools and the executor), 3 (loop control), 4 (state), 5 (guardrails and permissions) and 6 (feedback and evals). TPR and TNR are the judge's true-positive and true-negative rates ([6.3](week-06-evaluation-1.md#63-graders-exact-match-rubric-llm-as-judge-outcome-checks)).
+
 Count by root category, one per trace. Then rank by **count × severity**, not count alone. One silent wrong ticket outweighs three budget stops that produced no ticket.
 
 ### Where it lives in the harness
 
-Layer 6. The taxonomy becomes:
+Layer 6 (feedback and evals). The taxonomy becomes:
 
 - a field in your trace store;
-- the source of new eval tasks (6.2);
+- the source of new eval tasks ([6.2](week-06-evaluation-1.md#62-building-an-eval-set-from-real-failures-the-taskgraderenvironment-triad));
 - the set of detectors that 7.4 runs over production.
 
 ### Common mistakes

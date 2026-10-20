@@ -1,0 +1,7 @@
+flowchart TD
+    F{"Where did it fail?"} -->|"model call"| I{"Retryable?<br>429, 500, 504, 529"}
+    F -->|"inside a tool"| TE["Error result:<br>what went wrong,<br>what to try next"]
+    I -->|"yes"| W["Wait: backoff<br>with full jitter"]
+    W --> RC(["Call again;<br>transcript unchanged"])
+    I -->|"no, or retries<br>run out"| ST(["Run ends:<br>status error"])
+    TE --> MD(["Model picks a<br>different action"])

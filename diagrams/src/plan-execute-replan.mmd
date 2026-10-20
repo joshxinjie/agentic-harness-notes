@@ -1,0 +1,8 @@
+flowchart TD
+    T["Task"] --> P["Planner call:<br>step list"]
+    P --> S[("Plan object,<br>held by the harness")]
+    S --> E["Executor: next step,<br>small inner loop"]
+    E --> N["Step note<br>(inner transcript dropped)"]
+    N --> R{"Replanner"}
+    R -->|"revise remaining steps"| S
+    R -->|"all done"| F(["Finish"])
