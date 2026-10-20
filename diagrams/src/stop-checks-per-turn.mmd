@@ -6,7 +6,7 @@ flowchart TD
     NU --> C
     C --> R{"Stop reason?"}
     R -->|"tool call"| TL["Run tools;<br>next turn"]
-    R -->|"truncated"| RT["Retry, bigger<br>output cap"]
+    R -->|"truncated"| RT["Never run it;<br>retry, bigger cap"]
     R -->|"refusal"| RF(["Status<br>refusal"])
     R -->|"end of turn"| SU{"Submitted?"}
     SU -->|"yes"| OK(["Status success"])

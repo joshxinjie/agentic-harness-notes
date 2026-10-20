@@ -190,7 +190,7 @@ This is the 1.2 loop with the Thought made explicit. In 2022 the harness pulled 
 
 **Reasoning models moved that step from prompt text into the model.** On the Claude API, the Thought is now a thinking block that the model emits before its tool-call blocks.
 
-![The ReAct cycle: an observation feeds a thought, the thought picks an action (a tool call), the harness runs the tool and appends the next observation; when the thought has enough, it gives the final answer. Today the thought is a thinking block emitted before the tool call.](../diagrams/react-thought-action-observation.svg)
+![The ReAct cycle: an observation feeds a thought, the thought picks an action (a tool call), the harness runs the tool and appends the next observation. Today the thought is a thinking block emitted before the tool call.](../diagrams/react-thought-action-observation.svg)
 
 *Figure: the reasoning step sits between every observation and the next action; only its container changed.*
 
@@ -300,7 +300,7 @@ Two common slips:
 > **In short**
 > - A step-by-step loop drifts on long tasks; an explicit plan keeps it on track and makes its work reviewable before it acts.
 > - The plan should be owned by the harness, stored outside the transcript, and revised as results come in.
-> - Plan when the approach is uncertain; if you could describe the diff in one sentence, skip the plan.
+> - Plan when the approach is uncertain, the change touches several files, or the code is unfamiliar; if you could describe the diff in one sentence, skip the plan.
 
 ### The idea
 
@@ -505,7 +505,7 @@ The docs list three holes in the guarantee:
 
 Check the stop reason before touching the parsed result.
 
-![Model output passes through constrained sampling, so its shape is guaranteed. The harness first checks why the model stopped: on a refusal or the output cap it handles the case and does not parse. Otherwise the executor checks whether the values make sense: yes, run the tool; no, return an error result naming the fix, which the model sees next turn.](../diagrams/schema-shape-vs-meaning.svg)
+![Model output passes through constrained sampling, which enforces its shape (with exceptions, below). The harness first checks why the model stopped: on a refusal or the output cap it handles the case and does not parse. Otherwise the executor checks whether the values make sense: yes, run the tool; no, return an error result naming the fix, which the model sees next turn.](../diagrams/schema-shape-vs-meaning.svg)
 
 *Figure: the API guarantees the shape; the stop-reason check and the meaning check are still yours.*
 
@@ -633,7 +633,7 @@ Actions are compared by tool name and input, observations by content, ignoring i
 
 **4. Explicit completion.** For batch runs, do not infer done from an end-of-turn stop. Give the model a `submit(result)` tool, or a magic string like mini-swe-agent's (see the table). Then an end-of-turn stop without a submit is a stall. The harness replies "Not submitted — call submit or continue" instead of returning a half answer. The Agent SDK's Stop hook is the same idea from the other side: validate before accepting the stop.
 
-![Before each call: if no budget is left, make a final call without tools and end with status budget. If stuck, nudge once, and stop with status stuck if it persists. Then call the model and branch on the stop reason: tool call, run tools and take the next turn; truncated, retry with a bigger output cap; refusal, end with status refusal; end of turn, check whether the task was submitted, ending in success if yes, or replying "not submitted" if no.](../diagrams/stop-checks-per-turn.svg)
+![Before each call: if no budget is left, make a final call without tools and end with status budget. If stuck, nudge once, and stop with status stuck if it persists. Then call the model and branch on the stop reason: tool call, run tools and take the next turn; truncated, never run a half-written tool call and retry with a bigger output cap; refusal, end with status refusal; end of turn, check whether the task was submitted, ending in success if yes, or replying "not submitted" if no.](../diagrams/stop-checks-per-turn.svg)
 
 *Figure: an end-of-turn stop is only a candidate for done; every exit carries its own status.*
 
@@ -775,9 +775,9 @@ In AWS's simulation this saved more than half the total calls. Log each retry wi
 
 Strict tool use ([2.4](#24-structured-outputs-and-schemas)) removes the missing-parameter class. What remains is semantic, and only the executor (the code that runs tool calls) can explain it.
 
-![Where did it fail? A model-call failure is checked for retryability (429, 500, 504, 529): if yes, wait with backoff and full jitter and call again with the transcript unchanged; if not, or once retries run out, the run ends with status error. A failure inside a tool becomes an error result saying what went wrong and what to try next, and the model picks a different action.](../diagrams/error-two-paths.svg)
+![Where did it fail? A model-call failure is checked for retryability (429, 500, 504, 529, connection errors, and 409 once the conflict is resolved): if yes, wait with backoff and full jitter and call again with the transcript unchanged. If not, once retries run out, or on a 429 with no retry-after header (a spend cap), the run ends with status error. A failure inside a tool is first retried inside the tool if it is an infrastructure error; once those retries run out it becomes an error result saying what went wrong and what to try next, and the model picks a different action.](../diagrams/error-two-paths.svg)
 
-*Figure: the model never sees the left path; it must see the right one.*
+*Figure: the model never sees the left path; it must see the right one. (*409 only once the conflict is resolved.)*
 
 **API details**
 
