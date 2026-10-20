@@ -1,0 +1,10 @@
+%%{init: {"flowchart": {"rankSpacing": 30}}}%%
+flowchart TD
+    T(["Task as first<br>user message"]) --> C
+    C["Call the model with<br>the whole transcript<br>(perceive, reason)"]
+    C --> P["Append the<br>model's reply"]
+    P --> Q{"Did it ask<br>for a tool?"}
+    Q -->|"no: end turn<br>or other reason"| E(["Stop"])
+    Q -->|"yes"| R["Harness runs<br>each tool (act)"]
+    R --> A["Append results<br>as a user message<br>(observed next call)"]
+    A --> C

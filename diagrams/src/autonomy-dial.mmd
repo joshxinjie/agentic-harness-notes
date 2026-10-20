@@ -1,0 +1,11 @@
+%%{init: {"flowchart": {"rankSpacing": 30}}}%%
+flowchart TD
+    S["Single LLM call<br>your code controls everything"]
+    U["Augmented LLM<br>+ tools, retrieval, memory"]
+    W["Workflow<br>code owns the path,<br>model fills the boxes"]
+    A["Agent<br>model owns the path<br>at run time"]
+    S -->|"control flow unchanged"| U
+    U -->|"code draws the graph"| W
+    W -->|"hand the graph<br>to the model"| A
+    A -.- G["Gains: steps you<br>cannot predict"]
+    A -.- C["Costs: tokens, latency,<br>predictability"]

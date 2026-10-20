@@ -1,0 +1,9 @@
+flowchart TD
+    C(["Tool call"]) --> D{"Deny rule<br>matches?"}
+    D -->|"yes"| B["Blocked"]
+    D -->|"no"| A{"Ask rule<br>matches?"}
+    A -->|"yes"| H["A human decides"]
+    A -->|"no"| L{"Allow rule<br>matches?"}
+    L -->|"yes"| R["Runs, inside<br>the sandbox"]
+    L -->|"no"| U["Unknown tool:<br>ask a human"]
+    U --> H

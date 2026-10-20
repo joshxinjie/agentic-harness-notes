@@ -1,0 +1,13 @@
+flowchart TD
+    F["Real failure<br>(review reject, trace)"] --> T
+    subgraph T["Task record: the triad"]
+        direction TB
+        T1["Task: inputs,<br>clear criteria"]
+        T2["Environment: fixture<br>frozen from the trace"]
+        T3["Grader: reads<br>the end state"]
+        T1 ~~~ T2 ~~~ T3
+    end
+    T --> V{"Empty sink fails?<br>Reference passes?"}
+    V -->|"no"| X["Fix task or grader"]
+    V -->|"yes"| C["Capability set"]
+    C -->|"passes reliably"| R["Regression set"]

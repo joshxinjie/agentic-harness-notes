@@ -1,0 +1,11 @@
+flowchart TD
+    A["Baseline A"] --> S
+    B["Candidate B:<br>one change"] --> S
+    S["Same tasks, fixtures,<br>model, infrastructure"] --> D["Per-task paired<br>differences"]
+    D --> R{"A regression task<br>now fails?"}
+    R -->|"yes"| X(["Block"])
+    R -->|"no"| G{"Guard metrics<br>worse than margin?"}
+    G -->|"yes"| X
+    G -->|"no"| C{"CI above zero?"}
+    C -->|"yes"| Y(["Ship"])
+    C -->|"no"| H(["Hold"])

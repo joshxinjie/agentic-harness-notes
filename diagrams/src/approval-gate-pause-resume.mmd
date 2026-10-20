@@ -1,0 +1,13 @@
+sequenceDiagram
+    participant M as Model
+    participant H as Harness
+    participant D as Disk
+    participant P as Human
+    M->>H: tool call (verdict: ask)
+    H->>D: save checkpoint + pending call
+    H->>P: review card
+    Note over H: run stops: awaiting approval
+    P->>H: approve, edit or reject
+    H->>D: load saved state
+    H->>M: decision as the tool result
+    Note over M: model carries on

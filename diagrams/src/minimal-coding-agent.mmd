@@ -1,0 +1,13 @@
+%%{init: {"flowchart": {"rankSpacing": 26}}}%%
+flowchart TD
+    T(["Task: the only state [4]"]) --> C
+    C["Model call: system<br>prompt + tools [1]"] --> L["Log the turn [6]"]
+    L --> Q{"Tool requested?"}
+    Q -->|"no"| D(["Return the reply"])
+    Q -->|"yes"| X["Executor [2]"]
+    X --> G{"bash? Ask<br>the human [5]"}
+    G -->|"declined"| R
+    G -->|"approved, or<br>not bash"| F["read / list / edit / bash<br>output capped [2]"]
+    F --> R["Results and errors<br>as next message"]
+    R -->|"next turn"| C
+    R -.->|"30 turns used"| B(["Budget exhausted [3]"])
