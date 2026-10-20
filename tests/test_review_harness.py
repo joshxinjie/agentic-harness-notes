@@ -861,3 +861,12 @@ def test_respond_workflow_records_the_fix_pr_number(tmp_path):
                    env={"PATH": "/usr/bin:/bin", "BRANCH": "respond/pr57-2026-10-15", "num": "58"})
     out = log.read_text()
     assert "| #58 |" in out and "respond/pr57" not in out and "| — |" in out
+
+
+def test_workflows_install_from_main_not_the_pr():
+    """A PR branched before the review setup has no requirements.txt; installing only the PR's copy failed (PR #2)."""
+    review = (ROOT / ".github" / "workflows" / "review.yml").read_text()
+    respond = (ROOT / ".github" / "workflows" / "respond.yml").read_text()
+    assert "git show origin/main:requirements.txt" in review
+    assert "\n          pip install -r requirements.txt\n" not in review
+    assert 'if [ -f "$RUNNER_TEMP/work/requirements.txt" ]' in respond

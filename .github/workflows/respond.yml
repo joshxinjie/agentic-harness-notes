@@ -92,7 +92,8 @@ jobs:
         run: |
           npm install -g @anthropic-ai/claude-code
           claude --version
-          pip install -r "$RUNNER_TEMP/work/requirements.txt"
+          pip install -r requirements.txt               # main's (this checkout): the harness and its tests
+          if [ -f "$RUNNER_TEMP/work/requirements.txt" ]; then pip install -r "$RUNNER_TEMP/work/requirements.txt"; fi
           npm install -g @mermaid-js/mermaid-cli      # the author re-renders diagrams it fixes
           printf '{"executablePath": "%s", "args": ["--no-sandbox"]}\n' "$(command -v google-chrome)" \
             > "$RUNNER_TEMP/puppeteer.json"

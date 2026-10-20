@@ -105,7 +105,11 @@ jobs:
         run: |
           npm install -g @anthropic-ai/claude-code
           claude --version
-          pip install -r requirements.txt
+          # The harness and its tests come from main, so their dependencies do too: a PR branched before the
+          # review setup has no requirements.txt of its own. Add the PR's own, if it has one.
+          git show origin/main:requirements.txt > "$RUNNER_TEMP/requirements-main.txt"
+          pip install -r "$RUNNER_TEMP/requirements-main.txt"
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       - name: Run the review
         id: review
