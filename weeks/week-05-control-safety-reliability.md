@@ -742,7 +742,9 @@ The read-only calls run together with `asyncio.gather`. The side-effect calls ru
 
 **3. Overlap: streaming.** Streaming cuts *perceived* latency: a person sees the first token sooner. The total time barely changes.
 
-For harnesses, the useful variant is a per-tool setting for eager input streaming. It streams a large tool argument (a file, a report) before the API has buffered and validated it, so the harness can start a permission check or a preview early. The cost: the input can arrive as invalid JSON, or be cut off at the output-token limit. Guard the parse. If it fails, send back an error result that wraps the raw text, built with a JSON library.
+For harnesses, the useful variant is a per-tool setting for eager input streaming. It streams a large tool argument (a file, a report) before the API has buffered and validated it, so the harness can start a permission check or a preview early.
+
+The cost: the input can arrive as invalid JSON, or be cut off at the output-token limit. Guard the parse. If it fails, send back an error result that wraps the raw text, built with a JSON library.
 
 **4. Defer: batch.** The Message Batches API costs 50% of the standard price. Most batches finish in under an hour, the limit is 24 hours, and cache hits are best effort (30–98%).
 
@@ -857,9 +859,13 @@ Unattended runs turn asks into a queue, or turn the side effect into a draft.
 
 **[5.3](#53-guardrails-inputoutput-validation-policy-checks-classifiers) Guardrails.** Guardrails check *content* at four boundaries: input, tool input, tool output and final output. Permissions check *actions*. Put cheap, certain checks first (validators, policy as code) and fuzzy ones last (a classifier or LLM judge). A failed check gets block, reject-with-instruction, repair or escalate, and a classifier on its own only flags. The OpenAI SDK trap: input guardrails run in parallel by default, so set `run_in_parallel=False` in front of side effects. Track false positives for every guardrail.
 
-**[5.4](#54-prompt-injection-and-untrusted-content) Prompt injection.** Instructions and data share one token channel, and adaptive attacks beat every published detector. So the harness must make it impossible for untrusted text it has read to trigger consequential actions. Audit each run against the Rule of Two (untrusted input, sensitive data, state change: at most two without a human). Use control-flow patterns such as plan-then-execute and a dual LLM, where a tool-less quarantined extractor returns typed fields. Schemas stop instructions, not lies, so deciding numbers must come from the agent's own tools.
+**[5.4](#54-prompt-injection-and-untrusted-content) Prompt injection.** Instructions and data share one token channel, and adaptive attacks beat every published detector. So the harness must make it impossible for untrusted text it has read to trigger consequential actions.
 
-**[5.5](#55-observability-tracing-logging-trajectories-replaying-runs) Observability.** A run is a tree of timed spans (run → turn → model call → tool call → child agent). Keep spans structural by default, and pair them with a separate trajectory log of exact content. Exact replay stubs everything and tests harness code. Fork replay continues from turn *k* with one change, a live model and a recorded tool cassette, and tests a fix. Every run carries a status, the cache fields and a harness-version hash, so metrics can be split by version.
+Audit each run against the Rule of Two (untrusted input, sensitive data, state change: at most two without a human). Use control-flow patterns such as plan-then-execute and a dual LLM, where a tool-less quarantined extractor returns typed fields. Schemas stop instructions, not lies, so deciding numbers must come from the agent's own tools.
+
+**[5.5](#55-observability-tracing-logging-trajectories-replaying-runs) Observability.** A run is a tree of timed spans (run → turn → model call → tool call → child agent). Keep spans structural by default, and pair them with a separate trajectory log of exact content.
+
+Exact replay stubs everything and tests harness code. Fork replay continues from turn *k* with one change, a live model and a recorded tool cassette, and tests a fix. Every run carries a status, the cache fields and a harness-version hash, so metrics can be split by version.
 
 **[5.6](#56-latency-and-cost-budgets-parallel-tool-calls-streaming) Latency and cost.** Both scale with the number of turns. Four levers:
 
