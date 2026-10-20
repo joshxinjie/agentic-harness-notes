@@ -490,7 +490,7 @@ The authors kept the model fixed (GPT-4 Turbo) and changed only the interface. T
 - **Feedback that is informative but concise.**
 - **Guardrails for error recovery.**
 
-![The agent sends simple, efficient actions to the ACI, which runs them on the environment. The environment's output comes back through the ACI as concise feedback in a windowed view. The ACI also holds state such as the open file and cursor, and a guardrail blocks bad edits.](../diagrams/aci-channel.svg)
+![The agent's action goes through the ACI as a simple, efficient command, past a guardrail such as the linter, to the environment. The result comes back through the ACI as concise feedback in a windowed view, together with state the ACI holds such as the open file and cursor, and the agent reads it next turn.](../diagrams/aci-channel.svg)
 
 *Figure: the ACI sits between the model and the environment, shaping both what the agent can do and what it sees back.*
 

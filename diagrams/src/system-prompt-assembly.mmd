@@ -1,8 +1,6 @@
 flowchart TD
-    subgraph ST["Same every run"]
-        direction TB
-        R["Role"] --> C["Constraints"] --> P["Procedures"] --> X["Examples"]
-    end
-    ST --> B(["Cache boundary"])
-    B --> RUN["Per run: site, window,<br>triage table, memory index"]
-    RUN --> T["Per turn: budget, notes"]
+    ST["Same every run:<br>role, constraints,<br>procedures, examples"]
+    B(["Cache boundary"])
+    RUN["Per run: site, window,<br>triage table, memory index"]
+    T["Per turn: budget, notes"]
+    ST --> B --> RUN --> T

@@ -429,7 +429,7 @@ So far we have the autonomy dial, the loop and the tool contract. It is time to 
 > **In short**
 > - An agent is a model plus a harness: all the ordinary code and text around a stateless model that turns it into something that can do a job.
 > - The harness has six layers, and it — not the model — is the part you can engineer.
-> - Fix agent mistakes with deterministic changes to a layer (a validator, a budget, a linter), not by asking the model harder.
+> - The fix for an agent mistake is rarely "ask the model harder"; it is a deterministic change to a layer, such as a validation step or a lint rule.
 
 ### The idea
 
@@ -442,7 +442,7 @@ It helps to see the harness as six layers. You have already met a piece of each:
 3. **Loop control.** The while-loop, stop-reason handling, step and token budgets, loop detection ([1.2](#12-the-agent-loop); [Week 2](week-02-core-mechanics.md) covers budgets).
 4. **State.** The transcript, plus whatever survives outside it: progress files, scratchpads, checkpoints, memory documents ([Week 3](week-03-state-and-memory.md)).
 5. **Guardrails and permissions.** What the model may do, with whose credentials, what needs a human's approval, what gets filtered ([Week 5](week-05-control-safety-reliability.md)).
-6. **Feedback and evals.** Tests, linters, type checks, tracing, and the eval suite (a set of test tasks with graders) that tells you whether a change to layers 1–5 helped ([Weeks 6](week-06-evaluation-1.md)–[7](week-07-evaluation-2-and-iteration.md)).
+6. **Feedback and evals.** Tests, linters, type checks, tracing, and the eval suite (the set of test cases you score the agent against) that tells you whether a change to layers 1–5 helped ([Weeks 6](week-06-evaluation-1.md)–[7](week-07-evaluation-2-and-iteration.md)).
 
 ![The six layers of a harness, stacked below the stateless model they wrap: prompts, tools and the executor, loop control, state, guardrails and permissions, feedback and evals.](../diagrams/harness-layers.svg)
 
@@ -543,7 +543,7 @@ The six-layer map is still abstract. The fastest way to make it concrete is to r
 
 > **In short**
 > - Every production coding agent — Claude Code, Codex, mini-swe-agent — is a small loop wearing a large coat.
-> - Take the coat off and the skeleton fits on one screen, with each line belonging to one of the six layers.
+> - Take the coat off and the skeleton fits on one screen, and its parts map onto the six layers.
 > - Three choices carry most of the weight: exact-match edits, truncation inside the tools, and a way for the model to check its own work.
 
 ### The idea
@@ -609,7 +609,7 @@ Four tools that cap their own output, an executor that asks a human before runni
 
 ![The minimal coding agent as a flow: the transcript starts with the task; each turn calls the model with the system prompt and tools, logs the turn, and stops if no tool was requested. Otherwise the executor asks the human before bash, runs read, list, edit or bash with capped output, and sends results and errors back as the next message, until 30 turns are used.](../diagrams/minimal-coding-agent.svg)
 
-*Figure: the same code as a flow. The bracketed numbers are the layers, so every box belongs to one of the six.*
+*Figure: the same code as a flow. The bracketed numbers are the layers from 1.4, as in the code comments.*
 
 ### An example
 
@@ -627,19 +627,13 @@ Other small agents have the same shape:
 
 - Thorsten Ball's Go version (three tools, no bash) is about 190 lines.
 - nanoAgent is ~100 lines of Python with the same three-tool shape.
-- mini-swe-agent drops even the tool-calling API. It has bash only, parses actions from a code block in the model's text, runs every command as an independent subprocess, and keeps "a completely linear history". It scores over 74% on SWE-bench Verified (a public coding benchmark; see [6.6](week-06-evaluation-1.md#66-public-benchmarks-swe-bench-τ-bench-gaia-terminal-bench-and-their-limits)).
+- mini-swe-agent drops even the tool-calling API. It has bash only, parses actions from a code block in the model's text, runs every command as an independent `subprocess.run`, and keeps "a completely linear history". It scores over 74% on SWE-bench Verified (a public coding benchmark; see [6.6](week-06-evaluation-1.md#66-public-benchmarks-swe-bench-τ-bench-gaia-terminal-bench-and-their-limits)).
 
 Three design choices carry most of the weight:
 
 1. **`edit_file` uses exact-match replacement and refuses ambiguous matches.** That one `ValueError`, fed back word for word, is the most important guardrail in the file. Whole-file rewrites by the model are where code silently disappears.
 2. **Results are truncated in the tool**, not by asking the model to be brief (see [1.2](#12-the-agent-loop)).
 3. **`bash` gives the model its own feedback loop.** It can run the tests. That is layer 6 (feedback and evals) handed to the agent instead of kept by you.
-
-**API details**
-
-| What | Value |
-|---|---|
-| mini-swe-agent: how each command runs | an independent `subprocess.run` |
 
 ### Where it lives in the harness
 
@@ -832,7 +826,15 @@ Only the request is the model's; the rest is harness. Descriptions are the highe
 
 mini-swe-agent and Edd Mann's harness are the same skeleton with thicker layers (limits, submission strings, permission hooks, compaction). The three load-bearing choices: exact-match `edit_file`, truncation inside tools, and giving the model a way to check its own work.
 
-**1.6 When not to build an agent.** An agent buys the ability to handle steps you cannot list, and pays in tokens, latency, unpredictability and compounding error — roughly *p<sup>n</sup>*, with a sharp cliff beyond a depth threshold (HORIZON). Five questions: Can I draw the graph? Is the reasoning really rules? What is the worst silent wrong action? Can I eval it? Can one agent do it? Default to the simplest structure. When an agent is needed, wrap it in a deterministic pipeline with a human gate on side effects.
+**1.6 When not to build an agent.** An agent buys the ability to handle steps you cannot list, and pays in tokens, latency, unpredictability and compounding error — roughly *p<sup>n</sup>*, with a sharp cliff beyond a depth threshold (HORIZON). Five questions:
+
+- Can I draw the graph?
+- Is the reasoning really rules?
+- What is the worst silent wrong action?
+- Can I eval it?
+- Can one agent do it?
+
+Default to the simplest structure. When an agent is needed, wrap it in a deterministic pipeline with a human gate on side effects.
 
 ### Self-quiz
 
