@@ -1,6 +1,6 @@
 flowchart TD
     A(["Model proposes<br>a tool call"]) --> B{"Rule says<br>ask?"}
-    B -->|"no"| X["Run as usual"]
+    B -->|"allow"| X["Run as usual"]
     B -->|"yes"| C[("Save checkpoint<br>+ pending call")]
     C --> D["Review card to human;<br>run stops"]
     D -.->|"hours later"| E{"Human decides"}

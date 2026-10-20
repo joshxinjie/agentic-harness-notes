@@ -42,9 +42,9 @@ They are checked in a fixed order. In the docs' words: "deny, then ask, then all
 
 A bare deny on a whole tool removes that tool from the model's context altogether. That is the strongest form: a tool the model never sees cannot be called.
 
-![A tool call is checked against deny rules first, then ask rules, then allow rules; the first match decides, so a matching deny blocks, a matching ask goes to a human, a matching allow runs; with no match the call is an unknown tool.](../diagrams/permission-check-order.svg)
+![A tool call is checked against deny rules first, then ask rules, then allow rules; the first match decides, so a matching deny blocks, a matching ask goes to a human, a matching allow runs; with no match, the investigator's fallback sends it to a human.](../diagrams/permission-check-order.svg)
 
-*Figure: the order is fixed and the first match wins. What happens with no match is your choice; the investigator below sends it to a human.*
+*Figure: the order is fixed and the first match wins. The no-match branch shows the investigator's own fallback below, which sends the call to a human.*
 
 *Permission modes* set the default behaviour. Claude Code has six:
 
@@ -71,7 +71,7 @@ OpenAI's Codex has the same shape. It has three sandbox modes, from read-only to
 | Claude Code: bare deny (tool removed from context) | `Bash` |
 | Claude Code permission modes | `manual`, `acceptEdits`, `plan` (read-only), `auto` (classifier), `dontAsk` (prompts become denials), `bypassPermissions` |
 | Claude Code: rules scripts walk around | Read/Edit deny rules |
-| Sandbox mechanism | bubblewrap on Linux, Seatbelt on macOS |
+| Claude Code sandbox mechanism | bubblewrap on Linux, Seatbelt on macOS |
 | OpenAI Codex sandbox modes | `read-only`, `workspace-write` (the default, with `.git` protected), `danger-full-access` |
 | OpenAI Codex network | off by default |
 
@@ -429,7 +429,7 @@ Permissions, human gates and guardrails all exist to contain one threat. You hav
 
 This is *indirect prompt injection*. The attacker never talks to the model. They plant text where the agent will read it.
 
-**Why "just detect it" fails.** In *The Attacker Moves Second* (Oct 2025), authors from OpenAI, Anthropic and Google DeepMind tested 12 published defences against *adaptive* attacks (attacks that adjust to the defence). They bypassed most of them more than 90% of the time, and human red-teamers (people paid to attack the system) beat every defence.
+**Why "just detect it" fails.** In *The Attacker Moves Second* (Oct 2025), authors from OpenAI, Anthropic and Google DeepMind tested 12 published defences against *adaptive* attacks (attacks that adjust to the defence). They bypassed most of them more than 90% of the time, and human red-teamers (people who attack the system on purpose to find weaknesses) beat every defence.
 
 Training the model helps a lot: Anthropic reports a 1% attack success rate for Claude Opus 4.5 in browser use against an adaptive attacker. Anthropic also says plainly that 1% "still represents meaningful risk". So model robustness and classifiers are filters ([5.1](#51-permissions-and-sandboxing)'s word), not walls.
 
@@ -777,7 +777,7 @@ But each turn of an agent loop needs the previous turn's answer, so batching a l
 
 ![Timeline in seconds: sequentially, three model calls of about 4 seconds alternate with the three tools and finish at about 20 seconds; in parallel, one model call is followed by the three tools running side by side, finishing at about 10 seconds when the 6-second weather call ends.](../diagrams/parallel-tool-timeline.svg)
 
-*Figure: in parallel, the turn costs one model call plus the slowest tool, not the sum of everything.*
+*Figure (illustrative numbers): in parallel, the turn costs one model call plus the slowest tool, not the sum of everything.*
 
 The parallel run also has two fewer turns, each of which would have re-sent about 6k tokens. [Anthropic reported](https://www.anthropic.com/engineering/multi-agent-research-system) that parallel tool calling cut research time by up to 90% on complex queries in its research system.
 
