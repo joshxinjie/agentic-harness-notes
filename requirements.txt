@@ -1,0 +1,4 @@
+# Review harness (scripts/review_harness/) and tests. The notes themselves need nothing.
+pyyaml
+requests
+pytest

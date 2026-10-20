@@ -1,0 +1,82 @@
+# Cross-model review configuration (REVIEW.md).
+#
+# Reviewers must come from a different model than the author. `/review <name>` on a PR picks a reviewer by name;
+# `/review` alone uses `default_reviewer`. Pin exact model IDs so reviews are reproducible; record a change of model
+# in CHANGELOG.md. Tokens and API keys live in GitHub repo secrets, never in this file.
+#
+# The harness (scripts/review_harness/, ported from joshxinjie/dalio-debt-cycle) wraps each model's output in an
+# envelope it writes itself:
+#   {"meta": {"reviewer": <name>, "provider", "model", "scope", "commit", "pr", "date", "input_tokens",
+#             "output_tokens"}, "review": <output matching review/schema.json>}
+# and saves it as reviews/YYYY-MM-DD-<scope>-<reviewer>.json (<scope> is project or pr<number>).
+# The model never sees the author's identity.
+
+schema_version: 1
+instructions: REVIEW.md
+output_schema: review/schema.json
+decision_log: reviews/decisions.md
+
+author:                        # answers findings on `/respond` (review/RESPOND.md), on the subscription
+  provider: claude-code
+  model: claude-opus-5-5
+  secret: CLAUDE_CODE_OAUTH_TOKEN
+  instructions: review/RESPOND.md
+  output_schema: review/respond_schema.json
+
+default_reviewer: fable
+
+reviewers:
+  # Runs through Claude Code with a Claude subscription token (`claude setup-token`), so it uses subscription usage,
+  # not API credits. Agentic: it can read files, run the link checker and the tests (read-only otherwise).
+  fable:
+    provider: claude-code
+    model: claude-fable-5-1
+    secret: CLAUDE_CODE_OAUTH_TOKEN
+    enabled: true
+  # The same model through the Claude API (paid API credits). Enable if a Console API key is added.
+  fable-api:
+    provider: anthropic
+    model: claude-fable-5-1
+    secret: ANTHROPIC_API_KEY
+    enabled: false
+  gpt:
+    provider: openai
+    model: null              # pin an exact model ID when enabled
+    secret: OPENAI_API_KEY
+    enabled: false
+  gemini:
+    provider: google
+    model: null              # pin an exact model ID when enabled
+    secret: GEMINI_API_KEY
+    enabled: false
+
+limits:
+  max_findings: 15
+  max_input_tokens:          # context pack size; the harness trims lowest-priority files first
+    pr: 150000
+    project: 400000
+  max_output_tokens: 16000
+  max_agent_turns: 40          # claude-code reviewers: tool calls before it must answer
+  agent_timeout_minutes: 25
+  respond_max_agent_turns: 100  # the author edits, re-renders diagrams and runs the checks
+  respond_agent_timeout_minutes: 40
+  max_runs_per_pr_per_day: 6    # Singapore day
+
+triggers:
+  pr_comment_command: /review
+  respond_command: /respond     # author answers the latest review of the PR, as a fix PR into its branch
+  pr_label: review
+  skip_branches:   # never review the reviewer's own output (weekly update PRs on weekly/YYYY-MM-DD ARE reviewed)
+    - reviewer/
+  schedule:        # crons live in .github/workflows/review.yml (a test keeps them in step with gate.py)
+    weekly: Saturdays, 11:23 SGT - pr review of the open weekly/YYYY-MM-DD PR (the update task opens it at 09:47)
+    monthly_project: 1st of each month, 13:23 SGT - whole-project review
+
+context:
+  pr:
+    always: [REVIEW.md, reviews/decisions.md, STYLE.md, README.md]
+    include_dependents: true     # pages that link to a changed page, the page that embeds a changed diagram
+  project:
+    always: [REVIEW.md, reviews/decisions.md, STYLE.md, README.md, CHANGELOG.md, BACKLOG.md]
+    default_areas: [weeks/, glossary.md, reading-list.md, diagrams/src/, tools/]
+    exclude: ["diagrams/*.svg", "**/*.png", "reviews/*.json"]
