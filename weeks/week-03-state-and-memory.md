@@ -208,9 +208,9 @@ The memory tool from [3.1](#31-short-term-vs-long-term-memory-scratchpads-conver
 - Skills that were invoked are re-injected, up to a size cap.
 - Hook output, path-scoped rules and earlier tool results are summarised along with everything else.
 
-![After compaction in Claude Code, the system prompt, CLAUDE.md, auto memory, the plan, up to five recent files and invoked skills are re-read from disk; the conversation, earlier tool results, hook output and path-scoped rules are only summarised.](../diagrams/compaction-survival.svg)
+![After compaction in Claude Code, the system prompt, CLAUDE.md, auto memory, the plan, up to five recent files and invoked skills are re-injected in full; the conversation, earlier tool results, hook output and path-scoped rules are only summarised.](../diagrams/compaction-survival.svg)
 
-*Figure: what lives on disk comes back whole; what lived only in the transcript comes back as a summary.*
+*Figure: what the harness re-injects comes back whole; what lived only in the transcript comes back as a summary.*
 
 The design lesson: **what survives compaction depends on where a thing lives, not on how important it was.** The transcript gets summarised; disk gets re-read.
 
@@ -675,7 +675,7 @@ LangGraph's durability modes are the dial:
 | Snapshot fields | `values`, `next`, `config` (`thread_id`, `checkpoint_id`), `metadata` |
 | Add a checkpoint by hand | `update_state` |
 | Checkpointer backends | InMemorySaver, Sqlite, Postgres, MongoDB |
-| Side effect wrapped as a saved task | `@task` |
+| LangGraph: side effect wrapped as a saved task | `@task` |
 | Durability modes | `"exit"`, `"async"`, `"sync"` |
 | Agent SDK session id | `session_id` |
 | Agent SDK transcript file | `~/.claude/projects/<cwd>/<id>.jsonl` |
@@ -768,7 +768,7 @@ So far this week we have shrunk the main transcript, filled it carefully, and sa
 
 > **In short**
 > - A sub-agent is the same loop, started by the main loop, with its own fresh transcript. Only its final answer comes back.
-> - It is a way to manage context first, and a "multi-agent system" second — and it costs many more tokens, not fewer.
+> - It is a way to manage context first, and a "multi-agent system" second. It lets you spend more tokens usefully, not fewer.
 > - The task text and the return format are the whole interface: pass the parent's decisions down as constraints.
 
 ### The idea

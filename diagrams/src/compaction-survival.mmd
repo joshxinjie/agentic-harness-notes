@@ -2,7 +2,7 @@
 flowchart TD
     C["Context near the limit"] --> A(["Compaction"])
     A --> D
-    subgraph D["Re-read from disk"]
+    subgraph D["Re-injected in full"]
         direction TB
         D1["System prompt, CLAUDE.md,<br>auto memory, plan"]
         D2["Up to 5 recent files<br>(big ones as a path)"]
