@@ -229,7 +229,7 @@ Anthropic's example: "Gets the stock price for a ticker" is poor. A good descrip
 
 | What | Value |
 |---|---|
-| Anthropic's concise/detailed knob | `response_format: concise \| detailed` |
+| A concise/detailed style knob (pattern) | `response_format: concise \| detailed` |
 
 ### An example
 
@@ -796,7 +796,7 @@ Costs, in base-input-token equivalents:
 **Things that break the cache in an agent:**
 
 - Adding or removing tools mid-run. This invalidates everything, because tools come first.
-- Changing which tool the model is forced to use — for example the forced final answer from [2.5](week-02-core-mechanics.md#25-stopping-conditions-step-budgets-and-loop-detection). This invalidates the messages level.
+- Changing the tool-choice setting in any way — for example forcing the final answer from [2.5](week-02-core-mechanics.md#25-stopping-conditions-step-budgets-and-loop-detection). This invalidates the messages level.
 - Changing thinking or effort settings, depending on the model.
 - Switching model. Caches are per model.
 - Non-deterministic JSON key order in tool results.
@@ -825,9 +825,9 @@ Per-turn logs from earlier exercises that used `input_tokens` alone will under-r
 
 | What | Value |
 |---|---|
-| Forced tool | `tool_choice` |
+| Tool-choice setting (any change breaks the cache) | `tool_choice` |
 | Tool-result clearing (API) | `clear_tool_uses`, with `clear_at_least` |
-| Claude Code: lazy MCP schemas | `defer_loading` |
+| Load MCP tool schemas lazily | `defer_loading` |
 | Claude Code: change notice | a `<system-reminder>` in the next message |
 | Input tokens after the last breakpoint | `usage.input_tokens` |
 | Cached tokens read / written | `cache_read_input_tokens` / `cache_creation_input_tokens` |

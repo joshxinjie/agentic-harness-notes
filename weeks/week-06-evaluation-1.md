@@ -73,7 +73,7 @@ Graders have bugs as well. Opus 4.5 scored 42% on CORE-Bench until two things we
 
 ### Where it lives in the harness
 
-Layer 6 (feedback and evals), as a second harness that drives the first. When you evaluate "an agent", you are really evaluating model plus harness. So every run must carry the harness hash from [5.5](week-05-control-safety-reliability.md#55-observability-tracing-logging-trajectories-replaying-runs) (a hash of the system prompt and tool definitions, so results can be split by harness version).
+Layer 6 (feedback and evals), as a second harness that drives the first. When you evaluate "an agent", you are really evaluating model plus harness. So every run must carry the harness hash from [5.5](week-05-control-safety-reliability.md#55-observability-tracing-logging-trajectories-replaying-runs) (a hash of the system prompt and tools, plus the skill listing where there is one, so results can be split by harness version).
 
 The sketch below runs one trial in a fresh environment, then grades it from the environment's end state:
 
@@ -188,7 +188,7 @@ For the investigator, [Week 5](week-05-control-safety-reliability.md) already pr
 - provenance trips and judge overrides ([5.3](week-05-control-safety-reliability.md#53-guardrails-inputoutput-validation-policy-checks-classifiers));
 - `budget` and `stuck` statuses in the traces ([5.5](week-05-control-safety-reliability.md#55-observability-tracing-logging-trajectories-replaying-runs)).
 
-![A real failure becomes a task record with three parts: task, environment frozen from the trace, and grader. It is validated (empty sink fails, reference passes); if not, fix the task or grader. Valid tasks join the capability set and graduate to the regression set once they pass reliably.](../diagrams/eval-task-from-failure.svg)
+![A real failure becomes a task record with three parts: task, environment frozen from the trace, and grader. It is validated (empty sink fails, reference passes); if not, fix the task or grader. Valid tasks for a failure the harness already fixes go straight to the regression set; the rest join the capability set and graduate to the regression set once they pass reliably.](../diagrams/eval-task-from-failure.svg)
 
 *Figure: a failure becomes a task only after the validation check; capability tasks graduate to regression tasks.*
 

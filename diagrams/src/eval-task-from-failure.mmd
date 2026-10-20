@@ -10,5 +10,7 @@ flowchart TD
     end
     T --> V{"Empty sink fails?<br>Reference passes?"}
     V -->|"no"| X["Fix task or grader"]
-    V -->|"yes"| C["Capability set"]
-    C -->|"passes reliably"| R["Regression set"]
+    V -->|"yes"| A{"Already fixed<br>in the harness?"}
+    A -->|"no"| C["Capability set"]
+    A -->|"yes"| R["Regression set"]
+    C -->|"passes reliably"| R
