@@ -6,6 +6,6 @@ flowchart TD
     A["Agent<br>model owns the path<br>at run time"]
     S -->|"control flow unchanged"| U
     U -->|"code draws the graph"| W
-    W -->|"hand the graph<br>to the model"| A
+    U -->|"model draws the graph"| A
     A -.- G["Gains: steps you<br>cannot predict"]
     A -.- C["Costs: tokens, latency,<br>predictability"]

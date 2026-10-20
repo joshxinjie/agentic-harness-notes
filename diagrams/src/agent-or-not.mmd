@@ -5,7 +5,7 @@ flowchart TD
     Q1 -->|"no"| Q2{"Is the reasoning<br>really just rules?"}
     Q2 -->|"yes"| D(["Deterministic code<br>may suffice"])
     Q2 -->|"no"| Q3{"Is a silent wrong<br>action costly?"}
-    Q3 -->|"yes"| H["Human gate on the side<br>effect, or less autonomy"]
+    Q3 -->|"yes"| H["Human gate on the side<br>effect, or remove the autonomy"]
     Q3 -->|"no"| Q4
     H --> Q4{"Can I eval it?"}
     Q4 -->|"no"| N(["Do not ship an agent"])

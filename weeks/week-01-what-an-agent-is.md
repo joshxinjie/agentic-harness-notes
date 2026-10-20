@@ -51,9 +51,9 @@ In an **agent**, the model owns the graph. Simon Willison's one-liner, which the
 
 Running the loop is the harness's job: call the model; if it asked for a tool, run the tool and add the result; repeat until the model stops asking. Which tools, in what order, and how many rounds are decided at run time by the model, based on what it currently sees in its context (everything it is sent on that call).
 
-![A vertical dial: a single LLM call, then the augmented LLM with tools, retrieval and memory, then a workflow where code owns the path, then an agent where the model owns the path; the agent gains steps you cannot predict and costs tokens, latency and predictability.](../diagrams/autonomy-dial.svg)
+![The autonomy dial: a single LLM call, then the augmented LLM with tools, retrieval and memory; from there either a workflow, where code owns the path, or an agent, where the model owns the path at run time. The agent gains steps you cannot predict and costs tokens, latency and predictability.](../diagrams/autonomy-dial.svg)
 
-*Figure: moving down the dial hands more of the control flow to the model. Adding tools alone does not move it.*
+*Figure: adding tools alone does not change who owns the control flow; the split is whether code or the model draws the graph.*
 
 ### An example
 
@@ -429,7 +429,7 @@ So far we have the autonomy dial, the loop and the tool contract. It is time to 
 > **In short**
 > - An agent is a model plus a harness: all the ordinary code and text around a stateless model that turns it into something that can do a job.
 > - The harness has six layers, and it — not the model — is the part you can engineer.
-> - The fix for an agent mistake is rarely "ask the model harder"; it is a deterministic change to a layer, such as a validation step or a lint rule.
+> - The fix for an agent mistake is rarely "ask the model harder"; it is a change to a layer: a lint rule, a validation step, a better tool result, a progress file.
 
 ### The idea
 
@@ -732,7 +732,7 @@ The HORIZON benchmark paper (Wang et al., Apr 2026) studied 3,100+ trajectories 
 4. **Can I test it?** Anthropic's precondition for agents is "extensive testing in sandboxed environments, along with the appropriate guardrails". If you cannot build an eval (layer 6, feedback and evals), you cannot tell whether the agent is working — so you should not ship one.
 5. **Start with one agent.** OpenAI: "maximize a single agent's capabilities first". Adding agents "can introduce additional complexity and overhead". (Week 8 covers when it is worth it.)
 
-![A decision flow: if you can draw the full graph in advance, build a workflow. If not, and the reasoning is really just rules, deterministic code may suffice. Otherwise, if a silent wrong action is costly, add a human gate on the side effect or reduce autonomy. Then, if you cannot eval it, do not ship an agent; if you can, start with one agent.](../diagrams/agent-or-not.svg)
+![A decision flow: if you can draw the full graph in advance, build a workflow. If not, and the reasoning is really just rules, deterministic code may suffice. Otherwise, if a silent wrong action is costly, add a human gate on the side effect or remove the autonomy. Then, if you cannot eval it, do not ship an agent; if you can, start with one agent.](../diagrams/agent-or-not.svg)
 
 *Figure: the five questions as a flow. An agent is what is left after every simpler answer has been ruled out.*
 
