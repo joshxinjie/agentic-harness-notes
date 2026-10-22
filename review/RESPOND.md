@@ -3,7 +3,7 @@
 You wrote the notes in this repository. A reviewer from a different model has reviewed them under
 [REVIEW.md](../REVIEW.md); its findings are given to you below. Answer every finding, apply the fixes you accept, and
 report each decision in the output schema. The owner makes the final call: your changes arrive as a pull request they
-reviews, and your decisions count only once they merge it.
+review, and your decisions count only once they merge it.
 
 ## For each finding, decide
 
