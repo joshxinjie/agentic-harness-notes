@@ -1,0 +1,120 @@
+{
+ "meta": {
+  "reviewer": "fable",
+  "provider": "claude-code",
+  "model": "claude-fable-5-1",
+  "scope": "pr",
+  "date": "2026-10-22",
+  "input_tokens": 432412,
+  "output_tokens": 12155,
+  "attempts": 1,
+  "context_files": [
+   "PULL REQUEST",
+   "DIFF",
+   "reviews/decisions.md",
+   "STYLE.md",
+   "README.md",
+   ".github/workflows/respond.yml",
+   "scripts/review_harness/respond.py",
+   "tests/test_review_harness.py"
+  ],
+  "context_dropped": [],
+  "context_tokens_est": 23999,
+  "pr": 8,
+  "commit": "26424e7b672c404be90dd73764ed75bdc57367f0"
+ },
+ "review": {
+  "schema_version": 1,
+  "scope": "pr",
+  "verdict": "changes_needed",
+  "summary": "changes_needed. F1: no .gitignore, so the next /respond run's `git add -A` re-commits the __pycache__ files this PR untracks (that is how #4 got them). F2: the link-quoting regex wraps a link that already sits inside a longer code span, breaking the markdown in reviews/decisions.md. F3: the new failure comment interpolates the head branch name straight into the shell script instead of via env like the step above it. Tests: 83 pass on the checkout I could run; running HEAD's suite was blocked by the sandbox. Link checker: bad 0.",
+  "findings": [
+   {
+    "id": "F1",
+    "severity": "major",
+    "area": "tooling",
+    "checklist_item": "REVIEW.md E: tools/ scripts do what they claim; a change comes with a test or a reason",
+    "title": "Untracked .pyc files will come back: no .gitignore, and the respond workflow runs `git add -A`",
+    "file": ".github/workflows/respond.yml",
+    "line_start": 141,
+    "line_end": 143,
+    "claim": "The PR deletes 17 committed .pyc files but does not stop them being committed again. The repo has no .gitignore (only .pytest_cache's own). RESPOND.md rule 6 tells the author to run `python -m pytest -q tests` in the PR worktree, which writes scripts/review_harness/__pycache__ and tests/__pycache__ there; the workflow then runs `git add -A` and commits everything. That is exactly how the files arrived: `git show --stat f518c4e` (PR #4, a respond-style fix) adds 17 .pyc files. The next /respond run will re-add them, and #7 has the same gap unless it adds an ignore file.",
+    "evidence": "Glob for **/.gitignore finds only .pytest_cache/.gitignore. `git ls-files | grep pycache` lists 15 tracked .pyc under scripts/review_harness. `git show --stat f518c4e | grep -c .pyc` = 17. respond.yml: `git add -A` then `git commit` in $RUNNER_TEMP/work. review/RESPOND.md:33 asks the author to run pytest.",
+    "proposed_change": "Add a top-level .gitignore with `__pycache__/`, `*.pyc` and `.pytest_cache/` in this PR (or confirm #7 does). Optionally also make the workflow robust: `git add -A -- . ':!**/__pycache__/**'`. Add a test: assert `.gitignore` contains `__pycache__/` and `git ls-files` returns no `.pyc` path, so the regression is caught at review time.",
+    "verified_by": "read_code",
+    "confidence": 0.85
+   },
+   {
+    "id": "F2",
+    "severity": "minor",
+    "area": "tooling",
+    "title": "MD_LINK wraps a link that is already inside a longer code span, breaking the cell's markdown",
+    "file": "scripts/review_harness/respond.py",
+    "line_start": 37,
+    "line_end": 44,
+    "claim": "The lookbehind/lookahead only check the characters immediately next to the link. A reason like \"the line `- [Glossary](glossary.md) — every term` was kept\" (the author quoting a contents line in code, the very case the PR describes) becomes \"`- `[Glossary](glossary.md)` — every term`\": the outer span is split and the link renders again as a live, wrong-folder link. The new test covers only a link that is exactly a whole code span.",
+    "evidence": "MD_LINK = re.compile(r\"(?<!`)(\\[[^\\]\\n]*\\]\\([^)\\s]*\\))(?!`)\"); in the example the character before `[` is a space and after `)` is a space, so both assertions pass and the link is wrapped. (Could not execute Python in this sandbox; traced by hand.)",
+    "proposed_change": "Substitute only outside code spans: `parts = re.split(r\"(`[^`]*`)\", text); text = \"\".join(p if p.startswith(\"`\") else MD_LINK.sub(r\"`\\1`\", p) for p in parts)`. Extend test_cells_quote_markdown_links_as_code with the quoted-contents-line case and assert the output still has exactly two backticks.",
+    "verified_by": "read_code",
+    "confidence": 0.8
+   },
+   {
+    "id": "F3",
+    "severity": "minor",
+    "area": "tooling",
+    "title": "Failure comment interpolates the head branch name into the shell script instead of via env",
+    "file": ".github/workflows/respond.yml",
+    "line_start": 211,
+    "line_end": 213,
+    "claim": "The new `outcome=` line uses `${{ steps.gate.outputs.head_ref }}` directly inside the run script. GitHub expands it at template time, so a branch name containing `\"`, `$(` or backticks changes the script (branch names may contain those characters). Every other use of head_ref in this file goes through `env: HEAD_REF`, which is the pattern GitHub recommends. The gate rejects forks, so only a collaborator could trigger it, but the file is inconsistent with itself.",
+    "evidence": "respond.yml \"Open the fix PR\" step: `HEAD_REF: ${{ steps.gate.outputs.head_ref }}` under env, then `-f base=\"$HEAD_REF\"`. Failure step: `...compare/${{ steps.gate.outputs.head_ref }}...$b` inside a double-quoted bash string. https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions#using-an-intermediate-environment-variable",
+    "proposed_change": "Add `HEAD_REF: ${{ steps.gate.outputs.head_ref }}` to the failure step's env and write `.../compare/$HEAD_REF...$b`. Optionally assert in test_respond_workflow_reports_a_pushed_branch_without_a_pr that the string `compare/${{` does not appear.",
+    "verified_by": "read_code",
+    "confidence": 0.75
+   },
+   {
+    "id": "F4",
+    "severity": "minor",
+    "area": "clarity",
+    "title": "After a push-but-no-PR failure the decision rows still say \"Fixed in: respond/...\" and the summary is never shown",
+    "file": ".github/workflows/respond.yml",
+    "line_start": 146,
+    "line_end": 157,
+    "claim": "When `gh api .../pulls` fails the step exits before the sed that rewrites `| respond/prN-date |` to `| #num |`. The branch the owner is told to open a PR from therefore carries decision rows whose \"Fixed in\" cell is a branch name, and the author's summary (which the comment normally quotes) is only in the artifact. The failure comment does not say either, so the owner opening the PR by hand will not know to fix the column or where to find the summary.",
+    "evidence": "respond.yml: `exit 1` inside the `if ! url=$(gh api ...)` block precedes `sed -i \"s@| ${BRANCH} |@| #${num} |@g\" reviews/decisions.md`. The failure step prints only `outcome`, `reason` and `RUN_URL`.",
+    "proposed_change": "In the failure comment's pushed-branch branch, add one sentence: \"The decision rows' Fixed-in cell still holds the branch name; the author's summary is in the run's `response-<pr>` artifact.\" Or include `head -c 1500 summary.md` in fail.md when it exists. Test: extend the workflow-text test for the new sentence.",
+    "verified_by": "read_code",
+    "confidence": 0.7
+   },
+   {
+    "id": "F5",
+    "severity": "nit",
+    "area": "process",
+    "checklist_item": "REVIEW.md E: CHANGELOG has a line for the change",
+    "title": "No CHANGELOG line for this change",
+    "file": "CHANGELOG.md",
+    "line_start": 6,
+    "line_end": 6,
+    "claim": "REVIEW.md's repo checklist asks for a CHANGELOG line per change, and the 2026-10-22 entry shows machinery/docs changes do get one. This PR adds none. If CHANGELOG is meant only for the notes, say so in REVIEW.md E or STYLE.md \"Files\" so reviewers stop flagging it.",
+    "evidence": "CHANGELOG.md last line: \"2026-10-22 — Removed identifying details ... from the notes and review docs\". The diff touches no CHANGELOG line.",
+    "proposed_change": "Either add \"2026-10-22 — /respond: reports a pushed branch with no PR, quotes links in the decision log, untracks bytecode\" or narrow the REVIEW.md E rule to notes changes.",
+    "verified_by": "read_docs",
+    "confidence": 0.6
+   },
+   {
+    "id": "F6",
+    "severity": "question",
+    "area": "tooling",
+    "title": "Could not run HEAD's test suite; 83 pass on the checkout available, 85 claimed",
+    "file": "tests/test_review_harness.py",
+    "line_start": 875,
+    "line_end": 885,
+    "claim": "The checkout I could run pytest in held the pre-PR test file (83 passed, 57 test functions); HEAD has 59 functions, consistent with the PR's \"85 passed (2 new)\", but extracting HEAD to run it was blocked by the sandbox. The two new tests read as correct by inspection. The author should confirm the count in CI.",
+    "evidence": "`python -m pytest -q tests` → 83 passed; `git show HEAD:tests/test_review_harness.py | grep -c '^def test_'` → 59; link checker `bad 0`.",
+    "proposed_change": "No change needed if CI shows 85 passed on the PR head.",
+    "verified_by": "ran_code",
+    "confidence": 0.9
+   }
+  ]
+ }
+}
