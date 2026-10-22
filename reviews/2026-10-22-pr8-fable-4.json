@@ -1,0 +1,83 @@
+{
+ "meta": {
+  "reviewer": "fable",
+  "provider": "claude-code",
+  "model": "claude-fable-5-1",
+  "scope": "pr",
+  "date": "2026-10-22",
+  "input_tokens": 773170,
+  "output_tokens": 22230,
+  "attempts": 1,
+  "context_files": [
+   "PULL REQUEST",
+   "DIFF",
+   "reviews/decisions.md",
+   "STYLE.md",
+   "README.md",
+   ".github/workflows/respond.yml",
+   "BACKLOG.md",
+   "CHANGELOG.md",
+   "scripts/review_harness/respond.py",
+   "tests/test_review_harness.py"
+  ],
+  "context_dropped": [],
+  "context_tokens_est": 30661,
+  "pr": 8,
+  "commit": "6eba8c853c02d55a626504d3dc015dac53a8403a"
+ },
+ "review": {
+  "schema_version": 1,
+  "scope": "pr",
+  "verdict": "approve_with_nits",
+  "summary": "approve_with_nits. Fourth round: the third-round decisions check out (main tracks no .pyc per the two-dot diff; the line numbers 44 and 184 quoted in PR8-3-F4 are right; the new cell() test passes by trace). F1 (minor, process): the reviewer checkout's overlay of main's decisions.md now yields a false `bad 9` and runs only main's 83 tests, so neither checker result describes this PR (new evidence for PR8-2-F2). F2 (nit): the PR6-F4 correction lives in CHANGELOG, but the log's own rule asks for a superseding row. F3 (nit): three \"Review response\" CHANGELOG lines for one PR restate decisions.md. Merge still needs the hand resolution recorded in PR8-2-F1.",
+  "findings": [
+   {
+    "id": "F1",
+    "severity": "minor",
+    "area": "process",
+    "checklist_item": "REVIEW.md D: run tools/check_links.py, it must report bad 0; E: tests",
+    "title": "Reviewer checkout overlay makes the link checker and tests report on the wrong tree",
+    "file": ".github/workflows/review.yml",
+    "line_start": 100,
+    "line_end": 101,
+    "claim": "The review workflow checks out main's reviews/decisions.md, scripts/review_harness and tests over the PR head. On this PR that produces false results: the link checker reports bad 9 (nine NOFILE hits, all from main's PR6 rows linking 2026-10-22-pr6-fable.json, a file the PR branch does not have), and pytest runs main's 83 tests, so the PR's three new tests never run. REVIEW.md tells the reviewer the checker 'must report bad 0', so a reviewer who trusts the checkout would wrongly fail the PR. This is the gap deferred in PR8-2-F2; the new evidence is a concrete false failure in this round.",
+    "evidence": "python3 tools/check_links.py . on the provided checkout: 'NOFILE ./reviews/decisions.md 2026-10-22-pr6-fable.json' x9, 'bad 9'. python -m pytest -q tests: '83 passed'. git diff --cached shows reviews/decisions.md, scripts/review_harness/respond.py and tests/test_review_harness.py replaced by main's versions; git diff --stat main pr-head shows reviews/2026-10-22-pr6-fable.json absent on the PR branch. Traced the PR's cell() regex against test_cells_quote_markdown_links_as_code by hand: all four assertions hold.",
+    "proposed_change": "Treat this round's bad 9 as a checkout artifact, not a PR defect. Raise the priority of the BACKLOG item from PR8-2-F2: run `python -m pytest -q tests` and `python3 tools/check_links.py .` on an untouched worktree of pr-head and put both results in the material, or at least list the overlaid files in the material so the reviewer knows which results to discount. Test: after the change, a review of this PR should show 86 passed and bad 0 for the untouched tree.",
+    "verified_by": "ran_code",
+    "confidence": 0.95,
+    "related_decision": "PR8-2-F2"
+   },
+   {
+    "id": "F2",
+    "severity": "nit",
+    "area": "process",
+    "checklist_item": "reviews/decisions.md header: never edit a decided row, add a new one that supersedes it",
+    "title": "PR6-F4 correction is recorded in CHANGELOG instead of a superseding decision row",
+    "file": "reviews/decisions.md",
+    "line_start": 25,
+    "line_end": 25,
+    "claim": "Row PR8-3-F2 establishes that main's PR6-F4 row claims a BACKLOG item 'with the exact command' that never existed, and that this PR does the untracking instead. The author could not touch decisions.md, so the correction went into a CHANGELOG line. The log's own header says a wrong decided row is corrected by a superseding row, and CHANGELOG is not where a future reviewer or /respond run looks for decisions.",
+    "evidence": "reviews/decisions.md line 25: 'Main's PR6-F4 row says the item exists, but it doesn't. I can't edit decisions.md, so the new CHANGELOG line records the gap instead'. git show main:BACKLOG.md (via git diff main pr-head -- BACKLOG.md) lists only the PR6 F8 and F7 items. CHANGELOG.md line 11 carries the correction.",
+    "proposed_change": "When resolving reviews/decisions.md at merge (PR8-2-F1), the owner adds one row above PR6-F4, e.g. '| PR6-F4-2 | 2026-10-22 | ... | F4: ... | fable | minor | modify | Supersedes PR6-F4: no BACKLOG item was written; the bytecode is untracked by #8 and .gitignore covers it. | #8 |' using whatever ID form the owner prefers within the schema pattern, and drops the parenthetical from CHANGELOG line 11. Test: test_live_log_has_the_same_format and test_existing_log_rows_are_recognised still pass.",
+    "verified_by": "read_code",
+    "confidence": 0.7,
+    "related_decision": "PR8-3-F2"
+   },
+   {
+    "id": "F3",
+    "severity": "nit",
+    "area": "structure",
+    "checklist_item": "STYLE.md Files: CHANGELOG.md, one line per update",
+    "title": "Four CHANGELOG lines for one PR; the three review-response lines restate decisions.md",
+    "file": "CHANGELOG.md",
+    "line_start": 9,
+    "line_end": 11,
+    "claim": "The PR now carries one line for its own change plus one line per review round, each listing which findings were fixed, rejected or deferred. That detail already lives in reviews/decisions.md, and STYLE.md asks for one line per update. Main's convention is one response line per PR (the #6 line), not one per round.",
+    "evidence": "CHANGELOG.md lines 9-11: '/respond reports a pushed branch ... Review response to the PR #8 review ...', 'Review response to 2026-10-22-pr8 second review ...', 'Review response to 2026-10-22-pr8 third review ...'. git diff main pr-head -- CHANGELOG.md shows all three as additions on top of main's single #6 response line.",
+    "proposed_change": "Before merge, fold lines 9-11 into one: '2026-10-22 — /respond reports a pushed branch with no PR, quotes links in the decision log, untracks bytecode (#8; three review rounds, decisions in reviews/decisions.md).' This also shrinks the CHANGELOG hunk the owner has to resolve against main. Test: python3 tools/check_links.py . stays at bad 0 on the merged tree.",
+    "verified_by": "read_code",
+    "confidence": 0.55
+   }
+  ]
+ }
+}
