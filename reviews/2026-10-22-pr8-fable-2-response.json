@@ -1,0 +1,47 @@
+{
+ "review": "2026-10-22-pr8-fable-2.json",
+ "author": "claude-opus-5-5",
+ "date": "2026-10-22",
+ "response": {
+  "schema_version": 1,
+  "summary": "1 modify (F1), 1 accept (F5), 3 defer (F2–F4). Look first at F1: a real merge has to be made by the owner. I can't commit, and reviews/decisions.md is off-limits to me, so its PR6/PR8 rows still need a hand merge (PR8 rows above PR6). BACKLOG.md and CHANGELOG.md now hold main's #6/#7 lines plus this PR's, so taking this branch's side resolves them. I couldn't run git merge-file to confirm this, because it was blocked for lack of approval. I also can't update the PR text (\"merge cleanly in either order\"). Tests: 86 passed; link checker bad 0.",
+  "responses": [
+   {
+    "finding_id": "F1",
+    "decision": "modify",
+    "reason": "The conflicts are real (main 3ae6748/530a68a vs base 6e0a4cb). I can't merge or commit, and I can't edit reviews/decisions.md (rule 8). Instead, BACKLOG.md and CHANGELOG.md now contain main's PR6 items and #6/#7 lines in the resolution order the reviewer gave. .gitignore is already the three-line version. Git may still flag these hunks, but resolving them means taking this branch's side. The owner must still merge decisions.md (PR8 rows above PR6) and fix the stale PR description. I couldn't verify cleanliness: git merge-file was blocked.",
+    "changes": "BACKLOG.md (PR6 items added below PR8 items), CHANGELOG.md (#6/#7 lines added before this PR's)"
+   },
+   {
+    "finding_id": "F2",
+    "decision": "defer",
+    "reason": "The finding is valid: review.yml:100-101 overlays main's harness, tests and decisions.md, so the PR's own 3 tests don't run in review. With the PR's own files, this checkout gives 86 passed and bad 0. The fix lives in .github/, which I can't edit (rule 8).",
+    "changes": "BACKLOG.md: 2026-10-22 item for review.yml, run pytest/link check on an untouched PR-head worktree or list the replaced files (second PR #8 review, F2)"
+   },
+   {
+    "finding_id": "F3",
+    "decision": "defer",
+    "reason": "Correct per GitHub docs: always() also runs after a cancel, while !cancelled() does not. The change is in .github/workflows/respond.yml plus a test string, and the author can't edit .github/ (rule 8).",
+    "changes": "BACKLOG.md: 2026-10-22 item, use !cancelled() on the archive and artifact steps and update the asserted string (second PR #8 review, F3)"
+   },
+   {
+    "finding_id": "F4",
+    "decision": "defer",
+    "reason": "The regex lookbehind excludes only a backtick, so ![a](b) becomes !`[a](b)`, and the docstring overstates its reason. The file is under scripts/review_harness/, which I can't edit (rule 8).",
+    "changes": "BACKLOG.md: 2026-10-22 item, MD_LINK handles an optional leading '!', reword the docstring, extend the test (second PR #8 review, F4)"
+   },
+   {
+    "finding_id": "F5",
+    "decision": "accept",
+    "reason": "The PR #8 entry was wrapped over three lines, but every other entry is one line. I joined it into one line and placed it after main's two 2026-10-22 lines from #6/#7.",
+    "changes": "CHANGELOG.md"
+   }
+  ],
+  "tests": {
+   "ran": true,
+   "passed": true,
+   "detail": "python -m pytest -q tests: 86 passed. python3 tools/check_links.py .: bad 0. Not run: a merge-conflict check with git merge-file, blocked because it needed approval."
+  }
+ },
+ "reverted": []
+}
