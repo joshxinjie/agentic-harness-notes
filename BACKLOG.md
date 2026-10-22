@@ -3,6 +3,14 @@
 Valid improvements that were deferred, usually from a cross-model review ([REVIEW.md](REVIEW.md)). Newest first.
 Each item: date, what to do, where it came from (a decision ID from [reviews/decisions.md](reviews/decisions.md)).
 
+- 2026-10-22 — `scripts/review_harness/respond.py` `cell()`: cut to `limit` before quoting links as code (or skip a
+  link that straddles the cut), so a cut reason cannot end in an unmatched backtick; add a case with `limit=20` and a
+  link crossing the cut to `test_cells_quote_markdown_links_as_code`, asserting an even number of backticks. (Third
+  PR #8 review, F4.)
+- 2026-10-22 — `tests/test_review_harness.py`: once the PR8-F3 item below is done, run the failure step's
+  `reason=`…`fi` block with `bash -c` and `RUNNER_TEMP` set to a temp dir holding only `pushed_branch`; assert the
+  outcome names the branch and the compare URL ends in `<head_ref>...<branch>`, and that with `fix_pr_url` present the
+  "later step failed" text wins. (Third PR #8 review, F3.)
 - 2026-10-22 — `.github/workflows/review.yml`: after checking out main's harness, tests and decision log over the PR
   head, also run `python -m pytest -q tests` and `python3 tools/check_links.py .` on an untouched checkout of the PR
   head (for example `git worktree add $RUNNER_TEMP/pr pr-head`) and put both results in the material, or at least
