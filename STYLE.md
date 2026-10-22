@@ -53,6 +53,10 @@ The notes name no real employer, client, person or site. The emails sometimes do
 - When a lesson says "layer N", name it too: "layer 4 (state)". The six layers are pictured in `diagrams/harness-layers.svg`.
 - Aim for a lesson (idea to common mistakes) that reads in 5–7 minutes. The exercise and worked answer are extra.
 
+## Contents list
+
+Every week file has a generated contents list right under its title (between `<!-- toc -->` and `<!-- /toc -->`) and has a "↑ Contents" link before each lesson. Do not edit them by hand: after adding or renaming any heading, run `python3 tools/make_toc.py`. `python3 tools/make_toc.py --check` fails if a list is out of date.
+
 ## Lesson template
 
 ```
@@ -108,4 +112,4 @@ Shared diagrams (for example `harness-layers`) are reused by linking the same fi
 - `glossary.md` — terms, alphabetical, plain definitions, each pointing to the lesson that introduces it.
 - `reading-list.md` — sources, grouped by week.
 - `CHANGELOG.md` — one line per update.
-- `tools/` — `check_links.py`, `render_diagrams.py`, `preview_diagrams.py` and the Mermaid config.
+- `tools/` — `check_links.py`, `make_toc.py`, `render_diagrams.py`, `preview_diagrams.py` and the Mermaid config.

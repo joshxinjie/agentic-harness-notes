@@ -1,5 +1,25 @@
 # Week 1 — What an agent is
 
+<!-- toc -->
+## Contents
+
+- **[1.1 LLM call vs workflow vs agent](#11-llm-call-vs-workflow-vs-agent)**  
+  [Idea](#the-idea) · [Example](#an-example) · [In the harness](#where-it-lives-in-the-harness) · [Mistakes](#common-mistakes) · [Try it](#try-it) · [Answer](#worked-answer) · [Sources](#sources)
+- **[1.2 The agent loop](#12-the-agent-loop)**  
+  [Idea](#the-idea-1) · [Example](#an-example-1) · [In the harness](#where-it-lives-in-the-harness-1) · [Mistakes](#common-mistakes-1) · [Try it](#try-it-1) · [Answer](#worked-answer-1) · [Sources](#sources-1)
+- **[1.3 Tool / function calling](#13-tool--function-calling)**  
+  [Idea](#the-idea-2) · [In the harness](#where-it-lives-in-the-harness-2) · [Mistakes](#common-mistakes-2) · [Try it](#try-it-2) · [Answer](#worked-answer-2) · [Sources](#sources-2)
+- **[1.4 What a "harness" is](#14-what-a-harness-is)**  
+  [Idea](#the-idea-3) · [Example](#an-example-2) · [Mistakes](#common-mistakes-3) · [Try it](#try-it-3) · [Answer](#worked-answer-3) · [Sources](#sources-3)
+- **[1.5 Anatomy of a real agent](#15-anatomy-of-a-real-agent)**  
+  [Idea](#the-idea-4) · [Example](#an-example-3) · [In the harness](#where-it-lives-in-the-harness-3) · [Mistakes](#common-mistakes-4) · [Try it](#try-it-4) · [Answer](#worked-answer-4) · [Sources](#sources-4)
+- **[1.6 When NOT to build an agent](#16-when-not-to-build-an-agent)**  
+  [Idea](#the-idea-5) · [A decision procedure](#a-decision-procedure) · [Example](#an-example-4) · [In the harness](#where-it-lives-in-the-harness-4) · [Mistakes](#common-mistakes-5) · [Try it](#try-it-5) · [Answer](#worked-answer-5) · [Sources](#sources-5)
+- **[Week 1 review](#week-1-review)**  
+  [Recap](#the-week-in-six-paragraphs) · [Self-quiz](#self-quiz) · [Exercise](#integrative-exercise) · [Answer](#worked-answer-6) · [Sources](#sources-the-weeks-core-reading)
+
+<!-- /toc -->
+
 This first week pins down what an "agent" actually is, so that "harness engineering" has a clear object for the rest of the course. (The harness is all the ordinary code and text around the model; [1.4](#14-what-a-harness-is) defines it properly.)
 
 - We start by treating "agent" as a setting on a dial rather than a marketing word (1.1).
@@ -136,6 +156,8 @@ The pattern: workflow for the fixed part, agent for the open-ended investigation
 ---
 
 If an agent is "a model running tools in a loop", the next question is what actually happens on each pass of that loop — and what the model sees.
+
+[↑ Contents](#contents)
 
 ## 1.2 The agent loop
 
@@ -274,6 +296,8 @@ Beginner mistakes:
 ---
 
 Inside that loop, the single most important exchange is the moment the model asks for an action and your code answers. That handshake is next.
+
+[↑ Contents](#contents)
 
 ## 1.3 Tool / function calling
 
@@ -422,6 +446,8 @@ Beginner mistakes:
 
 So far we have the autonomy dial, the loop and the tool contract. It is time to name the whole thing they belong to.
 
+[↑ Contents](#contents)
+
 ## 1.4 What a "harness" is
 
 *Day 4 · 2026-09-06*
@@ -536,6 +562,8 @@ Common mistake: putting the allow-list in the system prompt. That only shifts pr
 ---
 
 The six-layer map is still abstract. The fastest way to make it concrete is to read one complete, working agent and label every line with its layer.
+
+[↑ Contents](#contents)
 
 ## 1.5 Anatomy of a real agent
 
@@ -702,6 +730,8 @@ Beginner mistake: blaming the model for "not checking its work". The harness lie
 
 You can now build an agent. The last lesson of the week asks the question you should ask before building one.
 
+[↑ Contents](#contents)
+
 ## 1.6 When NOT to build an agent
 
 *Day 6 · 2026-09-08*
@@ -787,6 +817,8 @@ Two common mistakes:
 - Wang et al. — [The Long-Horizon Task Mirage? Diagnosing Where and Why Agentic Systems Break](https://arxiv.org/html/2604.11978v1) (Apr 2026)
 
 ---
+
+[↑ Contents](#contents)
 
 ## Week 1 review
 

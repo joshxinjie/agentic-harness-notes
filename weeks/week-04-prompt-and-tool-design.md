@@ -1,5 +1,25 @@
 # Week 4 — Prompt and tool design
 
+<!-- toc -->
+## Contents
+
+- **[4.1 System prompt architecture for agents](#41-system-prompt-architecture-for-agents)**  
+  [Idea](#the-idea) · [Example](#an-example) · [In the harness](#where-it-lives-in-the-harness) · [Mistakes](#common-mistakes) · [Try it](#try-it) · [Answer](#worked-answer) · [Sources](#sources)
+- **[4.2 Tool design: naming, descriptions, parameters](#42-tool-design-naming-descriptions-parameters)**  
+  [Idea](#the-idea-1) · [Example](#an-example-1) · [In the harness](#where-it-lives-in-the-harness-1) · [Mistakes](#common-mistakes-1) · [Try it](#try-it-1) · [Answer](#worked-answer-1) · [Sources](#sources-1)
+- **[4.3 Tool error messages as instructions; designing for recovery](#43-tool-error-messages-as-instructions-designing-for-recovery)**  
+  [Idea](#the-idea-2) · [Example](#an-example-2) · [In the harness](#where-it-lives-in-the-harness-2) · [Mistakes](#common-mistakes-2) · [Try it](#try-it-2) · [Answer](#worked-answer-2) · [Sources](#sources-2)
+- **[4.4 Agent-computer interface (ACI)](#44-agent-computer-interface-aci)**  
+  [Idea](#the-idea-3) · [Example](#an-example-3) · [In the harness](#where-it-lives-in-the-harness-3) · [Mistakes](#common-mistakes-3) · [Try it](#try-it-3) · [Answer](#worked-answer-3) · [Sources](#sources-3)
+- **[4.5 Skills: procedural knowledge loaded on demand](#45-skills-procedural-knowledge-loaded-on-demand)**  
+  [Idea](#the-idea-4) · [Example](#an-example-4) · [In the harness](#where-it-lives-in-the-harness-4) · [Mistakes](#common-mistakes-4) · [Try it](#try-it-4) · [Answer](#worked-answer-4) · [Sources](#sources-4)
+- **[4.6 Prompt caching and cost](#46-prompt-caching-and-cost)**  
+  [Idea](#the-idea-5) · [Example](#an-example-5) · [In the harness](#where-it-lives-in-the-harness-5) · [Mistakes](#common-mistakes-5) · [Try it](#try-it-5) · [Answer](#worked-answer-5) · [Sources](#sources-5)
+- **[Week 4 review](#week-4-review)**  
+  [Recap](#recap) · [Self-quiz](#self-quiz) · [Exercise](#integrative-exercise) · [Answer](#worked-answer-6) · [Sources](#sources-6)
+
+<!-- /toc -->
+
 [Week 3](week-03-state-and-memory.md) was about layer 4 (state): everything the harness keeps outside the transcript, so the loop can survive and remember. (The harness is all the code around the model; the transcript is the running list of messages and tool results the model is sent each turn — see [1.4](week-01-what-an-agent-is.md#14-what-a-harness-is).) This week moves to layer 1 (prompts) and layer 2 (tools and the executor): the text and the tools that shape each turn. In other words, it is about what the model *reads* every turn.
 
 ![The six layers of a harness, stacked below the stateless model they wrap: prompts, tools and the executor, loop control, state, guardrails and permissions, feedback and evals.](../diagrams/harness-layers.svg)
@@ -180,6 +200,8 @@ Common slips:
 
 The system prompt is one half of what the model reads every turn. The other half is the list of tool definitions — and unlike the prompt, tools are the part of the interface the model actually operates.
 
+[↑ Contents](#contents)
+
 ## 4.2 Tool design: naming, descriptions, parameters
 
 *Day 24 · 2026-09-25*
@@ -327,6 +349,8 @@ Common slips: counting a `fetch_weather` pick as a model error (it is a menu err
 
 Lesson 4.2 designed the happy path: what the model reads before it calls a tool. The next lesson is the unhappy path: what it reads when the call fails.
 
+[↑ Contents](#contents)
+
 ## 4.3 Tool error messages as instructions; designing for recovery
 
 *Day 25 · 2026-09-26*
@@ -470,6 +494,8 @@ Common slips: raising on `no_data`, and fix text that names a tool the agent doe
 
 Lessons 4.2 and 4.3 designed single tools and the text they return. The next lesson zooms out to the interface as a whole: what the agent sees back each turn, how much one action does, and which state it can see.
 
+[↑ Contents](#contents)
+
 ## 4.4 Agent-computer interface (ACI)
 
 *Day 26 · 2026-09-27*
@@ -595,6 +621,8 @@ Common slips: letting `series_find` return rows instead of row numbers (that is 
 ---
 
 The ACI is the interface the agent acts through. Back in [4.1](#41-system-prompt-architecture-for-agents), the system prompt kept only stable, always-needed instructions and set aside "multi-step procedures used occasionally". The next lesson is where those set-aside procedures go.
+
+[↑ Contents](#contents)
 
 ## 4.5 Skills: procedural knowledge loaded on demand
 
@@ -736,6 +764,8 @@ Common slips:
 ---
 
 So far this week has been about what the agent reads: the prompt, tools, errors, the interface and skills. The last lesson is about what all of that costs. It also explains the "cache boundary" that [4.1](#41-system-prompt-architecture-for-agents) put into the system prompt without saying why.
+
+[↑ Contents](#contents)
 
 ## 4.6 Prompt caching and cost
 
@@ -904,6 +934,8 @@ Common slips: computing hit rate from `input_tokens` alone, which leaves out cac
 - Manus, [Context Engineering for AI Agents: Lessons from Building Manus](https://manus.im/blog/Context-Engineering-for-AI-Agents-Lessons-from-Building-Manus) (Jul 2025).
 
 ---
+
+[↑ Contents](#contents)
 
 ## Week 4 review
 
