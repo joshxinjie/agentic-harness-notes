@@ -6,7 +6,7 @@ The course arrives as a short daily email (one concept, about five minutes to re
 
 ## How to read this
 
-Read the weeks in order. Each chapter builds on the one before it and links back when it reuses an idea. Each lesson opens with a three-line "In short" summary, then follows the same shape: the idea, an example, where it lives in the harness, common mistakes, a "try it" exercise, the worked answer, and sources. Each week ends with a review: a recap, a self-quiz with answers, and one exercise that ties the week together.
+Read the weeks in order. Each chapter builds on the one before it and links back when it reuses an idea. Each lesson opens with a three-line "In short" summary, then follows the same shape: the idea, an example, where it lives in the harness, common mistakes, a "try it" exercise, the worked answer, and sources. Each week ends with a review: a recap, a self-quiz with answers, and one exercise that ties the week together. Each chapter opens with a contents list; a "↑ Contents" link before each lesson takes you back to it.
 
 Diagrams sit next to the ideas they explain, and exact API names and defaults are collected in small "API details" tables so they don't interrupt the explanation.
 

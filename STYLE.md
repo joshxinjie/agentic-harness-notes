@@ -55,7 +55,7 @@ The notes name no real employer, client, person or site. The emails sometimes do
 
 ## Contents list
 
-Every week file starts with a generated contents list (between `<!-- toc -->` and `<!-- /toc -->`) and has a "↑ Contents" link before each lesson. Do not edit them by hand: after adding or renaming any heading, run `python3 tools/make_toc.py`. `python3 tools/make_toc.py --check` fails if a list is out of date.
+Every week file has a generated contents list right under its title (between `<!-- toc -->` and `<!-- /toc -->`) and has a "↑ Contents" link before each lesson. Do not edit them by hand: after adding or renaming any heading, run `python3 tools/make_toc.py`. `python3 tools/make_toc.py --check` fails if a list is out of date.
 
 ## Lesson template
 
