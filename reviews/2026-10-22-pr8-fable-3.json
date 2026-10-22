@@ -1,0 +1,93 @@
+{
+ "meta": {
+  "reviewer": "fable",
+  "provider": "claude-code",
+  "model": "claude-fable-5-1",
+  "scope": "pr",
+  "date": "2026-10-22",
+  "input_tokens": 524131,
+  "output_tokens": 20645,
+  "attempts": 1,
+  "context_files": [
+   "PULL REQUEST",
+   "DIFF",
+   "reviews/decisions.md",
+   "STYLE.md",
+   "README.md",
+   ".github/workflows/respond.yml",
+   "BACKLOG.md",
+   "CHANGELOG.md",
+   "scripts/review_harness/respond.py",
+   "tests/test_review_harness.py"
+  ],
+  "context_dropped": [],
+  "context_tokens_est": 29447,
+  "pr": 8,
+  "commit": "55e12306db42d2007d7dabe62cc15279a70657fb"
+ },
+ "review": {
+  "schema_version": 1,
+  "scope": "pr",
+  "verdict": "changes_needed",
+  "summary": "changes_needed. F1: the new no-tracked-pyc test will fail on main after merge if main still tracks the tools/__pycache__ file from #6; the PR6-F4 row says that untracking was left to the owner, contradicting the PR text \"#7 removes the same files\". F2: BACKLOG has no PR6-F4 item although the PR6-F4 row says one exists; this PR does the work, so record it as done. F3: the failure step is only string-asserted; run its pushed-branch branch in bash like the sed test does. Ran: pytest on this checkout (main's harness overlay) 83 passed; the PR's 3 new tests are not in that file. Link checker and git commands were blocked by the sandbox.",
+  "findings": [
+   {
+    "id": "F1",
+    "severity": "major",
+    "area": "tooling",
+    "title": "New test asserts no tracked .pyc, but main likely still tracks tools/__pycache__ from #6",
+    "file": "tests/test_review_harness.py",
+    "line_start": 888,
+    "line_end": 895,
+    "claim": "test_bytecode_is_ignored_and_untracked fails if any .pyc is tracked. This PR deletes the 17 files under scripts/ and tests/ only. The PR6-F4 decision row (merged in #7) says #6 committed a 'new tools/__pycache__ file' and that 'the untracking is left to the owner'. The PR description's claim that '#7 removes the same files' contradicts that row. If main still tracks tools/__pycache__/make_toc*.pyc, CI on main goes red the moment this PR merges, and the test's own docstring (17 files from #4) would be incomplete. This branch does not contain main's #6/#7 code (no tools/make_toc.py or tests/test_make_toc.py here), so the test could not catch it on the branch.",
+    "evidence": "reviews/decisions.md row PR6-F4: 'F4: Compiled bytecode is committed: new tools/__pycache__ file and a modified scripts/review_harness pyc ... The `git rm -r --cached` and `rm` commands were denied in this session ... So the untracking is left to the owner'. PR description: '#7 removes the same files, and both PRs merge cleanly in either order.' Diff deletes only scripts/review_harness/**/*.pyc and tests/__pycache__/*.pyc. Glob of this checkout shows no tools/ or tests/test_make_toc.py files. I could not run `git ls-tree origin/main` (blocked), so main's tree is unverified.",
+    "proposed_change": "Run `git ls-tree -r --name-only origin/main | grep '\\.pyc$'`. If it lists tools/__pycache__/*.pyc, merge main into this branch and add `git rm -r --cached tools/__pycache__` to the PR so the test passes on the merged tree; then correct the PR description (and the '17 files' docstring if the count changes). If main is clean, only the PR description needs fixing. Test: `python -m pytest -q tests -k bytecode` on the merge result.",
+    "verified_by": "read_docs",
+    "confidence": 0.55
+   },
+   {
+    "id": "F3",
+    "severity": "nit",
+    "area": "tooling",
+    "title": "Failure-step logic is only asserted as substrings; run it like the sed test does",
+    "file": ".github/workflows/respond.yml",
+    "line_start": 209,
+    "line_end": 216,
+    "claim": "test_respond_workflow_reports_a_pushed_branch_without_a_pr checks that two strings appear in the YAML; it does not check that the pushed-branch branch of the failure step produces the intended comment (fix_pr_url wins over pushed_branch; the compare URL has base before head). test_respond_workflow_records_the_fix_pr_number shows the repo already runs a workflow line in bash against a temp dir. The failure step cannot be run that way today because the compare URL interpolates `${{ steps.gate.outputs.head_ref }}` into the script, which is new evidence for the deferred PR8-F3 change.",
+    "evidence": "tests/test_review_harness.py lines 882-885 (string asserts only) versus lines 855-868 (runs the sed line with `bash -c`). respond.yml line 213 contains `${{ github.server_url }}/${{ github.repository }}/compare/${{ steps.gate.outputs.head_ref }}...$b` inside the run script.",
+    "proposed_change": "When PR8-F3 is done (HEAD_REF via env), extract the `reason=`..`fi` block of the failure step and run it with `bash -c` and RUNNER_TEMP pointing at a temp dir containing only pushed_branch; assert the outcome string names the branch and the compare URL ends in `<head_ref>...<branch>`, and that with fix_pr_url present the 'later step failed' text wins.",
+    "verified_by": "read_code",
+    "confidence": 0.7,
+    "related_decision": "PR8-F3"
+   },
+   {
+    "id": "F4",
+    "severity": "nit",
+    "area": "tooling",
+    "title": "cell() truncates after wrapping links, so a cut can leave an unbalanced backtick",
+    "file": "scripts/review_harness/respond.py",
+    "line_start": 40,
+    "line_end": 45,
+    "claim": "MD_LINK wrapping adds two characters per link before the length check. In the summary table the reason is cut at 200 characters (`cell(r['reason'], 200)` in render_summary), so a reason longer than that with a link near the cut ends in an opening backtick followed by '…'. GitHub renders an unmatched backtick literally, so this is cosmetic. The comment in decision_rows ('nothing is cut here') now holds only because the margins (600 vs 800, 300 vs 400) exceed 2× the realistic link count.",
+    "evidence": "respond.py: `text = MD_LINK.sub(r\"`\\1`\", text)` runs before `return text if len(text) <= limit else text[: limit - 1] + \"…\"`; render_summary calls `cell(r['reason'], 200)`; respond_schema.json caps reason at 600 and changes at 300.",
+    "proposed_change": "Truncate before wrapping (move the MD_LINK.sub after the length check, re-wrapping only the kept text), or skip a link that would straddle the cut. Add a case to test_cells_quote_markdown_links_as_code with limit=20 and a link crossing the cut, asserting the output has an even number of backticks.",
+    "verified_by": "read_code",
+    "confidence": 0.75
+   },
+   {
+    "id": "F2",
+    "severity": "question",
+    "area": "process",
+    "title": "BACKLOG has no PR6-F4 untracking item that the decision row says exists",
+    "file": "BACKLOG.md",
+    "line_start": 6,
+    "line_end": 21,
+    "claim": "Decision PR6-F4 says the pyc untracking was 'left to the owner, as a BACKLOG item with the exact command'. This PR's BACKLOG, which per PR8-2-F1 took in main's PR6 items, lists only F7 and F8. Either main never had the item, or it was dropped when main's lines were copied in. Since this PR performs the untracking, the item (if it exists on main) should be removed with a note rather than silently lost, and the CHANGELOG line should say this closes PR6-F4.",
+    "evidence": "reviews/decisions.md row PR6-F4 'Fixed in: #7', reason ending 'as a BACKLOG item with the exact command'. BACKLOG.md lines 19-21 contain only the F8 and F7 items from the PR #6 review. CHANGELOG.md line 8: 'F4: .gitignore added; untracking the pyc files is deferred.'",
+    "proposed_change": "Check `git show origin/main:BACKLOG.md`. If a PR6-F4 item exists there, keep it out but add 'closes the PR6-F4 backlog item' to this PR's CHANGELOG line (line 9) so the trail is explicit; if it never existed, note in the CHANGELOG line that this PR does the untracking PR6-F4 deferred.",
+    "verified_by": "read_docs",
+    "confidence": 0.5
+   }
+  ]
+ }
+}
