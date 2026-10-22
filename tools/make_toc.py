@@ -40,6 +40,7 @@ SHORT = {
     "self-quiz answers": "Quiz answers",
     "integrative exercise": "Exercise",
     "integrative answer": "Exercise answer",
+    "integrative exercise — worked answer": "Exercise answer",  # Week 2's heading for the answer
 }
 
 
@@ -74,6 +75,7 @@ def strip_generated(lines):
             continue
         if s == END:
             skip = False
+            drop_blank = True  # and one after the block
             continue
         if skip:
             continue
@@ -81,6 +83,8 @@ def strip_generated(lines):
             drop_blank = True  # the generator writes one blank line after it
             continue
         out.append(ln)
+    if skip:
+        raise ValueError(f"{START} has no matching {END}; fix it by hand (this file was not written)")
     return out
 
 
@@ -151,7 +155,10 @@ def main():
     stale = []
     for f in sorted(glob.glob(os.path.join(ROOT, "weeks", "*.md"))):
         old = open(f, encoding="utf-8").read()
-        new = build(old)
+        try:
+            new = build(old)
+        except ValueError as e:
+            sys.exit(f"{os.path.relpath(f, ROOT)}: {e}")
         if new != old:
             stale.append(os.path.relpath(f, ROOT))
             if not check:

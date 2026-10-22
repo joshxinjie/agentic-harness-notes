@@ -16,7 +16,7 @@
 - **[2.6 Error handling: retries, backoff, and feeding tool errors back to the model](#26-error-handling-retries-backoff-and-feeding-tool-errors-back-to-the-model)**  
   [Idea](#the-idea-5) · [Example](#an-example-5) · [In the harness](#where-it-lives-in-the-harness-5) · [Mistakes](#common-mistakes-5) · [Try it](#try-it-5) · [Answer](#worked-answer-5) · [Sources](#sources-5)
 - **[Week 2 review](#week-2-review)**  
-  [Recap](#recap) · [Self-quiz](#self-quiz) · [Exercise](#integrative-exercise) · [Exercise](#integrative-exercise--worked-answer) · [Sources](#sources-6)
+  [Recap](#recap) · [Self-quiz](#self-quiz) · [Exercise](#integrative-exercise) · [Exercise answer](#integrative-exercise--worked-answer) · [Sources](#sources-6)
 
 <!-- /toc -->
 
