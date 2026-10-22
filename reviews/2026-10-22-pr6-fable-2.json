@@ -1,0 +1,108 @@
+{
+ "meta": {
+  "reviewer": "fable",
+  "provider": "claude-code",
+  "model": "claude-fable-5-1",
+  "scope": "pr",
+  "date": "2026-10-22",
+  "input_tokens": 2405806,
+  "output_tokens": 13048,
+  "attempts": 1,
+  "context_files": [
+   "PULL REQUEST",
+   "DIFF",
+   "reviews/decisions.md",
+   "STYLE.md",
+   "README.md",
+   "BACKLOG.md",
+   "CHANGELOG.md",
+   "tests/test_make_toc.py",
+   "tools/make_toc.py",
+   "weeks/week-01-what-an-agent-is.md",
+   "weeks/week-02-core-mechanics.md",
+   "weeks/week-03-state-and-memory.md",
+   "weeks/week-04-prompt-and-tool-design.md",
+   "weeks/week-05-control-safety-reliability.md",
+   "weeks/week-06-evaluation-1.md",
+   "weeks/week-07-evaluation-2-and-iteration.md",
+   "review/RESPOND.md"
+  ],
+  "context_dropped": [
+   "glossary.md",
+   "tests/fixtures/decisions_sample.md"
+  ],
+  "context_tokens_est": 130364,
+  "pr": 6,
+  "commit": "530a68ae1e28688830bc8b8aacd67f4e51528cb8"
+ },
+ "review": {
+  "schema_version": 1,
+  "scope": "pr",
+  "verdict": "approve_with_nits",
+  "summary": "approve_with_nits. Link checker: bad 0 (ran). make_toc --check and pytest were blocked by the sandbox; the script, tests and all seven contents lists were verified by reading, and CI (checks.yml) does run pytest. Top findings: (1) decision row PR6-F4 and the CHANGELOG say pyc untracking is deferred to a BACKLOG item, but commit 4c158d6 in this PR deletes all 17 pyc files and no BACKLOG item exists; (2) STYLE.md and README say a \"↑ Contents\" link sits before each lesson, but the first lesson of every week has none; (3) build() silently skips a week file whose first line is not a \"# \" title, so --check cannot flag it.",
+  "findings": [
+   {
+    "id": "F1",
+    "severity": "minor",
+    "area": "process",
+    "checklist_item": "REVIEW.md 'After the review': every decision is added to reviews/decisions.md; CHANGELOG has a line for the change",
+    "title": "PR6-F4 decision row and CHANGELOG say pyc untracking is deferred, but this PR does it",
+    "file": "reviews/decisions.md",
+    "line_start": 28,
+    "line_end": 28,
+    "claim": "The PR6-F4 row says the untracking 'is left to the owner, as a BACKLOG item with the exact command', and the CHANGELOG line says 'untracking the pyc files is deferred'. Neither matches the diff: the PR deletes all 17 tracked .pyc files, and BACKLOG.md contains no such item (it was removed in the same commit). The log now points readers at a backlog entry that does not exist and under-reports what the PR changed.",
+    "evidence": "git show --stat 4c158d6: 'untrack bytecode', 20 files changed, deletes scripts/review_harness/__pycache__/*.pyc, providers/__pycache__/*.pyc, tests/__pycache__/*.pyc, tools/__pycache__/make_toc.cpython-313.pyc, and removes 1 line from BACKLOG.md. The PR diff shows the same deletions. BACKLOG.md on this branch has only the F8 and F7 items. CHANGELOG.md line 9: 'F4: .gitignore added; untracking the pyc files is deferred.'",
+    "proposed_change": "Per the log's own rule (never edit a decided row), add a superseding PR6-F4 row at the top: decision 'accept', reason '.gitignore added and the 17 tracked .pyc files removed in 4c158d6', Fixed in '#7'. Change the CHANGELOG F4 clause to 'F4 (.gitignore added, bytecode untracked)'. Test: git ls-tree -r HEAD --name-only | grep -c .pyc should print 0.",
+    "verified_by": "ran_code",
+    "confidence": 0.9,
+    "related_decision": "PR6-F4"
+   },
+   {
+    "id": "F2",
+    "severity": "nit",
+    "area": "clarity",
+    "checklist_item": "STYLE.md 'Contents list'; 'Plain language: say things directly'",
+    "title": "STYLE.md and README say the back-link sits before each lesson; the first lesson has none",
+    "file": "STYLE.md",
+    "line_start": 58,
+    "line_end": 58,
+    "claim": "STYLE.md says every week file 'has a \"↑ Contents\" link before each lesson', and README says 'a \"↑ Contents\" link before each lesson takes you back to it'. make_toc.py writes the link only before every ## heading after the first lesson (the docstring says 'before every later \"## \" heading'), so lesson N.1 of each week has no link. A reader who looks for it at 1.1 will not find it.",
+    "evidence": "tools/make_toc.py build(): 'if first_lesson: first_lesson = False else: out += [BACK...]'. weeks/week-01-what-an-agent-is.md: no '[↑ Contents]' line precedes '## 1.1 LLM call vs workflow vs agent'; the first one precedes '## 1.2'. README.md line 9; STYLE.md line 58.",
+    "proposed_change": "STYLE.md: '...and a \"↑ Contents\" link before every lesson after the first, and before the week review.' README: 'a \"↑ Contents\" link before each later lesson takes you back to it.' No test needed; it is wording only.",
+    "verified_by": "read_code",
+    "confidence": 0.95
+   },
+   {
+    "id": "F3",
+    "severity": "nit",
+    "area": "tooling",
+    "checklist_item": "REVIEW.md E: tools/ scripts do what they claim",
+    "title": "build() silently returns a file unchanged when line 1 is not a title, so --check reports ok",
+    "file": "tools/make_toc.py",
+    "line_start": 110,
+    "line_end": 112,
+    "claim": "If a week file does not start with '# ', build() returns the text untouched, main() sees new == old, and --check prints 'checked ok'. A new week file with a missing or misplaced title would therefore get no contents list and pass the check and test_week_contents_are_current without any signal. The docstring says the block goes 'right under the \"# Week N — ...\" title', so the absence of that title is an error condition, not a no-op.",
+    "evidence": "tools/make_toc.py lines 110-112: 'if not lines or not lines[0].startswith(\"# \"): return text'. main() only reports files where new != old.",
+    "proposed_change": "Raise ValueError(f'first line must be a \"# \" title') in build() instead of returning text, so main() exits naming the file (the same path F5 added for an unclosed marker). Add a one-line test: toc.build('Intro\\n## 9.1 X\\n') raises ValueError.",
+    "verified_by": "read_code",
+    "confidence": 0.85
+   },
+   {
+    "id": "F4",
+    "severity": "nit",
+    "area": "tooling",
+    "checklist_item": "REVIEW.md E: tools/ scripts do what they claim",
+    "title": "make_toc.slug() strips link syntax from headings; check_links.slug() does not",
+    "file": "tools/make_toc.py",
+    "line_start": 48,
+    "line_end": 52,
+    "claim": "make_toc.slug() first reduces '[text](url)' to 'text', matching GitHub, while check_links.py slug() keeps the URL characters. No current heading contains a link, so the parity test passes today, but the two scripts will disagree the first time one does, and check_links (the one CI trusts for anchors) would be the wrong one. The decision on F6 accepted a parity test instead of a shared function; this is the one known case where parity already does not hold.",
+    "evidence": "tools/make_toc.py line 49: re.sub(r\"\\[([^\\]]*)\\]\\([^)]*\\)\", r\"\\1\", text). tools/check_links.py lines 4-7: strip, lower, remove [^\\w\\- ], replace spaces; no link stripping. tests/test_make_toc.py FIXTURE has no heading with a link.",
+    "proposed_change": "Either drop the link-stripping line from make_toc.slug() (keeping the two identical, since no heading has a link) or add a fixture heading with a link to test_anchors_match_check_links so the divergence is visible, and add the same re.sub to check_links.slug(). Test: the parity test on a fixture heading '## See [1.4](x.md)' must pass.",
+    "verified_by": "read_code",
+    "confidence": 0.7,
+    "related_decision": "PR6-F6"
+   }
+  ]
+ }
+}
