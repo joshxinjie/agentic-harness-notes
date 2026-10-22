@@ -4,7 +4,7 @@ name: Cross-model review response
 # Start it from the GitHub app: comment "/respond" (or "/respond <review file>.json") on the reviewed PR,
 # or Actions tab -> Cross-model review response -> Run workflow.
 # The author's fixes and decisions arrive as a new pull request into the reviewed PR's branch; nothing counts until
-# Xin Jie merges it. The author never pushes, approves or merges.
+# The owner merges it. The author never pushes, approves or merges.
 
 on:
   issue_comment:

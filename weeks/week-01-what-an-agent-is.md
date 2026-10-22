@@ -391,7 +391,7 @@ Bonus: sketch a `get_site_metrics(site, date)` tool that does both lookups and t
 
 **(a) Definitions.** A good `get_forecast` description says:
 
-> Returns the day-ahead solar generation forecast for one site on one date, in MWh per hour (24 values, local time). Use it when you need the predicted output; use get_actual for what was produced. site is the ENGIE site code, e.g. SG-01; date is ISO YYYY-MM-DD. If no forecast exists for that site/date the result is {"status":"no_data","reason":...}, not an error.
+> Returns the day-ahead solar generation forecast for one site on one date, in MWh per hour (24 values, local time). Use it when you need the predicted output; use get_actual for what was produced. site is the site code, e.g. SG-01; date is ISO YYYY-MM-DD. If no forecast exists for that site/date the result is {"status":"no_data","reason":...}, not an error.
 
 The per-parameter descriptions repeat the format and give one example each.
 
@@ -757,7 +757,7 @@ This is the layer-zero decision: how much control flow to hard-code (layers 1–
 
 ### Try it
 
-Take five tasks from the ENGIE forecasting stack — for example: nightly retrain check, weather-feed data-quality validation, "why is site X off?", drafting the weekly performance note, backfilling missing actuals. For each, write one line answering: Can I draw the graph? What is the worst silent wrong action? Can I eval it? Then place it on the dial: no LLM / single call / workflow / agent / hybrid.
+Take five tasks from a solar forecasting stack — for example: nightly retrain check, weather-feed data-quality validation, "why is site X off?", drafting the weekly performance note, backfilling missing actuals. For each, write one line answering: Can I draw the graph? What is the worst silent wrong action? Can I eval it? Then place it on the dial: no LLM / single call / workflow / agent / hybrid.
 
 Pick the one that lands at "agent" and write two sentences on what you would hard-code to pull it toward "workflow" without losing what needed the agent. Keep the table — the week review and the capstone reuse it.
 

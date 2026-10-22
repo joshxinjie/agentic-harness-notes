@@ -2,8 +2,8 @@
 
 A reviewer model from a **different model or provider** than the one that wrote the notes reviews this repo and
 suggests improvements. It runs on pull requests (on request, and automatically on each weekly update) and once a
-month on the whole repo. The reviewer only suggests; Xin Jie decides, and every change to `main` arrives as a pull
-request he merges.
+month on the whole repo. The reviewer only suggests; the owner decides, and every change to `main` arrives as a pull
+request they merge.
 
 This file is the reviewer's instructions. The harness sends it, unchanged, to every reviewer model, so edit it here to
 change what reviews look for. Findings must follow [review/schema.json](review/schema.json); which models review is
@@ -14,7 +14,7 @@ set in [review/config.yaml](review/config.yaml); decisions on past findings are 
 
 | Role | Who | Does |
 |---|---|---|
-| Owner | Xin Jie | Decides on every finding and merges. Settles disagreements between reviewer and author. |
+| Owner | The repo owner | Decides on every finding and merges. Settles disagreements between reviewer and author. |
 | Author | The model that writes the notes (currently Claude Opus, through the Saturday update task) | Responds to each finding: accept, modify, reject or defer, with reasons. Opens fix PRs for accepted findings. |
 | Reviewer | A different model (Fable first; others later) | Reads the work and returns findings in the schema. Never edits `main`. |
 
@@ -40,7 +40,7 @@ A `project` review may be limited to areas (for example `weeks/week-05-control-s
 
 Judge every finding against this goal:
 
-- **Goal:** a plain-language course on agentic and harness engineering that Xin Jie reads in order, like a short book,
+- **Goal:** a plain-language course on agentic and harness engineering that the owner reads in order, like a short book,
   mostly on a phone in the GitHub app. He is experienced with LLMs and a beginner at agents.
 - **Source:** each lesson is rewritten from a daily "Agentic brief" email. The emails are the source of record. The
   notes must make them **easier to read without changing what they say**.
@@ -80,6 +80,9 @@ Apply STYLE.md. Cite the section in `checklist_item`. Pay most attention to:
 - paragraphs much longer than ~80 words; parallel items not in a list; repetition that should be a link back;
 - the lesson template: In short block, worked answer right after its exercise, the review section at the end of the
   week, "*Answer coming in the next brief.*" left where an answer now exists.
+
+- anything that identifies the owner, an employer, a client or a real site (STYLE.md "Keep it anonymous"). Severity:
+  at least `major`.
 
 Stay out of taste ("I would word it differently") unless the wording misleads or confuses.
 
@@ -143,7 +146,7 @@ The summary must fit on a phone screen: the verdict, then the top three findings
    through their own `reviewer/` PR.
 2. The author answers each finding: comment `/respond` on the PR. The author model (instructions in
    [review/RESPOND.md](review/RESPOND.md)) decides accept, modify, reject or defer for each finding, applies the fixes
-   it accepts, and opens a pull request into the reviewed PR's branch with its decisions. Disagreements go to Xin Jie:
+   it accepts, and opens a pull request into the reviewed PR's branch with its decisions. Disagreements go to the owner:
    merging that pull request accepts the decisions; closing it rejects them. For a project review, comment `/respond`
    on the `reviewer/` PR that carries it.
 3. Every decision is added to [reviews/decisions.md](reviews/decisions.md). Deferred items go to

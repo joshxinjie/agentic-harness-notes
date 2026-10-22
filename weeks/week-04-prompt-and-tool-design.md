@@ -16,7 +16,7 @@ The week goes from the inside out:
 
 One theme runs through every lesson: most agent failures you can fix are interface failures, not model failures. Fix the interface first.
 
-The running example is the same as in earlier weeks: a read-only investigator that looks into forecast errors at ENGIE solar sites (mostly the SG-03 meter-fault case) and ends by drafting a ticket for a human to approve.
+The running example is the same as in earlier weeks: a read-only investigator that looks into forecast errors at solar sites (mostly the SG-03 meter-fault case) and ends by drafting a ticket for a human to approve.
 
 ---
 
@@ -92,7 +92,7 @@ The order encodes two things at once: cache economics, and attention. Rules come
 The investigator's system prompt, in four sections plus a run block below the boundary:
 
 ```text
-<role> Forecasting-ops investigator for ENGIE solar sites. Read-only.
+<role> Forecasting-ops investigator for solar sites. Read-only.
 Your output is a ticket draft a human approves. </role>
 
 <constraints> Never assert a root cause without a deciding number from a tool result.
@@ -244,7 +244,7 @@ after:
   weather_get_history(site: str, window_days: int = 7,
                       agg: "daily" | "hourly" = "daily",
                       stations: list[str] | None)
-  "Returns per-station weather for one ENGIE site over the last window_days,
+  "Returns per-station weather for one site over the last window_days,
    compared with a 30-day baseline. Use this to test the weather hypothesis;
    use pipeline_get_status if you suspect the feed itself. Daily returns
    max cloud delta and null counts per station (~200 tokens); hourly returns

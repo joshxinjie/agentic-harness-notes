@@ -8,7 +8,7 @@
 
 Step one is always reading the run that produced the bad number. A score tells you *that* something failed. The transcript tells you *where* and *why*. We start with how to read one failed transcript properly (7.1), then group many diagnoses into a counted list of failure types that tells you what to fix first (7.2).
 
-The running example is still the nightly investigator for Xin Jie's solar sites.
+The running example is still the nightly investigator for a portfolio of solar sites.
 
 ---
 
