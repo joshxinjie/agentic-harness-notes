@@ -34,9 +34,14 @@ ICON = {"accept": "✅", "modify": "🔧", "reject": "✋", "defer": "⏳"}
 FINDING_CELL = re.compile(r"^(F\d{1,2})\b")
 
 
+MD_LINK = re.compile(r"(?<!`)(\[[^\]\n]*\]\([^)\s]*\))(?!`)")
+
+
 def cell(text: str, limit: int = 300) -> str:
-    """One table cell: no pipes or line breaks, trimmed."""
+    """One table cell: no pipes or line breaks, trimmed. Markdown links the model quotes (a contents line, a link to
+    another page) become code: in reviews/decisions.md they would resolve against the wrong folder and break."""
     text = " ".join(str(text).split()).replace("|", "/")
+    text = MD_LINK.sub(r"`\1`", text)
     return text if len(text) <= limit else text[: limit - 1] + "…"
 
 

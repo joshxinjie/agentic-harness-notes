@@ -870,3 +870,16 @@ def test_workflows_install_from_main_not_the_pr():
     assert "git show origin/main:requirements.txt" in review
     assert "\n          pip install -r requirements.txt\n" not in review
     assert 'if [ -f "$RUNNER_TEMP/work/requirements.txt" ]' in respond
+
+
+def test_cells_quote_markdown_links_as_code():
+    """PR #6: a reason quoting '[Exercise](#integrative-exercise)' became a broken anchor in reviews/decisions.md."""
+    out = RS.cell('now reads "[Exercise](#integrative-exercise) · [Answer](../weeks/w.md#x)" and `[ok](#y)`', 800)
+    assert "`[Exercise](#integrative-exercise)`" in out and "`[Answer](../weeks/w.md#x)`" in out
+    assert "`[ok](#y)`" in out and "``" not in out
+
+
+def test_respond_workflow_reports_a_pushed_branch_without_a_pr():
+    text = (ROOT / ".github" / "workflows" / "respond.yml").read_text()
+    assert 'echo "$BRANCH" > "$RUNNER_TEMP/pushed_branch"' in text and "no PR was opened" in text
+    assert "if: always() && steps.respond.outputs.code == '0'" in text

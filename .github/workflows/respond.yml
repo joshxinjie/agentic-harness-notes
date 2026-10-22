@@ -143,8 +143,18 @@ jobs:
           git commit -q -m "Author response to cross-model review ${REVIEW%.json}" \
             -m "Decisions logged in reviews/decisions.md."
           git push -q origin "$BRANCH"
-          url=$(gh api "repos/$GITHUB_REPOSITORY/pulls" -f title="Author response to the review of #$PR" \
-                -f head="$BRANCH" -f base="$HEAD_REF" -F body=@"$RUNNER_TEMP/summary.md" --jq .html_url)
+          echo "$BRANCH" > "$RUNNER_TEMP/pushed_branch"
+          # Opening a PR needs "Allow GitHub Actions to create and approve pull requests" (Settings -> Actions ->
+          # General). Keep GitHub's answer so the failure comment can show it.
+          if ! url=$(gh api "repos/$GITHUB_REPOSITORY/pulls" -f title="Author response to the review of #$PR" \
+                -f head="$BRANCH" -f base="$HEAD_REF" -F body=@"$RUNNER_TEMP/summary.md" --jq .html_url \
+                2> "$RUNNER_TEMP/gh_err.txt"); then
+            { echo "Opening the fix PR failed: $(head -c 500 "$RUNNER_TEMP/gh_err.txt")"
+              echo "If it says Actions may not create pull requests: Settings -> Actions -> General -> Workflow"
+              echo "permissions -> allow GitHub Actions to create and approve pull requests."; } \
+              > "$RUNNER_TEMP/respond_error.txt"
+            exit 1
+          fi
           # The decision rows were written before the PR existed; record its number in "Fixed in".
           num="${url##*/}"
           echo "$url" > "$RUNNER_TEMP/fix_pr_url"
@@ -159,7 +169,7 @@ jobs:
           gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" -F body=@"$RUNNER_TEMP/comment.md"
 
       - name: Archive the response record
-        if: steps.respond.outputs.code == '0'
+        if: always() && steps.respond.outputs.code == '0'
         env:
           REVIEW: ${{ steps.gate.outputs.review }}
         run: |
@@ -180,6 +190,14 @@ jobs:
           done
           echo "::warning::Could not push the response record to reviewer/archive"
 
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.respond.outputs.code == '0'
+        with:
+          name: response-${{ steps.gate.outputs.pr }}
+          path: |
+            ${{ runner.temp }}/response.json
+            ${{ runner.temp }}/summary.md
+
       - name: Report a failure on the PR
         if: failure() && steps.gate.outputs.pr != ''
         env:
@@ -190,6 +208,9 @@ jobs:
           if [ -s "$RUNNER_TEMP/respond_error.txt" ]; then reason=$(head -c 800 "$RUNNER_TEMP/respond_error.txt"); fi
           if [ -s "$RUNNER_TEMP/fix_pr_url" ]; then
             outcome="the fix PR was opened ($(cat "$RUNNER_TEMP/fix_pr_url")) but a later step failed"
+          elif [ -s "$RUNNER_TEMP/pushed_branch" ]; then
+            b=$(cat "$RUNNER_TEMP/pushed_branch")
+            outcome="the fixes and decisions were pushed to \`$b\` but no PR was opened; open one into this PR's branch: ${{ github.server_url }}/${{ github.repository }}/compare/${{ steps.gate.outputs.head_ref }}...$b"
           else
             outcome="nothing was changed"
           fi
