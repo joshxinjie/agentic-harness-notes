@@ -16,7 +16,7 @@ We start with why agent evals are not the same as the LLM evals you already know
 - we use all of that to decide whether a harness change ships (6.5);
 - we look at public benchmarks and what their numbers really mean (6.6).
 
-The running example is the same as in earlier weeks: the nightly investigator. It looks at Xin Jie's solar sites (SG-03, MY-01 and so on), works out why output dropped, and files a draft ticket for a reviewer.
+The running example is the same as in earlier weeks: the nightly investigator. It looks at a portfolio of solar sites (SG-03, MY-01 and so on), works out why output dropped, and files a draft ticket for a reviewer.
 
 ---
 
@@ -654,7 +654,7 @@ Without this, you cannot tell a prompt "improvement" from noise, so regressions 
 1. **A/A:** run your 8-task suite twice on the same hash, 10 trials each. Compute the per-task pass^3 differences and their paired SE. That is your noise floor.
 2. Make one change: drop the `<use_parallel_tool_calls>` block. Write `compare(A, B, regression_ids)` returning `{delta, se, ci95, mde, regressions, cost_ratio, verdict: ship | hold | block}`.
 3. Re-run B with the tool timeout halved (60 s → 30 s). How far does the delta move?
-4. In one paragraph: a forecast-model retrain at ENGIE is also an A/B test. Which of the three rules above do your backtests already follow? Would pairing by site-day change any past decision?
+4. In one paragraph: a forecast-model retrain is also an A/B test. Which of the three rules above do your backtests already follow? Would pairing by site-day change any past decision?
 
 ### Worked answer
 

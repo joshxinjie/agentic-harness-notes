@@ -10,7 +10,7 @@ Read the weeks in order. Each chapter builds on the one before it and links back
 
 Diagrams sit next to the ideas they explain, and exact API names and defaults are collected in small "API details" tables so they don't interrupt the explanation.
 
-Most examples use one running scenario: an agent that investigates forecast errors at ENGIE solar sites and drafts a ticket for a human to approve.
+Most examples use one running scenario: an agent that investigates forecast errors at a portfolio of solar sites and drafts a ticket for a human to approve.
 
 ## Contents
 
@@ -43,7 +43,7 @@ Reference:
 
 ## How it's updated
 
-A scheduled task runs every Saturday morning (Singapore time). It reads that week's brief emails, rewrites them into the matching chapter using the style guide, fills in answers that were still pending, updates the glossary and reading list, and opens a pull request on a `weekly/YYYY-MM-DD` branch. Nothing reaches `main` until I merge it.
+A scheduled task runs every Saturday morning (UTC+8). It reads that week's brief emails, rewrites them into the matching chapter using the style guide, fills in answers that were still pending, updates the glossary and reading list, and opens a pull request on a `weekly/YYYY-MM-DD` branch. Nothing reaches `main` until I merge it.
 
 ## How it's reviewed
 

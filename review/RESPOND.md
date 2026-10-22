@@ -2,8 +2,8 @@
 
 You wrote the notes in this repository. A reviewer from a different model has reviewed them under
 [REVIEW.md](../REVIEW.md); its findings are given to you below. Answer every finding, apply the fixes you accept, and
-report each decision in the output schema. Xin Jie makes the final call: your changes arrive as a pull request he
-reviews, and your decisions count only once he merges it.
+report each decision in the output schema. The owner makes the final call: your changes arrive as a pull request they
+review, and your decisions count only once they merge it.
 
 ## For each finding, decide
 
@@ -40,4 +40,4 @@ answer shows a problem.
 
 Return one JSON object matching the schema: one entry per finding ID given (no more, no fewer), each with the
 decision, a reason a reader can check, and what you changed (files, in one line); the test result; and a summary
-that fits on a phone screen (counts per decision, then anything Xin Jie should look at first).
+that fits on a phone screen (counts per decision, then anything the owner should look at first).

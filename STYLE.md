@@ -33,6 +33,15 @@ The main text explains how something works and why. Exact API identifiers get in
 
 Code examples keep their identifiers. The table is for prose only.
 
+## Keep it anonymous
+
+The notes name no real employer, client, person or site. The emails sometimes do, because they tie exercises to the owner's day job; the notes do not.
+
+- Write "a solar forecasting team", "a portfolio of solar sites", "the owner" or "you" instead of a company or a person's name.
+- Keep the made-up example site codes the lessons use (SG-03, MY-01 and so on). Never swap in real site, plant or asset names, project codes, or customer names.
+- No email addresses or other personal contact details. The GitHub username in repo URLs is fine; it is the repo's address.
+- Names of public companies, products, papers and authors that are *sources* (Anthropic, OpenAI, LangGraph, a paper's authors) stay: they are what the lesson cites.
+
 ## Flow
 
 - Each week is one file in `weeks/`. Lessons follow each other in order.

@@ -3,7 +3,7 @@
 The author model answers each still-undecided finding of one review, edits the PR checkout to apply the fixes it
 accepts, and returns its decisions. This module checks the answers, undoes any edit to the review machinery, writes
 the decision rows into reviews/decisions.md itself, and renders a summary. The workflow then commits the result to a
-new branch and opens a pull request into the reviewed PR's branch: nothing counts until Xin Jie merges it.
+new branch and opens a pull request into the reviewed PR's branch: nothing counts until the owner merges it.
 
 Example (from a checkout of the PR, with the harness from main on PYTHONPATH):
   python -m review_harness.respond --work-dir . --review-file review.json --pr 31 --base main \
