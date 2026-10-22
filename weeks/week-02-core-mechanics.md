@@ -1,5 +1,25 @@
 # Week 2 — Core mechanics
 
+<!-- toc -->
+## Contents
+
+- **[2.1 Context window as working memory](#21-context-window-as-working-memory)**  
+  [Idea](#the-idea) · [Example](#an-example) · [In the harness](#where-it-lives-in-the-harness) · [Mistakes](#common-mistakes) · [Try it](#try-it) · [Answer](#worked-answer) · [Sources](#sources)
+- **[2.2 ReAct and reasoning-then-acting; extended thinking in the loop](#22-react-and-reasoning-then-acting-extended-thinking-in-the-loop)**  
+  [Idea](#the-idea-1) · [Example](#an-example-1) · [In the harness](#where-it-lives-in-the-harness-1) · [Mistakes](#common-mistakes-1) · [Try it](#try-it-1) · [Answer](#worked-answer-1) · [Sources](#sources-1)
+- **[2.3 Planning and task decomposition](#23-planning-and-task-decomposition)**  
+  [Idea](#the-idea-2) · [Example](#an-example-2) · [In the harness](#where-it-lives-in-the-harness-2) · [Mistakes](#common-mistakes-2) · [Try it](#try-it-2) · [Answer](#worked-answer-2) · [Sources](#sources-2)
+- **[2.4 Structured outputs and schemas](#24-structured-outputs-and-schemas)**  
+  [Idea](#the-idea-3) · [Example](#an-example-3) · [In the harness](#where-it-lives-in-the-harness-3) · [Mistakes](#common-mistakes-3) · [Try it](#try-it-3) · [Answer](#worked-answer-3) · [Sources](#sources-3)
+- **[2.5 Stopping conditions, step budgets and loop detection](#25-stopping-conditions-step-budgets-and-loop-detection)**  
+  [Idea](#the-idea-4) · [Example](#an-example-4) · [In the harness](#where-it-lives-in-the-harness-4) · [Mistakes](#common-mistakes-4) · [Try it](#try-it-4) · [Answer](#worked-answer-4) · [Sources](#sources-4)
+- **[2.6 Error handling: retries, backoff, and feeding tool errors back to the model](#26-error-handling-retries-backoff-and-feeding-tool-errors-back-to-the-model)**  
+  [Idea](#the-idea-5) · [Example](#an-example-5) · [In the harness](#where-it-lives-in-the-harness-5) · [Mistakes](#common-mistakes-5) · [Try it](#try-it-5) · [Answer](#worked-answer-5) · [Sources](#sources-5)
+- **[Week 2 review](#week-2-review)**  
+  [Recap](#recap) · [Self-quiz](#self-quiz) · [Exercise](#integrative-exercise) · [Exercise answer](#integrative-exercise--worked-answer) · [Sources](#sources-6)
+
+<!-- /toc -->
+
 Week 1 ended on one fact: the transcript (the running list of messages and tool results the model is sent each turn) is the agent's only memory. A model is stateless, and the harness (all the code around the model) re-sends the whole conversation on every call ([Week 1](week-01-what-an-agent-is.md)). Week 2 is about the mechanics that let that loop survive real work:
 
 - how much memory the transcript really is (2.1);
@@ -160,6 +180,8 @@ Beginner mistakes:
 
 2.1 was about what the model sees. 2.2 is about what it does with it before acting.
 
+[↑ Contents](#contents)
+
 ## 2.2 ReAct and reasoning-then-acting; extended thinking in the loop
 
 *Day 9 · 2026-09-11*
@@ -293,6 +315,8 @@ Two common slips:
 
 2.2 put a reasoning step between each observation and the next action. That is planning one step at a time. 2.3 asks when the harness should make the model plan the *whole* task first, and where that plan should live.
 
+[↑ Contents](#contents)
+
 ## 2.3 Planning and task decomposition
 
 *Day 11 · 2026-09-12*
@@ -411,6 +435,8 @@ Beginner mistakes:
 ---
 
 In 2.3 the planner returned JSON and we parsed it "somehow". 2.4 is the somehow: how a harness gets plans, tool arguments and final answers in a shape code can trust — and what that guarantee does not cover.
+
+[↑ Contents](#contents)
 
 ## 2.4 Structured outputs and schemas
 
@@ -581,6 +607,8 @@ Beginner slips:
 
 2.4 guaranteed the shape of what the model hands to code. 2.5 is the other end of layer 3 (loop control): the decision, made before every call, about whether to call the model at all.
 
+[↑ Contents](#contents)
+
 ## 2.5 Stopping conditions, step budgets and loop detection
 
 *Day 13 · 2026-09-14*
@@ -731,6 +759,8 @@ Two slips:
 ---
 
 2.5 covered the per-run checks: budgets, stuck detection, explicit completion. 2.6 is the per-call counterpart: what the harness does when one model call or one tool call fails.
+
+[↑ Contents](#contents)
 
 ## 2.6 Error handling: retries, backoff, and feeding tool errors back to the model
 
@@ -889,6 +919,8 @@ Beginner mistakes:
 - [AWS — Exponential Backoff and Jitter](https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/)
 
 ---
+
+[↑ Contents](#contents)
 
 ## Week 2 review
 

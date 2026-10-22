@@ -1,5 +1,15 @@
 # Week 7 — Evaluation II and iteration
 
+<!-- toc -->
+## Contents
+
+- **[7.1 Reading a transcript](#71-reading-a-transcript)**  
+  [Idea](#the-idea) · [Example](#an-example) · [In the harness](#where-it-lives-in-the-harness) · [Mistakes](#common-mistakes) · [Try it](#try-it) · [Answer](#worked-answer) · [Sources](#sources)
+- **[7.2 Error taxonomies and common failure modes](#72-error-taxonomies-and-common-failure-modes)**  
+  [Idea](#the-idea-1) · [Example](#an-example-1) · [In the harness](#where-it-lives-in-the-harness-1) · [Mistakes](#common-mistakes-1) · [Try it](#try-it-1) · [Answer](#worked-answer-1) · [Sources](#sources-1)
+
+<!-- /toc -->
+
 [Week 6](week-06-evaluation-1.md) turned runs into numbers you can trust: tasks, graders, metrics, and a paired comparison that says ship, hold or block. This week is about what you do when one of those numbers is bad. It stays in layer 6 (feedback and evals).
 
 ![The six layers of a harness, stacked below the stateless model they wrap: prompts, tools and the executor, loop control, state, guardrails and permissions, feedback and evals.](../diagrams/harness-layers.svg)
@@ -167,6 +177,8 @@ Common slips: calling T6 decisive, and fixing it with a prompt line ("always che
 ---
 
 7.1 turned one failed run into one open code. The next lesson turns a hundred open codes into a taxonomy, which tells the rest of Week 7's improvement loop what to fix first.
+
+[↑ Contents](#contents)
 
 ## 7.2 Error taxonomies and common failure modes
 

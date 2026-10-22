@@ -1,5 +1,25 @@
 # Week 6 — Evaluation I
 
+<!-- toc -->
+## Contents
+
+- **[6.1 Why agent evals differ from LLM evals](#61-why-agent-evals-differ-from-llm-evals)**  
+  [Idea](#the-idea) · [In the harness](#where-it-lives-in-the-harness) · [Mistakes](#common-mistakes) · [Try it](#try-it) · [Answer](#worked-answer) · [Sources](#sources)
+- **[6.2 Building an eval set from real failures; the task/grader/environment triad](#62-building-an-eval-set-from-real-failures-the-taskgraderenvironment-triad)**  
+  [Idea](#the-idea-1) · [Example](#an-example) · [In the harness](#where-it-lives-in-the-harness-1) · [Mistakes](#common-mistakes-1) · [Try it](#try-it-1) · [Answer](#worked-answer-1) · [Sources](#sources-1)
+- **[6.3 Graders: exact match, rubric, LLM-as-judge, outcome checks](#63-graders-exact-match-rubric-llm-as-judge-outcome-checks)**  
+  [Idea](#the-idea-2) · [Example](#an-example-1) · [In the harness](#where-it-lives-in-the-harness-2) · [Mistakes](#common-mistakes-2) · [Try it](#try-it-2) · [Answer](#worked-answer-2) · [Sources](#sources-2)
+- **[6.4 Trajectory-level metrics: pass@k, steps, cost, tool-call accuracy](#64-trajectory-level-metrics-passk-steps-cost-tool-call-accuracy)**  
+  [Idea](#the-idea-3) · [Example](#an-example-2) · [In the harness](#where-it-lives-in-the-harness-3) · [Mistakes](#common-mistakes-3) · [Try it](#try-it-3) · [Answer](#worked-answer-3) · [Sources](#sources-3)
+- **[6.5 Regression testing a harness change; A/B on prompts and tools](#65-regression-testing-a-harness-change-ab-on-prompts-and-tools)**  
+  [Idea](#the-idea-4) · [Example](#an-example-3) · [In the harness](#where-it-lives-in-the-harness-4) · [Mistakes](#common-mistakes-4) · [Try it](#try-it-4) · [Answer](#worked-answer-4) · [Sources](#sources-4)
+- **[6.6 Public benchmarks (SWE-bench, τ-bench, GAIA, Terminal-Bench) and their limits](#66-public-benchmarks-swe-bench-τ-bench-gaia-terminal-bench-and-their-limits)**  
+  [Idea](#the-idea-5) · [Example](#an-example-4) · [In the harness](#where-it-lives-in-the-harness-5) · [Mistakes](#common-mistakes-5) · [Try it](#try-it-5) · [Answer](#worked-answer-5) · [Sources](#sources-5)
+- **[Week 6 review](#week-6-review)**  
+  [Recap](#the-week-in-six-paragraphs) · [Self-quiz](#self-quiz) · [Quiz answers](#self-quiz-answers) · [Exercise](#integrative-exercise) · [Exercise answer](#integrative-answer) · [Sources](#sources-6)
+
+<!-- /toc -->
+
 [Week 5](week-05-control-safety-reliability.md) put limits on the agent in code: sandboxes, review gates, guardrails, budgets and traces. Through all of it, one question stayed open. Many numbers in these notes were marked "illustrative". So how do you actually *know* that a harness change helped?
 
 This week answers that question. It is about layer 6 (feedback and evals), the top of the harness (all the code around the model, [1.4](week-01-what-an-agent-is.md#14-what-a-harness-is)).
@@ -154,6 +174,8 @@ A typical slip: treating 0.72 as the headline number.
 
 6.1 set out what an agent eval is: trials in fresh environments, graded on the outcome. The next lesson covers where the tasks come from, and the three parts every task needs before its score means anything.
 
+[↑ Contents](#contents)
+
 ## 6.2 Building an eval set from real failures; the task/grader/environment triad
 
 *Day 38 · 2026-10-09*
@@ -280,6 +302,8 @@ The hardest task to validate is (e). You need a known-good ticket and a known-ba
 ---
 
 6.2 built the tasks and fixtures. The next lesson is the third part of the triad: the code that reads the end state and says pass or fail.
+
+[↑ Contents](#contents)
 
 ## 6.3 Graders: exact match, rubric, LLM-as-judge, outcome checks
 
@@ -427,6 +451,8 @@ Common slips: tuning the judge on the same 20 tickets you score it on; letting `
 ---
 
 6.3 turned one trial into a verdict. The next lesson turns many verdicts into numbers you can compare: the step between a graded eval set and 6.5's regression test of a harness change.
+
+[↑ Contents](#contents)
 
 ## 6.4 Trajectory-level metrics: pass@k, steps, cost, tool-call accuracy
 
@@ -578,6 +604,8 @@ Slips: headlining pass@3 = 0.98; computing the SE over 80 trials as if they were
 
 6.1–6.4 built the eval: tasks, fixtures, graders and metrics. The next lesson uses it for its real job: deciding whether a harness change ships.
 
+[↑ Contents](#contents)
+
 ## 6.5 Regression testing a harness change; A/B on prompts and tools
 
 *Day 41 · 2026-10-12*
@@ -702,6 +730,8 @@ Common slips: computing the SE over hours or trials; reading "pass rate unchange
 
 6.5 showed how to trust a difference on your *own* suite. The last lesson is about everyone else's numbers.
 
+[↑ Contents](#contents)
+
 ## 6.6 Public benchmarks (SWE-bench, τ-bench, GAIA, Terminal-Bench) and their limits
 
 *Day 42 · 2026-10-13*
@@ -820,6 +850,8 @@ Typical slips: quoting the null agent's 25% as one number. And reading the shotg
 - [Merrill et al. — Terminal-Bench: Benchmarking Agents on Hard, Realistic Tasks in Command Line Interfaces (Jan 2026)](https://arxiv.org/abs/2601.11868)
 
 ---
+
+[↑ Contents](#contents)
 
 ## Week 6 review
 

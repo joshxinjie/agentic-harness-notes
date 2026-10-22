@@ -1,5 +1,25 @@
 # Week 5 — Control, safety and reliability
 
+<!-- toc -->
+## Contents
+
+- **[5.1 Permissions and sandboxing](#51-permissions-and-sandboxing)**  
+  [Idea](#the-idea) · [Example](#an-example) · [Why it matters](#why-it-matters) · [Mistakes](#common-mistakes) · [Try it](#try-it) · [Answer](#worked-answer) · [Sources](#sources)
+- **[5.2 Human-in-the-loop: approval gates, interrupts, escalation](#52-human-in-the-loop-approval-gates-interrupts-escalation)**  
+  [Idea](#the-idea-1) · [Example](#an-example-1) · [Mistakes](#common-mistakes-1) · [Try it](#try-it-1) · [Answer](#worked-answer-1) · [Sources](#sources-1)
+- **[5.3 Guardrails: input/output validation, policy checks, classifiers](#53-guardrails-inputoutput-validation-policy-checks-classifiers)**  
+  [Idea](#the-idea-2) · [Example](#an-example-2) · [Why it matters](#why-it-matters-1) · [Mistakes](#common-mistakes-2) · [Try it](#try-it-2) · [Answer](#worked-answer-2) · [Sources](#sources-2)
+- **[5.4 Prompt injection and untrusted content](#54-prompt-injection-and-untrusted-content)**  
+  [Idea](#the-idea-3) · [Example](#an-example-3) · [Mistakes](#common-mistakes-3) · [Try it](#try-it-3) · [Answer](#worked-answer-3) · [Sources](#sources-3)
+- **[5.5 Observability: tracing, logging trajectories, replaying runs](#55-observability-tracing-logging-trajectories-replaying-runs)**  
+  [Idea](#the-idea-4) · [Example](#an-example-4) · [Why it matters](#why-it-matters-2) · [Mistakes](#common-mistakes-4) · [Try it](#try-it-4) · [Answer](#worked-answer-4) · [Sources](#sources-4)
+- **[5.6 Latency and cost budgets; parallel tool calls; streaming](#56-latency-and-cost-budgets-parallel-tool-calls-streaming)**  
+  [Idea](#the-idea-5) · [Example](#an-example-5) · [Why it matters](#why-it-matters-3) · [Mistakes](#common-mistakes-5) · [Try it](#try-it-5) · [Answer](#worked-answer-5) · [Sources](#sources-5)
+- **[Week 5 review](#week-5-review)**  
+  [Recap](#the-week-in-six-paragraphs) · [Self-quiz](#self-quiz) · [Exercise](#integrative-exercise) · [Exercise answer](#integrative-answer) · [Sources](#sources-6)
+
+<!-- /toc -->
+
 [Week 4](week-04-prompt-and-tool-design.md) made layers 1 (prompts) and 2 (tools and the executor) a good interface: clear prompts, clear tools, useful errors. This week starts from a less comfortable assumption. The model will sometimes do the wrong thing, either by mistake or because text it read told it to. So we decide what it is *physically able* to do, and we build the machinery to catch, watch and pay for what it does.
 
 Most of the week is layer 5 (guardrails and permissions), the control layer. It also reaches into layer 3 (loop control) and layer 6 (feedback and evals).
@@ -160,6 +180,8 @@ The deeper fix is to move the ask out of the run entirely. `ticket_submit` becom
 
 The rules, the sandbox and the credentials are limits the agent cannot cross. But one of the three verdicts, "ask", hands the decision to a person. The next lesson is about what that actually involves.
 
+[↑ Contents](#contents)
+
 ## 5.2 Human-in-the-loop: approval gates, interrupts, escalation
 
 *Day 31 · 2026-10-02*
@@ -285,6 +307,8 @@ Then write one paragraph: what goes on the morning review card for the nightly b
 ---
 
 So far we have decided *which actions* the agent may take ([5.1](#51-permissions-and-sandboxing)), and put a human on the risky ones (5.2). But an action can be allowed and still carry the wrong content. That is what guardrails are for.
+
+[↑ Contents](#contents)
 
 ## 5.3 Guardrails: input/output validation, policy checks, classifiers
 
@@ -413,6 +437,8 @@ Then answer in one paragraph: which of these should *repair* silently, which mus
 ---
 
 Permissions, human gates and guardrails all exist to contain one threat. You have met it twice already: the planted "skip weather checks" memory line in [3.4](week-03-state-and-memory.md#34-persistent-memory-files-and-memory-as-documents) and the poisoned incident report in [5.1](#51-permissions-and-sandboxing). Now we look at it directly.
+
+[↑ Contents](#contents)
 
 ## 5.4 Prompt injection and untrusted content
 
@@ -545,6 +571,8 @@ Under quarantine:
 ---
 
 Lessons 5.1 to 5.4 built the walls. The next question is how you know what actually happened behind them. Everything later depends on the answer: evals in [Week 6](week-06-evaluation-1.md), transcript diagnosis in [7.1](week-07-evaluation-2-and-iteration.md#71-reading-a-transcript), and the morning reviewer asking "why this ticket?"
+
+[↑ Contents](#contents)
 
 ## 5.5 Observability: tracing, logging trajectories, replaying runs
 
@@ -697,6 +725,8 @@ Never export to a third-party backend: tool results (metrics, vendor text), tick
 
 Tracing made the run visible: every span now has a latency and a token count. The last lesson of the week acts on those numbers.
 
+[↑ Contents](#contents)
+
 ## 5.6 Latency and cost budgets; parallel tool calls; streaming
 
 *Day 35 · 2026-10-06*
@@ -831,6 +861,8 @@ Send to the Batch API: the morning digest; extracting newly arrived archive docu
 - [Anthropic — How we built our multi-agent research system](https://www.anthropic.com/engineering/multi-agent-research-system)
 
 ---
+
+[↑ Contents](#contents)
 
 ## Week 5 review
 
