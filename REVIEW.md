@@ -96,7 +96,7 @@ Stay out of taste ("I would word it differently") unless the wording misleads or
   the diagram earn its place (STYLE.md "Visuals")?
 
 ### E. Repo and tooling
-- README's contents table and course map match what is in `weeks/`; CHANGELOG has a line for the change.
+- README's contents table and course map match what is in `weeks/`; each week's contents list is current (`python3 tools/make_toc.py --check`); CHANGELOG has a line for the change.
 - `tools/` scripts do what they claim; a change to them comes with a test or a reason.
 
 ### Extra checks for `pr` scope

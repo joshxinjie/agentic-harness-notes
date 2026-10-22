@@ -1,5 +1,25 @@
 # Week 3 — State and memory
 
+<!-- toc -->
+## Contents
+
+- **[3.1 Short-term vs long-term memory; scratchpads; conversation state](#31-short-term-vs-long-term-memory-scratchpads-conversation-state)**  
+  [Idea](#the-idea) · [Example](#an-example) · [In the harness](#where-it-lives-in-the-harness) · [Mistakes](#common-mistakes) · [Try it](#try-it) · [Answer](#worked-answer) · [Sources](#sources)
+- **[3.2 Context management: summarisation, compaction, truncation](#32-context-management-summarisation-compaction-truncation)**  
+  [Idea](#the-idea-1) · [Example](#an-example-1) · [In the harness](#where-it-lives-in-the-harness-1) · [Mistakes](#common-mistakes-1) · [Try it](#try-it-1) · [Answer](#worked-answer-1) · [Sources](#sources-1)
+- **[3.3 Retrieval for agents: RAG vs agentic search](#33-retrieval-for-agents-rag-vs-agentic-search)**  
+  [Idea](#the-idea-2) · [Example](#an-example-2) · [In the harness](#where-it-lives-in-the-harness-2) · [Mistakes](#common-mistakes-2) · [Try it](#try-it-2) · [Answer](#worked-answer-2) · [Sources](#sources-2)
+- **[3.4 Persistent memory files and "memory as documents"](#34-persistent-memory-files-and-memory-as-documents)**  
+  [Idea](#the-idea-3) · [Example](#an-example-3) · [In the harness](#where-it-lives-in-the-harness-3) · [Mistakes](#common-mistakes-3) · [Try it](#try-it-3) · [Answer](#worked-answer-3) · [Sources](#sources-3)
+- **[3.5 Checkpointing and resumability](#35-checkpointing-and-resumability)**  
+  [Idea](#the-idea-4) · [Example](#an-example-4) · [In the harness](#where-it-lives-in-the-harness-4) · [Mistakes](#common-mistakes-4) · [Try it](#try-it-4) · [Answer](#worked-answer-4) · [Sources](#sources-4)
+- **[3.6 Sub-agents and context isolation](#36-sub-agents-and-context-isolation)**  
+  [Idea](#the-idea-5) · [Example](#an-example-5) · [In the harness](#where-it-lives-in-the-harness-5) · [Mistakes](#common-mistakes-5) · [Try it](#try-it-5) · [Answer](#worked-answer-5) · [Sources](#sources-5)
+- **[Week 3 review](#week-3-review)**  
+  [Recap](#recap) · [Self-quiz](#self-quiz) · [Exercise](#integrative-exercise--run_site-week-3-edition) · [Answer](#worked-answer-6) · [Sources](#sources-the-weeks-anchors)
+
+<!-- /toc -->
+
 Week 1 said the transcript (the running list of messages and tool results the model is sent each turn) is the agent's only memory. Week 2 showed it is a scarce memory that gets worse as it grows, and built the loop that survives real failures: layer 3 (loop control). This week is layer 4 (state): everything that exists outside the transcript.
 
 ![The six layers of a harness, stacked below the stateless model they wrap: prompts, tools and the executor, loop control, state, guardrails and permissions, feedback and evals.](../diagrams/harness-layers.svg)
@@ -157,6 +177,8 @@ Beginner slips:
 ---
 
 Now we have four containers. The biggest of them, the transcript, still grows every turn. The next lesson is what to do when it no longer fits — and it is why the scratchpad matters.
+
+[↑ Contents](#contents)
 
 ## 3.2 Context management: summarisation, compaction, truncation
 
@@ -344,6 +366,8 @@ Slips:
 
 3.1 gave the agent memory outside the transcript, and 3.2 showed how to get things *out* of the window safely. The next lesson goes the other way: how the right thing gets *in* — and who decides what to fetch.
 
+[↑ Contents](#contents)
+
 ## 3.3 Retrieval for agents: RAG vs agentic search
 
 *Day 18 · 2026-09-19*
@@ -479,6 +503,8 @@ Slips:
 
 3.3 was how facts get into the window. Next is where the facts an agent learned *live between runs* — and the plainest way to build that, with files.
 
+[↑ Contents](#contents)
+
 ## 3.4 Persistent memory files and "memory as documents"
 
 *Day 19 · 2026-09-20*
@@ -609,6 +635,8 @@ Slips:
 ---
 
 Memory files persist *facts* across runs. The next lesson persists the *run itself*: if the process dies at turn 8 of 12, can the next process pick up at turn 9?
+
+[↑ Contents](#contents)
 
 ## 3.5 Checkpointing and resumability
 
@@ -762,6 +790,8 @@ Slips:
 
 So far this week we have shrunk the main transcript, filled it carefully, and saved it. The last tool takes a different approach: keep the expensive work out of the main transcript altogether, by handing it to another loop.
 
+[↑ Contents](#contents)
+
 ## 3.6 Sub-agents and context isolation
 
 *Day 21 · 2026-09-22*
@@ -900,6 +930,8 @@ Slips:
 - LangChain, [How and when to build multi-agent systems](https://www.langchain.com/blog/how-and-when-to-build-multi-agent-systems) (Jun 2025, includes the Cognition argument)
 
 ---
+
+[↑ Contents](#contents)
 
 ## Week 3 review
 
