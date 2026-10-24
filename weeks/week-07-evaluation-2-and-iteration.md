@@ -26,7 +26,9 @@
 
 *Figure: the six harness layers from [1.4](week-01-what-an-agent-is.md#14-what-a-harness-is). This week is about layer 6 (feedback and evals), and its diagnoses point back into the other five.*
 
-Step one is always reading the run that produced the bad number. A score tells you *that* something failed. The transcript tells you *where* and *why*. We start with how to read one failed transcript properly (7.1), then group many diagnoses into a counted list of failure types that tells you what to fix first (7.2). Then we make offline tests more realistic with simulated tools and users (7.3), carry evaluation into production (7.4), and tie it all into an improvement loop that ships verified harness changes (7.5). Three public write-ups from AI labs show the same loop at work (7.6).
+Step one is always reading the run that produced the bad number. A score tells you *that* something failed. The transcript tells you *where* and *why*. We start with how to read one failed transcript properly (7.1), then group many diagnoses into a counted list of failure types that tells you what to fix first (7.2).
+
+Then we make offline tests more realistic with simulated tools and users (7.3), carry evaluation into production (7.4), and tie it all into an improvement loop that ships verified harness changes (7.5). Three public write-ups from AI labs show the same loop at work (7.6).
 
 The running example is still the nightly investigator for a portfolio of solar sites.
 
@@ -390,7 +392,7 @@ For the world there are four options, from most reproducible to most realistic:
 3. **LM-emulated tools.** A language model plays the API from its spec. ToolEmu emulated 311 tools in 36 toolkits. 68.8% of the failures it found were judged valid real-world failures, and setup took under 15 minutes, against about 8 hours for a real sandbox.
 4. **Real sandbox.**
 
-The counterparty is usually an **LLM-simulated user**, as in τ-bench ([6.6](week-06-evaluation-1.md#66-public-benchmarks-swe-bench-τ-bench-gaia-terminal-bench-and-their-limits)). A persona prompt holds hidden facts and a goal. The user model and the agent take turns until a stop token or a turn cap. Grading reads the end state, not the chat. LangSmith and OpenEvals package this as a ready-made simulation loop.
+The counterparty is usually an **LLM-simulated user**, as in τ-bench ([6.6](week-06-evaluation-1.md#66-public-benchmarks-swe-bench-τ-bench-gaia-terminal-bench-and-their-limits)). A persona prompt holds hidden facts and a goal. The user model and the agent take turns until a stop token or a turn cap. Grading reads the end state, not the chat. LangSmith (LangChain's tracing and eval platform) and its OpenEvals library package this as a ready-made simulation loop.
 
 ![A tree: an eval task needs two stand-ins. The world can be a recorded cassette, a code simulator, LM-emulated tools or a real sandbox; the counterparty is an LLM-simulated user with a persona, hidden facts and a stop token, and grading reads the end state.](../diagrams/world-stand-ins.svg)
 
@@ -693,7 +695,7 @@ Their loop:
 
 The most common failure was "write a solution, re-read it, decide it's fine, stop". They fixed it in code, not with a "please test" prompt line: a middleware that forces a verification pass against the task spec before the agent can exit.
 
-Other changes were mapping the environment at startup, detecting edit loops per file, and a reasoning "sandwich". Running the whole task at xhigh reasoning effort scored 53.9%, because of timeouts. Running it at high scored 63.6%. The sandwich, xhigh then high then xhigh, scored 66.5%.
+Other changes were mapping the environment at startup, detecting edit loops per file, and a reasoning "sandwich". Running the whole task at xhigh reasoning effort (a setting above high) scored 53.9%, because of timeouts. Running it at high scored 63.6%. The sandwich, xhigh then high then xhigh, scored 66.5%.
 
 Anthropic describes the same pattern for tools: paste concatenated eval transcripts into Claude Code, let it refactor the tools, then confirm on held-out tasks.
 
@@ -751,7 +753,7 @@ Split stratified: dev 8, held-out 4 (one A, one B, one C, one should-not-file). 
 | Hypothesis | A bare "Error: timeout" and partial results become "n/a" or "normal" verdicts (layer 2, tools and the executor) |
 | Change | Executor retry, then "UNKNOWN — not ruled out" text |
 | Prediction | At least 4 of 5 MY-01 forks flip; category-A dev tasks rise; no regression task falls |
-| Guards | Cost per success at most 1.1×; p90 turns at most +1 |
+| Guards | Cost per success at most 1.1×; p90 turns (the value 90% of runs stay under, [6.4](week-06-evaluation-1.md#64-trajectory-level-metrics-passk-steps-cost-tool-call-accuracy)) at most +1 |
 | Ship rule | `compare()` says ship on dev, *and* held-out does not drop |
 
 **Result (illustrative).**
@@ -804,11 +806,11 @@ Typical slips: judging on the forks that inspired the fix, and having no transie
 | Tries to build the whole app in one go | An initializer agent writes a feature list of 200+ items in JSON, all marked failing |
 | Declares victory early | Each session reads that list and picks one feature. It may only flip the "passes" field. (JSON, because models overwrite it less than Markdown) |
 | Leaves half-done, undocumented work | A git commit plus a progress file at the end of each session |
-| Marks features done without testing them | Browser automation through a Puppeteer MCP server, which "dramatically improved performance" |
+| Marks features done without testing them | Browser automation through a Puppeteer MCP server (a browser-automation tool exposed over the Model Context Protocol, [4.1](week-04-prompt-and-tool-design.md#41-system-prompt-architecture-for-agents)), which "dramatically improved performance" |
 
 Every fix is a file, a tool or a startup routine, not a pleading line in the prompt.
 
-**Case 3: Anthropic, "Harness design for long-running application development" (Mar 2026).** A planner, a generator and an evaluator. The evaluator tests the app with Playwright, against hard per-criterion thresholds.
+**Case 3: Anthropic, "Harness design for long-running application development" (Mar 2026).** A planner, a generator and an evaluator. The evaluator tests the app with Playwright (a browser-automation library), against hard per-criterion thresholds.
 
 - **Self-evaluation failed.** Agents praise their own mediocre work. Out of the box, the QA agent found bugs and then talked itself into approving them. The author read its logs, found where its judgement diverged from his, updated the prompt, and repeated for several rounds. That is judge calibration from [6.3](week-06-evaluation-1.md#63-graders-exact-match-rubric-llm-as-judge-outcome-checks), done by hand.
 - **Cost.** The solo run took 20 minutes for $9, and its core feature was broken. The full harness took 6 hours for $200.
@@ -850,7 +852,7 @@ Copying a lab's harness wholesale imports assumptions about *their* model and ta
 - the stuck detector ([2.5](week-02-core-mechanics.md#25-stopping-conditions-step-budgets-and-loop-detection));
 - compaction ([3.2](week-03-state-and-memory.md#32-context-management-summarisation-compaction-truncation));
 - the plan object ([2.3](week-02-core-mechanics.md#23-planning-and-task-decomposition));
-- the think tool;
+- the think tool ([2.2](week-02-core-mechanics.md#22-react-and-reasoning-then-acting-extended-thinking-in-the-loop));
 - the weather skill ([4.5](week-04-prompt-and-tool-design.md#45-skills-procedural-knowledge-loaded-on-demand));
 - the provenance guard ([5.3](week-05-control-safety-reliability.md#53-guardrails-inputoutput-validation-policy-checks-classifiers));
 - the delegate tool ([3.6](week-03-state-and-memory.md#36-sub-agents-and-context-isolation));
@@ -870,7 +872,7 @@ Bonus: design a weekly "garbage-collection" job for the investigator's `memory/`
 
 Each row gives the limitation the component assumes, the ablation that would retire it, and whether the limit belongs to the model or to the world.
 
-- **Stuck detector.** Assumes the model repeats identical calls when stuck. Ablation: remove it on the stuck-prone tasks (the lying tool, the vendor timeout), 10 trials each. Remove it for good if the stuck/budget status share and cost per run stay within the MDE. *Model-limit.* The step and cost budgets stay, because those are world-limits.
+- **Stuck detector.** Assumes the model repeats identical calls when stuck. Ablation: remove it on the stuck-prone tasks (the bash tool that always returns the same error, from [2.5](week-02-core-mechanics.md#25-stopping-conditions-step-budgets-and-loop-detection), and the vendor timeout), 10 trials each. Remove it for good if the stuck/budget status share and cost per run stay within the MDE. *Model-limit.* The step and cost budgets stay, because those are world-limits.
 - **Compaction.** Assumes runs outgrow the context window. Ablation: count how often it fired in a month of traces, then remove it on the full suite. *Model-limit.*
 - **Plan object.** Assumes the model skips hypotheses and redefines "done" on long runs. Ablation: run without a plan and watch the "untested hypothesis filed" count and pass^3. *Partly world-limit:* the reviewer still wants the checklist.
 - **Think tool.** Assumes the model has no reasoning between tool calls. Ablation: remove it with adaptive thinking on ([2.2](week-02-core-mechanics.md#22-react-and-reasoning-then-acting-extended-thinking-in-the-loop)). *Model-limit.*
@@ -949,7 +951,7 @@ Read rolling-window rates split by harness hash. With n=40 a night, a 10% rate h
 
 A fix that wins only on the traces that inspired it is overfit.
 
-**[7.6](#76-case-study-how-labs-iterate-on-coding-agent-harnesses) Lab case studies.** OpenAI (Codex) and Anthropic (long-running harnesses) follow the same method: read transcripts, fix the environment ("the fix was almost never 'try harder'"), and verify independently of the generator. Every component is an assumption about what the model cannot do. It is ablated, and removed, when the model improves.
+**[7.6](#76-case-study-how-labs-iterate-on-coding-agent-harnesses) Lab case studies.** OpenAI (Codex) and Anthropic (long-running harnesses) follow the same method: read transcripts, fix the environment ("the fix was almost never 'try harder'"), and verify independently of the generator. Every component is an assumption about what the model cannot do. Re-test it with a removal ablation when the model changes, and remove it only if it guarded a model limit that is gone. Components that guard the world (outages, forged documents) stay.
 
 ### Self-quiz
 
