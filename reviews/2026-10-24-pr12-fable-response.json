@@ -1,0 +1,59 @@
+{
+ "review": "2026-10-24-pr12-fable.json",
+ "author": "claude-opus-5-5",
+ "date": "2026-10-24",
+ "response": {
+  "schema_version": 1,
+  "summary": "5 accept, 2 defer, 0 reject. Fixed the Week 7 recap, which said every component is removed when the model improves. It now says world-limit components stay, as the 7.6 body does. Also explained the terms the reviewer listed and added the reading-list notes. Look first at F5: Chrome would not launch here, so the diagrams could not be re-rendered. I put the .mmd files back unchanged and moved the fix to BACKLOG. F7 could not be checked: there is no network here, so the three facts are a dated BACKLOG item. Links: bad 0. Tests: 108 passed.",
+  "responses": [
+   {
+    "finding_id": "F1",
+    "decision": "accept",
+    "reason": "The recap at line 952 said components are 'ablated, and removed, when the model improves'. The 7.6 body says otherwise for world-limit parts: the provenance guard is never retired and the weather script stays 'whatever happens'. I used the reviewer's wording, which matches the body and the component-assumption diagram.",
+    "changes": "weeks/week-07-evaluation-2-and-iteration.md (Week 7 recap, 7.6 line)"
+   },
+   {
+    "finding_id": "F2",
+    "decision": "accept",
+    "reason": "'The lying tool' is defined only in Week 2.5, as the bash tool that always returns the same FileNotFoundError. The 7.6 answer now explains it in a few words and links to 2.5.",
+    "changes": "weeks/week-07-evaluation-2-and-iteration.md (7.6 worked answer, stuck-detector row)"
+   },
+   {
+    "finding_id": "F3",
+    "decision": "accept",
+    "reason": "Added a short clause for each term. LangSmith and OpenEvals: what they are. xhigh: 'a setting above high', because the glossary lists max above xhigh, so 'highest' could be wrong. p90: defined, with a link to 6.4. Puppeteer MCP: defined, with a link to 4.1, where MCP is first expanded. Playwright: defined. The think tool bullet now links to 2.2. No new facts.",
+    "changes": "weeks/week-07-evaluation-2-and-iteration.md (7.3, 7.5, 7.6)"
+   },
+   {
+    "finding_id": "F4",
+    "decision": "accept",
+    "reason": "The intro paragraph was about 99 words. I split it after '(7.2).' as proposed.",
+    "changes": "weeks/week-07-evaluation-2-and-iteration.md (intro)"
+   },
+   {
+    "finding_id": "F5",
+    "decision": "defer",
+    "reason": "The finding is valid: the chained solid arrows imply a data flow. I made the dotted-edge edit, but tools/render_diagrams.py failed because mmdc could not launch Chrome here. A .mmd that no longer matches its .svg would be worse, so I put both sources back unchanged.",
+    "changes": "BACKLOG.md 2026-10-24 item: dotted ordering edges in online-eval-layers and world-stand-ins, then re-render (PR #12 review, F5)"
+   },
+   {
+    "finding_id": "F6",
+    "decision": "accept",
+    "reason": "The header rule says each line names where else a source helps. Added 'Also the held-out-set quote in 7.5' to Writing effective tools, and 'Case study in 7.6' to OpenAI Harness engineering and to Effective harnesses for long-running agents.",
+    "changes": "reading-list.md (three Week 1 lines)"
+   },
+   {
+    "finding_id": "F7",
+    "decision": "defer",
+    "reason": "I could not confirm these either: this session has no network access. 1.4 and 7.6 do not contradict each other: 1.4 says a three-person team, and 7.6 says three, later seven. Since none of the three is shown to be wrong, I changed no text. Confirming them against the live pages is a dated BACKLOG item.",
+    "changes": "BACKLOG.md 2026-10-24 item: confirm LangSmith spend cap, Opus 4.5 context resets, OpenAI team size and run length (PR #12 review, F7)"
+   }
+  ],
+  "tests": {
+   "ran": true,
+   "passed": true,
+   "detail": "python3 tools/check_links.py . reported bad 0; python -m pytest -q tests: 108 passed. Diagram re-render was not possible because mmdc could not launch Chrome, so no diagram changed."
+  }
+ },
+ "reverted": []
+}
