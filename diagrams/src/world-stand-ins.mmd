@@ -1,0 +1,9 @@
+flowchart TD
+    T["An eval task needs<br>two stand-ins"] --> W["The world:<br>tool backends and state"]
+    T --> C["The counterparty:<br>user or reviewer"]
+    W --> W1["1. Recorded cassette<br>exact, blind to new calls"]
+    W1 --> W2["2. Code simulator<br>computes answers, injects faults"]
+    W2 --> W3["3. LM-emulated tools<br>a model plays the API"]
+    W3 --> W4["4. Real sandbox"]
+    C --> C1["LLM-simulated user:<br>persona, hidden facts,<br>stop token or turn cap"]
+    C1 --> G["Grade the end state,<br>not the chat"]

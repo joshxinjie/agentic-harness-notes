@@ -1,0 +1,8 @@
+flowchart TD
+    A["Component encodes an<br>assumption about what<br>the model can't do"] --> K{"Model-limit or<br>world-limit?"}
+    K -->|"world-limit"| P["Keep it,<br>whatever the model"]
+    K -->|"model-limit"| N["The model changes"]
+    N --> X["Removal ablation<br>on the tasks it guards"]
+    X --> D{"Still needed?"}
+    D -->|"no"| R(["Remove it"])
+    D -->|"yes"| B(["Keep it, record why"])

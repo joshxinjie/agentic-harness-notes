@@ -1,0 +1,9 @@
+flowchart TD
+    L1["1. Deterministic signals<br>on 100% of runs"] --> L2["2. Sampled judges,<br>async, spend-capped"]
+    L2 --> L3["3. Delayed ground truth,<br>joined by run_id"]
+    L3 --> L4["4. People read a<br>weekly transcript sample"]
+    L4 --> Q["Flagged runs go to<br>an annotation queue"]
+    L1 & L2 & L3 --> Q
+    Q --> O["Open code (7.1)"]
+    O --> K["Category (7.2)"]
+    K --> E["New eval task (6.2)"]

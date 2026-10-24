@@ -51,6 +51,9 @@ A session should have at most two of: (A) handles untrusted input, (B) can reach
 **AGENTS.md / CLAUDE.md**  
 Instruction files kept in a repository that a coding-agent harness puts into the prompt. Best kept short (about 100–200 lines), as a map to fuller docs rather than a dump. Details in 3.4. See [1.4](weeks/week-01-what-an-agent-is.md#14-what-a-harness-is).
 
+**Annotation queue**  
+Where flagged production runs wait for a person to read them. Each gets an open code (7.1) and a category (7.2), and then becomes a new eval task (6.2). See [7.4](weeks/week-07-evaluation-2-and-iteration.md#74-online-evaluation-and-monitoring).
+
 **Annotator agreement (κ)**  
 κ (kappa) measures how often two labellers give the same label, beyond what chance would give. MAST's annotators started at κ = 0.24 and reached 0.88 only after several rounds of refining definitions; check it before you trust your own taxonomy. See [7.2](weeks/week-07-evaluation-2-and-iteration.md#72-error-taxonomies-and-common-failure-modes).
 
@@ -65,6 +68,9 @@ People asked too often approve by reflex, so the prompt stops being a real contr
 
 **Approval gate**  
 A pause the harness triggers before a chosen tool call runs. The person approves, approves with edits, or rejects with a reason. Use it only on actions that cannot be undone or that others will see. See [5.2](weeks/week-05-control-safety-reliability.md#52-human-in-the-loop-approval-gates-interrupts-escalation).
+
+**Assumption register**  
+A table with one row per harness component: the model limitation it assumes, the ablation that would retire it, and whether it is a model-limit or a world-limit. See [7.6](weeks/week-07-evaluation-2-and-iteration.md#76-case-study-how-labs-iterate-on-coding-agent-harnesses).
 
 **Attention budget**  
 Anthropic's way of saying context is a limited resource with shrinking returns. Attention forms n² pairwise links between tokens and gets spread thinner as context grows, so every added token reduces the model's ability to use the rest. See [2.1](weeks/week-02-core-mechanics.md#21-context-window-as-working-memory).
@@ -177,6 +183,9 @@ An SE computed with the task (not the trial) as the independent unit. Naive per-
 **Code-based grader**  
 A fixed, rule-based check: string match (exact / regex / fuzzy), pass/fail tests, static analysis, checking the outcome (query the end state), checking tool calls, transcript analysis (turns, tokens). Fast, cheap and repeatable, but brittle when there are valid variations. See [6.3](weeks/week-06-evaluation-1.md#63-graders-exact-match-rubric-llm-as-judge-outcome-checks).
 
+**Code simulator**  
+A stateful fake tool backend that computes answers from a fixture instead of replaying recorded ones, and can inject faults such as timeouts. Unlike a cassette, it can answer calls that were never recorded. See [7.3](weeks/week-07-evaluation-2-and-iteration.md#73-simulated-users-and-environments).
+
 **compact_20260112**  
 Anthropic's server-side compaction, beta `compact-2026-01-12` (Opus 4.6+, Sonnet 4.6+, Fable/Mythos 5+). When input goes over `trigger` (default 150,000 input tokens, minimum 50,000), the API runs a summary step and returns a `compaction` content block as the first block of the assistant message. The harness appends the response untouched, and the API drops every block before the compaction block on later requests. The same model writes the summary (no cheaper-model option). See [3.2](weeks/week-03-state-and-memory.md#32-context-management-summarisation-compaction-truncation).
 
@@ -254,6 +263,9 @@ The earliest step in a failed run where a correction would have turned the failu
 
 **Degrees of freedom (skills)**  
 Anthropic's writing rule for how strict a skill should be. Low freedom (exact steps, scripts) for fragile operations where order matters — a "narrow bridge with cliffs on both sides". High freedom (general direction) where many approaches work — an "open field". See [4.5](weeks/week-04-prompt-and-tool-design.md#45-skills-procedural-knowledge-loaded-on-demand).
+
+**Delayed ground truth**  
+Labels that arrive after a live run, such as a reviewer's approve/edit/reject (hours later) or a confirmed field outcome (days later), joined back to the run by its id. It is the only online layer that measures accuracy itself. See [7.4](weeks/week-07-evaluation-2-and-iteration.md#74-online-evaluation-and-monitoring).
 
 **Delegation task text (the contract)**  
 The written brief the parent gives the child: the goal, the site/window/baseline the parent already chose, the exact fields to return, tool guidance, limits, a cap on tool calls and a cap on words. Passing the parent's decisions down as constraints is what stops the child remaking them (the Cognition failure). A vague task ("check the weather") makes children duplicate work, leave gaps and return prose no one can check. See [3.6](weeks/week-03-state-and-memory.md#36-sub-agents-and-context-isolation).
@@ -384,6 +396,9 @@ The docs' minimum of 3–4 sentences, written for a new colleague rather than co
 **GAIA**  
 General-assistant questions (browsing, files, several steps) graded by exact match on a short answer. See [6.6](weeks/week-06-evaluation-1.md#66-public-benchmarks-swe-bench-τ-bench-gaia-terminal-bench-and-their-limits).
 
+**Garbage collection (harness)**  
+A background job that scans for drift and proposes small fixes. In OpenAI's Codex team, background tasks open small refactor PRs; in the investigator's weekly version, it scans memory and skills (stale lines, duplicates, failing scripts, renamed tools) and makes only mechanical fixes without a person. See [7.6](weeks/week-07-evaluation-2-and-iteration.md#76-case-study-how-labs-iterate-on-coding-agent-harnesses).
+
 **Grader**  
 Logic that scores one aspect of a trial. A task may have several (outcome check, path constraint, rubric). See [6.1](weeks/week-06-evaluation-1.md#61-why-agent-evals-differ-from-llm-evals).
 
@@ -420,6 +435,9 @@ Improving an agent by changing the harness, not the model. When the agent makes 
 **Harness version hash**  
 A hash of the system prompt + tool definitions (+ skill listing) recorded on every run, so metrics and failures can be split by harness version. See [5.5](weeks/week-05-control-safety-reliability.md#55-observability-tracing-logging-trajectories-replaying-runs).
 
+**Held-out split**  
+Eval tasks kept aside while you tune a fix, used only to check it. A fix that wins on dev but drops on held-out is overfit to the examples that inspired it. See [7.5](weeks/week-07-evaluation-2-and-iteration.md#75-the-improvement-loop).
+
 **Hot-path vs background memory writes**  
 Writing memory during the run (available at once; each write costs a tool turn and latency) versus in a separate pass afterwards (no latency during the run; you must decide when it fires; the run cannot use what it learned). This course's daily task is a background writer. See [3.1](weeks/week-03-state-and-memory.md#31-short-term-vs-long-term-memory-scratchpads-conversation-state).
 
@@ -443,6 +461,12 @@ Retrying a failed model call is safe because the failed call had no side effects
 
 **Idempotent step**  
 A step that is safe to run twice. Anything after a checkpoint must be like this, because replay runs nodes again, LLM calls and API requests included. You get it by wrapping side effects in a task whose result is saved (LangGraph `@task`), by "already done?" guards keyed on a stable id (for example `tool_use_id`), and by avoiding reads that change each time (`now()`) inside a step. See [3.5](weeks/week-03-state-and-memory.md#35-checkpointing-and-resumability).
+
+**Improvement ledger**  
+The record of each iteration: hypothesis, change, harness hash, result and decision. Rejected hypotheses are kept too. See [7.5](weeks/week-07-evaluation-2-and-iteration.md#75-the-improvement-loop).
+
+**Improvement loop**  
+Eval → hypothesis → harness change → re-eval → ship: pick the top category by count × severity, write a falsifiable hypothesis, make one change as low in the harness as it will go, and re-check with fork replay, the paired suite and a held-out split. See [7.5](weeks/week-07-evaluation-2-and-iteration.md#75-the-improvement-loop).
 
 **Incremental planning**  
 No separate plan; each turn's thinking block (2.2) picks the next step. Cheapest and most flexible, but short-sighted: nothing forces a rethink when early results should change the whole approach. See [2.3](weeks/week-02-core-mechanics.md#23-planning-and-task-decomposition).
@@ -495,6 +519,9 @@ Manus's warning against cleaning up transcripts: "leave failed actions in the co
 
 ## L
 
+**Leak rate**  
+How often a simulated user or reviewer gives away a hidden fact before the agent has asked about it. A high leak rate means the simulator is doing part of the agent's work. See [7.3](weeks/week-07-evaluation-2-and-iteration.md#73-simulated-users-and-environments).
+
 **Lethal trifecta**  
 Private data + untrusted content + a way to communicate outward, all in one agent = a path for stealing data (Willison, Jun 2025). See [5.4](weeks/week-05-control-safety-reliability.md#54-prompt-injection-and-untrusted-content).
 
@@ -509,6 +536,12 @@ One prompt in, one completion out, with no side effects. The code that makes the
 
 **LLMCompiler**  
 A variant that writes the plan as a task graph (DAG) and runs independent steps in parallel as soon as what they depend on is done (the paper claims a 3.6× speed-up). See [2.3](weeks/week-02-core-mechanics.md#23-planning-and-task-decomposition).
+
+**LLM-simulated user**  
+A language model that plays the user or reviewer in an eval, from a persona prompt with hidden facts and a goal, until a stop token or a turn cap. Useful for comparing harnesses, but biased, so not for absolute rates. See [7.3](weeks/week-07-evaluation-2-and-iteration.md#73-simulated-users-and-environments).
+
+**LM-emulated tools (ToolEmu)**  
+A language model that plays a tool's API from its spec. ToolEmu emulated 311 tools in 36 toolkits. Never use it to produce a deciding number. See [7.3](weeks/week-07-evaluation-2-and-iteration.md#73-simulated-users-and-environments).
 
 **Long-term memory**  
 "user-specific or application-level data across sessions", shared across threads. A store the harness owns, looked up by namespace and key rather than thread id. The model reaches it only through tools or harness injection. See [3.1](weeks/week-03-state-and-memory.md#31-short-term-vs-long-term-memory-scratchpads-conversation-state).
@@ -567,6 +600,9 @@ Claude Code frontmatter sets who can start a skill; by default both can. `disabl
 **model_context_window_exceeded**  
 The stop_reason returned (Claude 4.5+) when input plus `max_tokens` would overflow the window. If the input alone is bigger than the window, the call fails at once with a 400 error. See [2.1](weeks/week-02-core-mechanics.md#21-context-window-as-working-memory).
 
+**Model-limit vs world-limit**  
+Why a harness component exists. A model-limit (for example, attention degrading on long dumps) may go away with a better model; a world-limit (vendor outages, forged documents) holds whatever the model. See [7.6](weeks/week-07-evaluation-2-and-iteration.md#76-case-study-how-labs-iterate-on-coding-agent-harnesses).
+
 **modified timestamp**  
 An ISO 8601 field Claude Code writes into a memory file's frontmatter on every write (v2.1.214+), so both the user and Claude can see how fresh a fact is. The cheapest defence against stale memory. It shows age, not where a line came from, so it does not defend against a planted line. See [3.4](weeks/week-03-state-and-memory.md#34-persistent-memory-files-and-memory-as-documents).
 
@@ -588,8 +624,14 @@ Sanity-check agents for an eval suite: one does nothing and claims success; the 
 
 ## O
 
+**Offline vs online eval**  
+An offline eval scores a frozen task with a known answer. An online eval scores live runs, where nobody knows the answer yet, using reference-free signals, late labels and rates over many runs. See [7.4](weeks/week-07-evaluation-2-and-iteration.md#74-online-evaluation-and-monitoring).
+
 **Open code**  
 A one-line diagnosis of a failed run, naming the first thing that went wrong, e.g. "T3: hourly pull → memory cleared → weather blamed". Open codes are later grouped into a taxonomy. See [7.1](weeks/week-07-evaluation-2-and-iteration.md#71-reading-a-transcript).
+
+**Oracle check (simulator)**  
+A scripted agent that asks exactly the right question must pass against the simulator, and a null agent must fail. If the oracle fails, the bug is in the simulator. See [7.3](weeks/week-07-evaluation-2-and-iteration.md#73-simulated-users-and-environments).
 
 **Orchestrator–worker (lead agent + sub-agents)**  
 Anthropic's Research architecture: a lead agent plans, starts sub-agents that "operate in parallel with their own context windows", and combines their short results. About 4× a chat's tokens for a single agent and about 15× for multi-agent; token usage explained 80% of the difference in performance; an Opus 4 lead with Sonnet 4 sub-agents beat a single Opus 4 by 90.2% on an internal breadth-first research eval. Covered fully in 8.1. See [3.6](weeks/week-03-state-and-memory.md#36-sub-agents-and-context-isolation).
@@ -729,6 +771,9 @@ Tasks the agent should pass about 100% of the time; it guards against sliding ba
 **Regression gate**  
 A per-task rule (for example, a regression-set task failing 2 or more of 10) that blocks a change whatever the average says. See [6.5](weeks/week-06-evaluation-1.md#65-regression-testing-a-harness-change-ab-on-prompts-and-tools).
 
+**Removal ablation**  
+Taking a harness component out and re-running the tasks it guards, to see if it still earns its place. Run it whenever the model changes. See [7.6](weeks/week-07-evaluation-2-and-iteration.md#76-case-study-how-labs-iterate-on-coding-agent-harnesses).
+
 **Replanning**  
 Revising the rest of the plan after a step's result. This is what lets a fixed upfront plan survive contact with real results. It needs a tool that edits the plan object *and* tool results that show the surprise (Day 11). See [2.3](weeks/week-02-core-mechanics.md#23-planning-and-task-decomposition).
 
@@ -770,6 +815,9 @@ A plan-and-execute variant where plan steps refer to earlier outputs by variable
 
 **Right altitude**  
 Anthropic's target for agent instructions: specific enough to guide behaviour, general enough to give the model strong rules of thumb rather than a script. The two ways to miss: *brittle hardcoded logic* (if-else chains written as prose, which break on the first unexpected case and are really a workflow, 1.6) and *vague high-level guidance* ("be thorough"), which gives no concrete signal. See [4.1](weeks/week-04-prompt-and-tool-design.md#41-system-prompt-architecture-for-agents).
+
+**Rolling-window alert**  
+An online alert computed over several nights (for example 7) rather than one, or on a count with a hard floor. With 40 runs a night, a 10% rate has a standard error of about 4.7 points, so single nights are mostly noise. See [7.4](weeks/week-07-evaluation-2-and-iteration.md#74-online-evaluation-and-monitoring).
 
 **Rubric**  
 Explicit criteria a judge applies. Works best as several pass/fail criteria, each graded by its own separate judge, rather than one 1–5 score. See [6.3](weeks/week-06-evaluation-1.md#63-graders-exact-match-rubric-llm-as-judge-outcome-checks).
@@ -881,6 +929,9 @@ Supported: `type`, `properties`, `required`, `enum`, `const`, `additionalPropert
 
 **SWE-bench Verified / Pro**  
 Verified: 500 GitHub-issue repair tasks filtered by people and graded by hidden tests (retired by OpenAI in Feb 2026 over flawed tests and contamination). Pro: its harder, less contaminated successor. See [6.6](weeks/week-06-evaluation-1.md#66-public-benchmarks-swe-bench-τ-bench-gaia-terminal-bench-and-their-limits).
+
+**Swiss-cheese model**  
+Anthropic's name for stacking several imperfect evaluation layers, because no single layer catches everything. See [7.4](weeks/week-07-evaluation-2-and-iteration.md#74-online-evaluation-and-monitoring).
 
 
 ## T

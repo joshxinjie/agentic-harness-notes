@@ -1,0 +1,8 @@
+flowchart TD
+    E["1. Eval: top category<br>by count × severity"] --> H["2. Falsifiable hypothesis:<br>cause, layer, change, prediction"]
+    H --> C["3. One change,<br>as low as it goes"]
+    C --> R1["4a. Fork replay<br>of failing traces"]
+    R1 --> R2["4b. Paired full suite,<br>regression gate"]
+    R2 --> R3["4c. Held-out split"]
+    R3 --> S["5. Ship, confirm online,<br>write the ledger"]
+    S -->|"next category"| E
