@@ -1,0 +1,30 @@
+{
+ "review": "2026-10-27-pr15-gpt.json",
+ "author": "claude-opus-5-5",
+ "date": "2026-10-27",
+ "harness": "5bee3f78b3fd57414411528dae071cd984a84330",
+ "response": {
+  "schema_version": 1,
+  "summary": "I accepted both findings and rejected or deferred none. All 23 tests pass.\n\nCheck F1 first. It changes the reasoning in the 3.5 worked answer. The `tool_use_id` survives a crash only if the model response was saved before its tools ran. So the fix now says to save that response first and, on resume, run the saved `tool_use` instead of calling the model again. It also adds a crash check where the repeated model call returns a new id.\n\nF2 adds dated notes about the full harness hash to the 5.5 exercise and answer, to 6.1 and to the glossary.\n\nOne shell edit was blocked by the permission system, so I made the same edits with the Edit tool instead.",
+  "responses": [
+   {
+    "finding_id": "F1",
+    "decision": "accept",
+    "reason": "Correct. Under save-after (worked answer 1), the 3.5 note says turn 6's model call runs again on resume, so its new id contradicts \"survives the crash because it is in the checkpoint\". I qualified the idempotent-write bullet: save the model response before its tools run, and on resume run the saved tool_use instead of calling the model again. I added the regenerated-id case to the crash check. Q5 is a save-before scenario, so its answer now explains why the id holds there and what changes under save-after. The glossary got the same qualifier.",
+    "changes": "weeks/week-03-state-and-memory.md (3.5 worked answer (3) and its note, Q5 answer note), glossary.md (Done set), CHANGELOG.md"
+   },
+   {
+    "finding_id": "F2",
+    "decision": "accept",
+    "reason": "Correct. Week 5 lines 681 and 696, glossary line 436 and Week 6 line 96 still gave the hash as system + tools (+ skill listing), which contradicts the 5.5 note. I kept the original wording and added a dated note to each: the hash must also cover the code version, skill contents and behaviour-changing settings, so it changes when the executor or a skill body changes. Each note links to or repeats the 5.5 note.",
+    "changes": "weeks/week-05-control-safety-reliability.md (exercise item 1, worked answer), weeks/week-06-evaluation-1.md (6.1), glossary.md (Harness version hash), CHANGELOG.md"
+   }
+  ],
+  "tests": {
+   "ran": true,
+   "passed": true,
+   "detail": "python -m pytest -q: 23 passed, including the link checker and the contents check."
+  }
+ },
+ "reverted": []
+}
