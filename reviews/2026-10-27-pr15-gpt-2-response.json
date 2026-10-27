@@ -1,0 +1,24 @@
+{
+ "review": "2026-10-27-pr15-gpt-2.json",
+ "author": "claude-opus-5-5",
+ "date": "2026-10-27",
+ "harness": "5bee3f78b3fd57414411528dae071cd984a84330",
+ "response": {
+  "schema_version": 1,
+  "summary": "1 accepted. In the 3.5 note, saving the model response before its tools run (and resuming from that saved tool_use without calling the model again) is now a requirement for both fixes: the idempotent write and the effect-plus-done transaction. A dated note records the earlier wording. The Week 3 integrative answer now has a dated note and a qualified \"refuse to ship without\" line. Owner: please check the new wording in the 3.5 worked answer note. The sed-based edit was blocked by permissions; the same fixes were made with the Edit tool instead.",
+  "responses": [
+   {
+    "finding_id": "F1",
+    "decision": "accept",
+    "reason": "Correct. A done record committed under tool_use_id A cannot match the id B that a resumed model call produces, so the transaction alone does not stop a second ticket. The rule about saving the response first now comes before both fix options, and a dated note explains the earlier wording. The crash check now requires the resume to reuse the saved call without calling the model and still leave one ticket. The Week 3 review answer (lines ~1042–1053) gets a dated note linking to 3.5 and a qualified ship-blocker line. No new facts added.",
+    "changes": "weeks/week-03-state-and-memory.md (3.5 worked-answer note, Week 3 integrative answer); CHANGELOG.md"
+   }
+  ],
+  "tests": {
+   "ran": true,
+   "passed": true,
+   "detail": "python -m pytest -q: 23 passed (includes the link checker and the contents check)."
+  }
+ },
+ "reverted": []
+}
