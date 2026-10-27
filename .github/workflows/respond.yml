@@ -1,10 +1,8 @@
 name: Cross-model review response
 
-# The author model answers the latest cross-model review of a pull request (review/RESPOND.md).
-# Start it from the GitHub app: comment "/respond" (or "/respond <review file>.json") on the reviewed PR,
-# or Actions tab -> Cross-model review response -> Run workflow.
-# The author's fixes and decisions arrive as a new pull request into the reviewed PR's branch; nothing counts until
-# The owner merges it. The author never pushes, approves or merges.
+# The model that built a PR answers the latest cross-model review of it (review/RESPOND.md): comment "/respond"
+# (or "/respond <review file>.json") on the reviewed PR, or Actions tab -> Run workflow. Its fixes and decisions
+# arrive as a pull request into the reviewed PR's branch; nothing counts until you merge it.
 
 on:
   issue_comment:
@@ -19,201 +17,24 @@ on:
         required: false
         default: ""
 
-permissions:
-  contents: write          # push the respond/ branch; archive the response record
-  pull-requests: write     # open the fix PR
-  issues: write            # comment on the reviewed PR, react to /respond
-
-concurrency:
-  group: cross-model-respond-${{ github.event.issue.number || github.event.inputs.pr }}
-  cancel-in-progress: false
-
 jobs:
   respond:
     if: >-
       github.event_name != 'issue_comment' ||
       (github.event.issue.pull_request && startsWith(github.event.comment.body, '/respond'))
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      PYTHONPATH: ${{ github.workspace }}/scripts     # the harness always runs from main
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: main
-          fetch-depth: 0
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install harness dependencies
-        run: pip install pyyaml requests
-
-      - name: Fetch the review archive
-        run: git fetch -q origin reviewer/archive:refs/remotes/origin/reviewer/archive || echo "No archive branch yet"
-
-      - name: Decide what to answer
-        id: gate
-        run: python -m review_harness.gate --respond
-
-      - name: Explain why not
-        if: steps.gate.outputs.run == 'false' && steps.gate.outputs.message != '' && steps.gate.outputs.pr != ''
-        env:
-          PR: ${{ steps.gate.outputs.pr }}
-          MSG: ${{ steps.gate.outputs.message }}
-        run: gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" -f body="ℹ️ $MSG"
-
-      - name: Acknowledge the command
-        if: steps.gate.outputs.run == 'true' && github.event_name == 'issue_comment'
-        run: gh api "repos/$GITHUB_REPOSITORY/issues/comments/${{ github.event.comment.id }}/reactions" -f content=eyes
-
-      - name: Check out the PR in a separate work tree
-        id: work
-        if: steps.gate.outputs.run == 'true'
-        env:
-          PR: ${{ steps.gate.outputs.pr }}
-          REVIEW: ${{ steps.gate.outputs.review }}
-        run: |
-          git fetch -q origin "pull/$PR/head:pr-head"
-          branch="respond/pr$PR-$(TZ=Asia/Singapore date +%F)"
-          k=2
-          while git ls-remote --exit-code --heads origin "$branch" >/dev/null; do
-            branch="respond/pr$PR-$(TZ=Asia/Singapore date +%F)-$k"; k=$((k + 1))
-          done
-          git worktree add -q -b "$branch" "$RUNNER_TEMP/work" pr-head
-          git show "origin/reviewer/archive:reviews/$REVIEW" > "$RUNNER_TEMP/review.json"
-          echo "branch=$branch" >> "$GITHUB_OUTPUT"
-
-      - name: Install Claude Code, the PR's dependencies and the diagram renderer
-        if: steps.gate.outputs.run == 'true'
-        run: |
-          npm install -g @anthropic-ai/claude-code
-          claude --version
-          pip install -r requirements.txt               # main's (this checkout): the harness and its tests
-          if [ -f "$RUNNER_TEMP/work/requirements.txt" ]; then pip install -r "$RUNNER_TEMP/work/requirements.txt"; fi
-          npm install -g @mermaid-js/mermaid-cli      # the author re-renders diagrams it fixes
-          printf '{"executablePath": "%s", "args": ["--no-sandbox"]}\n' "$(command -v google-chrome)" \
-            > "$RUNNER_TEMP/puppeteer.json"
-          echo "PUPPETEER_CONFIG=$RUNNER_TEMP/puppeteer.json" >> "$GITHUB_ENV"
-
-      - name: Author answers the findings
-        id: respond
-        if: steps.gate.outputs.run == 'true'
-        env:
-          PROGRESS_PR: ${{ steps.gate.outputs.pr }}      # live progress comment on the reviewed PR
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          PR: ${{ steps.gate.outputs.pr }}
-          BASE: ${{ steps.gate.outputs.base }}
-          REVIEW: ${{ steps.gate.outputs.review }}
-          BRANCH: ${{ steps.work.outputs.branch }}
-        run: |
-          set +e
-          python -m review_harness.respond --work-dir "$RUNNER_TEMP/work" --review-file "$RUNNER_TEMP/review.json" \
-            --review-name "$REVIEW" --pr "$PR" --base "$BASE" --fixed-in "$BRANCH" \
-            --summary-out "$RUNNER_TEMP/summary.md" --out "$RUNNER_TEMP/response.json" \
-            --error-file "$RUNNER_TEMP/respond_error.txt"
-          code=$?
-          set -e
-          echo "code=$code" >> "$GITHUB_OUTPUT"
-          if [ "$code" = 3 ]; then exit 0; fi     # nothing left to answer: reported below
-          exit $code
-
-      - name: Nothing to answer
-        if: steps.respond.outputs.code == '3'
-        env:
-          PR: ${{ steps.gate.outputs.pr }}
-        run: gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" -F body=@"$RUNNER_TEMP/summary.md"
-
-      - name: Open the fix PR into the reviewed PR's branch
-        if: steps.respond.outputs.code == '0'
-        env:
-          PR: ${{ steps.gate.outputs.pr }}
-          HEAD_REF: ${{ steps.gate.outputs.head_ref }}
-          REVIEW: ${{ steps.gate.outputs.review }}
-          BRANCH: ${{ steps.work.outputs.branch }}
-        run: |
-          cd "$RUNNER_TEMP/work"
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -q -m "Author response to cross-model review ${REVIEW%.json}" \
-            -m "Decisions logged in reviews/decisions.md."
-          git push -q origin "$BRANCH"
-          echo "$BRANCH" > "$RUNNER_TEMP/pushed_branch"
-          # Opening a PR needs "Allow GitHub Actions to create and approve pull requests" (Settings -> Actions ->
-          # General). Keep GitHub's answer so the failure comment can show it.
-          if ! url=$(gh api "repos/$GITHUB_REPOSITORY/pulls" -f title="Author response to the review of #$PR" \
-                -f head="$BRANCH" -f base="$HEAD_REF" -F body=@"$RUNNER_TEMP/summary.md" --jq .html_url \
-                2> "$RUNNER_TEMP/gh_err.txt"); then
-            { echo "Opening the fix PR failed: $(head -c 500 "$RUNNER_TEMP/gh_err.txt")"
-              echo "If it says Actions may not create pull requests: Settings -> Actions -> General -> Workflow"
-              echo "permissions -> allow GitHub Actions to create and approve pull requests."; } \
-              > "$RUNNER_TEMP/respond_error.txt"
-            exit 1
-          fi
-          # The decision rows were written before the PR existed; record its number in "Fixed in".
-          num="${url##*/}"
-          echo "$url" > "$RUNNER_TEMP/fix_pr_url"
-          sed -i "s@| ${BRANCH} |@| #${num} |@g" reviews/decisions.md   # '@' as delimiter: the text contains '#'
-
-          if ! git diff --quiet -- reviews/decisions.md; then
-            git commit -q -am "Decision log: fixes are in #${num}"
-            git push -q origin "$BRANCH"
-          fi
-          printf '%s\n\n%s\n' "Author response ready for your decision: $url" \
-            "$(head -c 1500 "$RUNNER_TEMP/summary.md")" > "$RUNNER_TEMP/comment.md"
-          gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" -F body=@"$RUNNER_TEMP/comment.md"
-
-      - name: Archive the response record
-        if: always() && steps.respond.outputs.code == '0'
-        env:
-          REVIEW: ${{ steps.gate.outputs.review }}
-        run: |
-          A="$RUNNER_TEMP/archive"
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git worktree add -q -B reviewer/archive "$A" origin/reviewer/archive
-          dest="${REVIEW%.json}-response.json"
-          if [ -e "$A/reviews/$dest" ]; then          # a second answer to the same review: keep both
-            dest="${REVIEW%.json}-response-$(date -u +%H%M%S).json"
-          fi
-          cp "$RUNNER_TEMP/response.json" "$A/reviews/$dest"
-          git -C "$A" add -A
-          git -C "$A" commit -q -m "Archive response to $REVIEW"
-          for attempt in 1 2 3; do
-            if git -C "$A" push -q origin reviewer/archive; then exit 0; fi
-            git -C "$A" pull -q --rebase origin reviewer/archive
-          done
-          echo "::warning::Could not push the response record to reviewer/archive"
-
-      - uses: actions/upload-artifact@v4
-        if: always() && steps.respond.outputs.code == '0'
-        with:
-          name: response-${{ steps.gate.outputs.pr }}
-          path: |
-            ${{ runner.temp }}/response.json
-            ${{ runner.temp }}/summary.md
-
-      - name: Report a failure on the PR
-        if: failure() && steps.gate.outputs.pr != ''
-        env:
-          PR: ${{ steps.gate.outputs.pr }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: |
-          reason="see the run log"
-          if [ -s "$RUNNER_TEMP/respond_error.txt" ]; then reason=$(head -c 800 "$RUNNER_TEMP/respond_error.txt"); fi
-          if [ -s "$RUNNER_TEMP/fix_pr_url" ]; then
-            outcome="the fix PR was opened ($(cat "$RUNNER_TEMP/fix_pr_url")) but a later step failed"
-          elif [ -s "$RUNNER_TEMP/pushed_branch" ]; then
-            b=$(cat "$RUNNER_TEMP/pushed_branch")
-            outcome="the fixes and decisions were pushed to \`$b\` but no PR was opened; open one into this PR's branch: ${{ github.server_url }}/${{ github.repository }}/compare/${{ steps.gate.outputs.head_ref }}...$b"
-          else
-            outcome="nothing was changed"
-          fi
-          printf '❌ Author response failed: %s.\n\n```\n%s\n```\n\nRun: %s\n' "$outcome" "$reason" "$RUN_URL" \
-            > "$RUNNER_TEMP/fail.md"
-          gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" -F body=@"$RUNNER_TEMP/fail.md"
+    permissions:
+      contents: write          # push the respond/ branch; archive the response record
+      pull-requests: write     # open the fix PR
+      issues: write            # comment on the reviewed PR, react to /respond
+    uses: joshxinjie/cross-model-review/.github/workflows/respond.yml@main
+    with:
+      harness-ref: main
+      # The author may re-render diagrams: mermaid-cli, pointed at the runner's Chrome through PUPPETEER_CONFIG
+      # (set in review/config.yaml agent_env).
+      install: >-
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi &&
+        PUPPETEER_SKIP_DOWNLOAD=1 npm install -g --silent @mermaid-js/mermaid-cli &&
+        printf '{"executablePath": "%s", "args": ["--no-sandbox"]}\n' "$(command -v google-chrome)"
+        > /tmp/puppeteer-ci.json
+      check: "python -m pytest -q"     # links, contents lists, make_toc tests; the result goes in the fix PR
+    secrets: inherit

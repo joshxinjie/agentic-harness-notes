@@ -28,13 +28,14 @@ answer shows a problem.
    it and add a short, dated note in the text saying what is wrong and citing the source.
 3. Keep each change as small as the finding needs. No unrelated rewording or polish.
 4. Never rename a `## ` heading unless every link to its anchor is updated in the same change.
-5. Diagrams: edit the Mermaid source in `diagrams/src/`, re-render with `python3 tools/render_diagrams.py <name>`, and
-   never hand-edit a generated `.svg`.
-6. Run `python3 tools/check_links.py .` (it must report `bad 0`) and `python -m pytest -q tests` at the end, and
-   report the result honestly in `tests`.
+5. Diagrams: edit the Mermaid source in `diagrams/src/`, re-render with `python tools/render_diagrams.py <name>`, and
+   never hand-edit a generated `.svg`. After adding or renaming a heading in a week file, run
+   `python tools/make_toc.py` to regenerate its contents list.
+6. Run `python -m pytest -q` at the end (it includes the link checker, which must report `bad 0`, and the contents
+   check), and report the result honestly in `tests`.
 7. Add one line to `CHANGELOG.md`: the date, "Review response to <review file>", and the findings fixed.
-8. You cannot change the review machinery (`REVIEW.md`, `review/`, `reviews/`, `scripts/review_harness/`,
-   `.github/`) or commit or push; the workflow writes the decision log and opens the pull request from your edits.
+8. You cannot change the review machinery (`REVIEW.md`, `review/`, `reviews/`, `.github/`) or commit or push; the
+   workflow writes the decision log and opens the pull request from your edits.
 
 ## Output
 

@@ -1,22 +1,22 @@
 # Cross-model review procedure
 
 A reviewer model from a **different model or provider** than the one that wrote the notes reviews this repo and
-suggests improvements. It runs on pull requests (on request, and automatically on each weekly update) and once a
-month on the whole repo. The reviewer only suggests; the owner decides, and every change to `main` arrives as a pull
-request they merge.
+suggests improvements. It reviews every pull request when it opens (the Saturday update PR included), any PR again on
+request, and the whole repo once a month. The reviewer only suggests; the owner decides, and every change to `main`
+arrives as a pull request they merge.
 
-This file is the reviewer's instructions. The harness sends it, unchanged, to every reviewer model, so edit it here to
-change what reviews look for. Findings must follow [review/schema.json](review/schema.json); which models review is
-set in [review/config.yaml](review/config.yaml); decisions on past findings are in
-[reviews/decisions.md](reviews/decisions.md).
+This file is the reviewer's instructions. The shared harness ([cross-model-review](https://github.com/joshxinjie/cross-model-review))
+sends it, unchanged, to every reviewer model, so edit it here to change what reviews look for. Findings must follow
+[review/schema.json](review/schema.json); which models review is set in [review/config.yaml](review/config.yaml);
+decisions on past findings are in [reviews/decisions.md](reviews/decisions.md).
 
 ## Roles
 
 | Role | Who | Does |
 |---|---|---|
 | Owner | The repo owner | Decides on every finding and merges. Settles disagreements between reviewer and author. |
-| Author | The model that writes the notes (currently Claude Opus, through the Saturday update task) | Responds to each finding: accept, modify, reject or defer, with reasons. Opens fix PRs for accepted findings. |
-| Reviewer | A different model (Fable first; others later) | Reads the work and returns findings in the schema. Never edits `main`. |
+| Author | The model that writes the notes (Claude Opus, through the Saturday update task) | Responds to each finding: accept, modify, reject or defer, with reasons. Opens fix PRs for accepted findings. |
+| Reviewer | A different model family: GPT (through Codex) on PRs; Fable for the monthly project review or on request (`/review fable`) | Reads the work and returns findings in the schema. Never edits `main`. |
 
 ## Independence rules
 
@@ -31,7 +31,7 @@ set in [review/config.yaml](review/config.yaml); decisions on past findings are 
 
 | Scope | Trigger | Input | Output |
 |---|---|---|---|
-| `pr` | The weekly update PR (Saturday, automatic), a `/review [model]` comment, or the `review` label on a pull request | The diff, the files it touches, pages that link to them, this file, STYLE.md, README.md, the decision log | Inline PR comments and one summary comment with a verdict |
+| `pr` | A pull request opening (automatic), a `/review [model]` comment, or the `review` label | The diff, the files it touches, this file, STYLE.md, README.md, the decision log; the rest of the repo to read and search | Inline PR comments and one summary comment with a verdict |
 | `project` | Monthly (the 1st), or by hand | All chapters, the glossary, the reading list, diagram sources, tools, this file, STYLE.md, the decision log | A review file in `reviews/` and a summary, opened as a PR or issue |
 
 A `project` review may be limited to areas (for example `weeks/week-05-control-safety-reliability.md`).
@@ -87,8 +87,9 @@ Apply STYLE.md. Cite the section in `checklist_item`. Pay most attention to:
 Stay out of taste ("I would word it differently") unless the wording misleads or confuses.
 
 ### D. Links, sources and diagrams
-- Run `python3 tools/check_links.py .` if you can; it must report `bad 0`. Report what it finds, and links it cannot
-  check (a link to the right file but the wrong lesson).
+- Run `python -m pytest -q` if you can: it runs the link checker (`tools/check_links.py`, which must report `bad 0`)
+  and checks every week's contents list. Report what fails, and links no checker can catch (a link to the right file
+  but the wrong lesson). Pages that link to a changed page are not in the material: search for its file name.
 - Sources: is each link the real page (no `google.com/url?q=` redirects), and does it support the claim it is cited
   for? Glossary entries point at the lesson that defines the term; the reading list has each source once.
 - Diagrams (`diagrams/src/*.mmd` is the source; the `.svg` is generated): does the diagram match the text? Wrong
@@ -96,7 +97,8 @@ Stay out of taste ("I would word it differently") unless the wording misleads or
   the diagram earn its place (STYLE.md "Visuals")?
 
 ### E. Repo and tooling
-- README's contents table and course map match what is in `weeks/`; each week's contents list is current (`python3 tools/make_toc.py --check`); CHANGELOG has a line for the change.
+- README's contents table and course map match what is in `weeks/`; each week's contents list is current (the tests
+  check it); CHANGELOG has a line for the change.
 - `tools/` scripts do what they claim; a change to them comes with a test or a reason.
 
 ### Extra checks for `pr` scope
@@ -109,8 +111,8 @@ Stay out of taste ("I would word it differently") unless the wording misleads or
 1. **Evidence or it doesn't count.** Every finding names a file and line (or a section) and gives the evidence: the
    removed text from the diff, the source, the checker output. Factual claims about the world need a source URL.
 2. **Say how you checked** in `verified_by`: `ran_code`, `read_code`, `read_docs` or `external_source`. A finding
-   checked only by reading is fine; say so and set `confidence` honestly. If you can run commands, run the link
-   checker and the tests (`python -m pytest -q tests`) and say what you ran.
+   checked only by reading is fine; say so and set `confidence` honestly. If you can run commands, run the tests
+   (`python -m pytest -q`, which includes the link checker) and say what you ran.
 3. **Propose a concrete change** in `proposed_change`: the new wording, or what to restore and where. If unsure, use
    severity `question` instead.
 4. **Prioritise.** At most 15 findings, most important first. Merge duplicates: one finding for a pattern that
@@ -119,6 +121,11 @@ Stay out of taste ("I would word it differently") unless the wording misleads or
    unless you have new evidence; if you do, put the decision ID in `related_decision` and state what is new.
 6. **The emails are the record.** If the notes faithfully say something you believe the email got wrong, it is still
    a finding (`accuracy`), but say that the fix may be a note in the text rather than a silent correction.
+7. **Web search is for the outside world only.** Where your tools include web search, use it to check technical
+   claims against official docs, papers and vendor posts. Never search for this repository, its text or its pull
+   requests. Page fetching is not available. A finding that relies on a search gives the URL in `evidence`.
+8. **Area.** Label each finding with the check it comes from: `accuracy` (A), `fact_preservation` (B), `clarity` or
+   `structure` (C), `links`, `sources` or `diagrams` (D), `tooling` (E), `process` (STYLE.md or this file).
 
 ### Severity
 
