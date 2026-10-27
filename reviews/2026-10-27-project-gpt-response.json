@@ -1,0 +1,72 @@
+{
+ "review": "2026-10-27-project-gpt.json",
+ "author": "claude-opus-5-5",
+ "date": "2026-10-27",
+ "harness": "5bee3f78b3fd57414411528dae071cd984a84330",
+ "response": {
+  "schema_version": 1,
+  "summary": "9 findings: 2 accepted, 7 modified, 0 rejected, 0 deferred. All the fixes are small, dated notes or code-sketch corrections. Facts from the original emails are kept, not rewritten. Please check these first: F1 (the done-set guarantee is now qualified: the ticket write must also be idempotent, or saved in one transaction with its done record), F7 (the claim that the override rate is TNR is withdrawn) and F9 (the harness hash must now cover code). I could not run my own scripts to check the new grade() sketch or the z-score: the session blocked that command. Tests: 23 passed, link checker bad 0, contents list up to date.",
+  "responses": [
+   {
+    "finding_id": "F1",
+    "decision": "modify",
+    "reason": "Correct. A crash after draft_ticket files but before the save loses the done entry. The self-quiz scenario (save before execution) is exactly that case. I kept the email's wording and added dated notes: the write must be idempotent on tool_use_id or saved in one transaction with its entry, and all three crash points must be checked. 'Byte-for-byte' is qualified because the resumed turn's model call is made again. I did not add a full new protocol.",
+    "changes": "weeks/week-03-state-and-memory.md (3.5 answers 1 and 3, self-quiz 5), glossary.md (Done set)"
+   },
+   {
+    "finding_id": "F2",
+    "decision": "modify",
+    "reason": "Valid. archive_read_doc and the extractor are tools in the run and carry 38, so the literal rule fails. The glossary already says 'never a figure taken from a document'. I stated that exclusion in the exercise, added a dated note to the integrative answer with a caveat that a bare number can match an unrelated value, and marked tool_values in grade() as data tools only. I did not redesign the guard around full evidence-reference objects, because that would go beyond the sources.",
+    "changes": "weeks/week-05-control-safety-reliability.md (integrative exercise and answer), weeks/week-06-evaluation-1.md (grade comment)"
+   },
+   {
+    "finding_id": "F3",
+    "decision": "accept",
+    "reason": "Reading the code confirms both crashes: t[0] is read before the count is checked, and the judge's string verdict is summed with the booleans. grade() now returns early when the count is not 1, computes partial credit from the boolean gates only, and returns the judge verdict separately; unknown is reported and never counts as a pass. A dated note says what changed. I wrote a quick script to run it, but the session blocked that command.",
+    "changes": "weeks/week-06-evaluation-1.md (6.3 example code plus note)"
+   },
+   {
+    "finding_id": "F4",
+    "decision": "modify",
+    "reason": "Valid. It breaks the stop-reason table in 2.5 (line 639). Following that table: on max_tokens the response is not appended and the call is retried with double the cap from the consistent transcript. model_context_window_exceeded returns budget, because compaction comes in 3.2. pause_turn is sent back as-is, and the nudge is used only on a genuine end of turn. Added a dated note.",
+    "changes": "weeks/week-02-core-mechanics.md (integrative answer code plus note)"
+   },
+   {
+    "finding_id": "F5",
+    "decision": "accept",
+    "reason": "Correct: the iterator from 'for step in plan.pending()' is built once, so a reassigned plan is ignored. Replaced it with a bounded loop that calls plan.next_pending() on the current plan after each replan, and added a dated note explaining the old bug.",
+    "changes": "weeks/week-02-core-mechanics.md (2.3 example)"
+   },
+   {
+    "finding_id": "F6",
+    "decision": "modify",
+    "reason": "Valid: (0.60−0.85)/√(0.85·0.15/30) is about −3.83, so 'z above 3' never fires on a decline. Added a dated note: alert above +3 for rates where up is bad and below −3 for the confirmed rate. In (c), kept 'z ≈ 3.8' with '(strictly −3.8)'. I did not define a gap statistic, because the sources give none.",
+    "changes": "weeks/week-07-evaluation-2-and-iteration.md (7.4 worked answer)"
+   },
+   {
+    "finding_id": "F7",
+    "decision": "modify",
+    "reason": "Correct: the two metrics divide by different groups. Kept the original sentence and added a dated note giving both formulas. The override rate stays as a useful warning, and TNR needs human labels on unflagged tickets too. I left out the reviewer's illustrative counts to avoid adding numbers that are not in the sources.",
+    "changes": "weeks/week-06-evaluation-1.md (6.3 Where it lives)"
+   },
+   {
+    "finding_id": "F8",
+    "decision": "modify",
+    "reason": "Correct: only three tool calls come before T4, and 3.2 keeps the last 3 (line 200, exercise line 334), so T1 cannot be cleared. Rather than invent a new trace, I added a dated note: the story holds only with keep 2 or more calls in between, and the applied-edits record must show T1 cleared before calling it confirmed.",
+    "changes": "weeks/week-07-evaluation-2-and-iteration.md (7.1 example)"
+   },
+   {
+    "finding_id": "F9",
+    "decision": "modify",
+    "reason": "Valid: 5.5 hashes only prompt and tools, while 6.5 (line 620) says every harness change gets a new hash. Added a dated note in 5.5: the hash must also cover the code version (for example the commit), skill contents and behaviour-changing settings, with infrastructure kept as a separate record. Qualified the 7.4 'hash unchanged' check to point to that note.",
+    "changes": "weeks/week-05-control-safety-reliability.md (5.5 example), weeks/week-07-evaluation-2-and-iteration.md (7.4 example)"
+   }
+  ],
+  "tests": {
+   "ran": true,
+   "passed": true,
+   "detail": "python -m pytest -q: 23 passed. check_links.py: bad 0. make_toc.py --check: ok (no headings changed). My own check script for the grade() sketch and the z-score was blocked by the session's permissions, so it did not run."
+  }
+ },
+ "reverted": []
+}
