@@ -1,0 +1,71 @@
+{
+ "meta": {
+  "reviewer": "gpt",
+  "provider": "codex",
+  "model": "gpt-6.1-sol",
+  "scope": "pr",
+  "date": "2026-10-27",
+  "input_tokens": 834822,
+  "output_tokens": 2404,
+  "attempts": 1,
+  "context_files": [
+   "PULL REQUEST",
+   "DIFF",
+   "reviews/decisions.md",
+   "STYLE.md",
+   "README.md",
+   "CHANGELOG.md",
+   "glossary.md",
+   "weeks/week-02-core-mechanics.md",
+   "weeks/week-03-state-and-memory.md",
+   "weeks/week-05-control-safety-reliability.md",
+   "weeks/week-06-evaluation-1.md",
+   "weeks/week-07-evaluation-2-and-iteration.md"
+  ],
+  "context_dropped": [],
+  "context_tokens_est": 140011,
+  "pr": 15,
+  "harness": "5bee3f78b3fd57414411528dae071cd984a84330",
+  "commit": "468ae101762671313433b75d5d00b5979f7c1424"
+ },
+ "review": {
+  "schema_version": 1,
+  "scope": "pr",
+  "verdict": "changes_needed",
+  "summary": "Changes needed. All 23 tests pass; link checker reports bad 0.\nThe checkpoint fix still permits duplicate tickets when a resumed model call generates a new ID.\nThe corrected harness hash definition has not reached the exercise or glossary.",
+  "findings": [
+   {
+    "id": "F1",
+    "severity": "critical",
+    "area": "accuracy",
+    "checklist_item": "A. Accuracy: code sketches and worked answers",
+    "title": "Persist the operation ID before relying on destination-side idempotency",
+    "file": "weeks/week-03-state-and-memory.md",
+    "line_start": 777,
+    "line_end": 782,
+    "claim": "The new fix assumes the tool_use_id survives in the checkpoint. With the recommended save after tool results, the current model response has not been saved when its executor crashes. Resume repeats the model call and can produce a different ID for the same ticket, bypassing destination-side deduplication.",
+    "evidence": "The new note at line 763 explicitly says turn 6's model call is made again, but line 779 says its ID is already checkpointed. A local reproduction restored the preceding turn-boundary checkpoint after a ticket write, regenerated the call with a new ID, and wrote again to a destination that deduplicates by ID: two tickets resulted.",
+    "proposed_change": "Qualify the correction: destination-side idempotency requires an operation ID durably preserved before execution and reused on recovery. Explain how to persist and resume the pending response rather than regenerate it, or durably preserve an equivalent logical operation record. Apply the qualification to the glossary and integrative answer. Test a crash after the effect but before the boundary save with a regenerated model response; recovery must still leave one ticket.",
+    "verified_by": "ran_code",
+    "confidence": 1,
+    "related_decision": "PROJ-2026-10-27-F1"
+   },
+   {
+    "id": "F2",
+    "severity": "minor",
+    "area": "clarity",
+    "checklist_item": "A. Accuracy: contradictions between lessons",
+    "title": "Carry the corrected harness hash into the exercise and reference definitions",
+    "file": "weeks/week-05-control-safety-reliability.md",
+    "line_start": 657,
+    "line_end": 657,
+    "claim": "The new note requires hashing code, skill contents and behavior-changing settings, but readers following the exercise or glossary still receive the old, incomplete recipe.",
+    "evidence": "Week 5 line 681 requests a hash of system + tools, and its worked answer at line 696 adds only the skill listing. glossary.md line 436 and Week 6 line 96 likewise omit code and skill contents. These definitions contradict the newly added correction.",
+    "proposed_change": "Update these repeated recipes or link them explicitly to the corrected definition in 5.5. A dated qualification can preserve the source wording. Verify that the exercise and glossary both require a version that changes when executor code or a skill body changes.",
+    "verified_by": "read_docs",
+    "confidence": 1,
+    "related_decision": "PROJ-2026-10-27-F9"
+   }
+  ]
+ }
+}
