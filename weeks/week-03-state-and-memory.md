@@ -774,12 +774,16 @@ if block.id in st.done:
 
 The id is stable, because it came from the model response, which is in the checkpoint. (Only once that response has been saved; see the note below.)
 
-*Note (2026-10-27):* "wherever the save sits" is too strong. The done set protects only effects whose `done` entry reached a save. If the crash lands after `draft_ticket` has filed but before the next save, the entry is lost with the process, and the resume files again — the same "sent, not recorded, replayed" gap as in (2). Closing that gap needs one of two things:
+*Note (2026-10-27):* "wherever the save sits" is too strong. The done set protects only effects whose `done` entry reached a save. If the crash lands after `draft_ticket` has filed but before the next save, the entry is lost with the process, and the resume files again — the same "sent, not recorded, replayed" gap as in (2).
 
-- the write itself is idempotent: the ticket system refuses a second ticket carrying the same `tool_use_id`. This works only if that id was saved *before* the tool ran. With the save after tool results, as in (1), the turn's model response is not yet in the checkpoint; the resume calls the model again, gets a new id, and the ticket system files a second ticket. So also save the model response before executing its tools, and on resume run that saved `tool_use` instead of calling the model again;
+Any fix keys on `tool_use_id`, so that id must be saved *before* the tool runs. With the save after tool results, as in (1), the turn's model response is not yet in the checkpoint; the resume calls the model again, gets a new id, and nothing recorded under the old id matches. So first save the model response before executing its tools, and on resume run that saved `tool_use` instead of calling the model again. Then close the gap with one of two things:
+
+- the write itself is idempotent: the ticket system refuses a second ticket carrying the same `tool_use_id`;
 - the effect and its `done` record are saved together, in one transaction.
 
-Check all three crash points (before the write, after the write but before the save, after the save): each must leave at most one ticket. For the middle one, make the repeated model call return a new id: still one ticket.
+*Note (2026-10-27, PR #15 review):* an earlier version of this note required the saved response only for the idempotent write. The transaction needs it too: a committed `done` record under the old id does not stop a regenerated id from filing again.
+
+Check all three crash points (before the write, after the write but before the save, after the save): each must leave at most one ticket. For the middle one, make a repeated model call return a new id: the resume must reuse the saved call without calling the model, and still leave one ticket.
 
 **Durability: `sync`, decided by `draft_ticket` alone.** Every other tool is read-only, so replaying them costs nothing. The one tool with a real-world cost sets the mode. If the ticket is instead gated behind human approval (a checkpoint waiting for input), `async` is acceptable for the investigation turns.
 
@@ -1042,6 +1046,8 @@ The week-3 `run_site` is the Week 2 function with a `State` wrapped around it:
 - One executor validates memory paths, refuses `checklist.md`, runs `delegate` as a nested six-turn read-only loop, and checks `st.done` before `draft_ticket`.
 - Save after results are appended.
 
+*Note (2026-10-27):* the `st.done` check is not enough on its own; see the note in [3.5's worked answer](#35-checkpointing-and-resumability). Save each model response before running its tools, resume from that saved `tool_use` without calling the model again, and make `draft_ticket` either idempotent on `tool_use_id` or one transaction with its `done` record.
+
 Results:
 
 - **Night 1:** parent peak about 8k, child about 60k, one dated memory line.
@@ -1050,7 +1056,7 @@ Results:
 
 **Drop first:** server-side compaction. With clearing and delegation in place, it never fires on a twelve-turn run.
 
-**Refuse to ship without:** the turn-boundary checkpoint plus the `done` set. It is the only thing that makes the one side effect safe.
+**Refuse to ship without:** the turn-boundary checkpoint plus the `done` set (with the saved model response and idempotent or transactional write from the note above). It is the only thing that makes the one side effect safe.
 
 Common slip: skipping the checkpoint because "the batch is short". It is short until the vendor API hangs at site 17.
 
