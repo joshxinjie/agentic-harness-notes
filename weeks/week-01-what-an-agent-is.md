@@ -252,7 +252,7 @@ The second is treating an "end turn" stop as "task complete". It only means the 
 
 ### Try it
 
-Write the loop above in Python against the Anthropic SDK (or any provider with function calling), with two fake tools: `get_forecast(site, date)` and `get_actual(site, date)`, each returning a hard-coded dict. Ask the model for the day-ahead error of site "SG-01" on 2026-09-03. On each pass, log the message count and the total characters in `messages`.
+Write the loop above in Python against the Anthropic SDK (or any provider with function calling), with two fake tools: `get_forecast(site, date)` and `get_actual(site, date)`, each returning a hard-coded dict. Ask the model for the day-ahead error of site "PVA-01" on 2026-09-03. On each pass, log the message count and the total characters in `messages`.
 
 Run it again with `get_actual` returning 5,000 characters of noise around the numbers. Report: turns per run, how the transcript size grew, and one change that would make the noisy result cheaper on later turns.
 
@@ -415,7 +415,7 @@ Bonus: sketch a `get_site_metrics(site, date)` tool that does both lookups and t
 
 **(a) Definitions.** A good `get_forecast` description says:
 
-> Returns the day-ahead solar generation forecast for one site on one date, in MWh per hour (24 values, local time). Use it when you need the predicted output; use get_actual for what was produced. site is the site code, e.g. SG-01; date is ISO YYYY-MM-DD. If no forecast exists for that site/date the result is {"status":"no_data","reason":...}, not an error.
+> Returns the day-ahead solar generation forecast for one site on one date, in MWh per hour (24 values, local time). Use it when you need the predicted output; use get_actual for what was produced. site is the site code, e.g. PVA-01; date is ISO YYYY-MM-DD. If no forecast exists for that site/date the result is {"status":"no_data","reason":...}, not an error.
 
 The per-parameter descriptions repeat the format and give one example each.
 
@@ -425,7 +425,7 @@ The per-parameter descriptions repeat the format and give one example each.
 
 - Unknown tool: `Unknown tool 'get_forcast'. Available tools: get_forecast, get_actual.`
 - Bad date: `Validation error: date '03/09/2026' does not match YYYY-MM-DD. Retry with date='2026-09-03'.`
-- Unknown site: `No site with code 'SG-99'. Known sites: SG-01, SG-02, MY-01. Check the code or ask the user.`
+- Unknown site: `No site with code 'PVA-99'. Known sites: PVA-01, PVA-02, PVB-01. Check the code or ask the user.`
 
 Each one names the problem, names the fix, and gives the model the data it needs to fix it without another round trip.
 
@@ -547,7 +547,7 @@ The three cheap additions:
 
 Which catches what:
 
-- The **allow-list** makes the SG-99 request cheaper: it is rejected before dispatch, with the fix attached, and this is now guaranteed rather than dependent on each tool.
+- The **allow-list** makes the PVA-99 request cheaper: it is rejected before dispatch, with the fix attached, and this is now guaranteed rather than dependent on each tool.
 - The **budget** catches the model retrying the bad date format forever.
 - The **logger** catches nothing at run time, but it is the only thing that tells you the unknown-tool typo happened three times last week.
 
@@ -693,7 +693,7 @@ Once you have read one of these, "agent", "tool", "memory" and "guardrail" each 
 
 ### Try it
 
-Build the agent above (or adapt your 1.4 code) with the four tools. Create a folder with `forecast.csv` and `actual.csv` (24 hourly rows each, site SG-01). Give it the task: "Write mae.py that prints the MAE between the two files, run it, and report the number." Record the turns used, the tool sequence, and the final transcript size in characters.
+Build the agent above (or adapt your 1.4 code) with the four tools. Create a folder with `forecast.csv` and `actual.csv` (24 hourly rows each, site PVA-01). Give it the task: "Write mae.py that prints the MAE between the two files, run it, and report the number." Record the turns used, the tool sequence, and the final transcript size in characters.
 
 Then inject one failure: change `edit_file` to return `"ok"` even when `old_str` does not match. Run the same task and note whether — and how many turns later — the model notices.
 
@@ -772,9 +772,9 @@ Three jobs from a solar-forecasting morning routine:
 
 - **"Compute yesterday's MAE (mean absolute error) per site and flag anything above threshold."** Every step is known. No LLM calls needed — a cron job (a scheduled script) and pandas. An agent here adds cost and a failure mode to something that already worked.
 - **"Write a plain-English morning digest of those flags."** One call over a table. The prompt is the whole harness.
-- **"Site SG-03 has degraded for three days; find out why."** The cause is unknown, and the next step depends on the last answer (curtailment? sensor drift? stale weather feed? stuck ETL?). This is the agent-shaped job.
+- **"Site PVA-03 has degraded for three days; find out why."** The cause is unknown, and the next step depends on the last answer (curtailment? sensor drift? stale weather feed? stuck ETL?). This is the agent-shaped job.
 
-Even so, the right build for SG-03 is a hybrid: a deterministic pipeline computes and routes, the agent investigates read-only, and a human approves the ticket.
+Even so, the right build for PVA-03 is a hybrid: a deterministic pipeline computes and routes, the agent investigates read-only, and a human approves the ticket.
 
 ### Where it lives in the harness
 

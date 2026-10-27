@@ -43,7 +43,7 @@ Reference:
 
 ## How it's updated
 
-A scheduled task runs every Saturday morning (UTC+8). It reads that week's brief emails, rewrites them into the matching chapter using the style guide, fills in answers that were still pending, updates the glossary and reading list, and opens a pull request on a `weekly/YYYY-MM-DD` branch. Nothing reaches `main` until I merge it.
+A scheduled task runs every Saturday morning. It reads that week's brief emails, rewrites them into the matching chapter using the style guide, fills in answers that were still pending, updates the glossary and reading list, and opens a pull request on a `weekly/YYYY-MM-DD` branch. Nothing reaches `main` until I merge it.
 
 ## How it's reviewed
 

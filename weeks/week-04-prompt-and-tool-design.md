@@ -36,7 +36,7 @@ The week goes from the inside out:
 
 One theme runs through every lesson: most agent failures you can fix are interface failures, not model failures. Fix the interface first.
 
-The running example is the same as in earlier weeks: a read-only investigator that looks into forecast errors at solar sites (mostly the SG-03 meter-fault case) and ends by drafting a ticket for a human to approve.
+The running example is the same as in earlier weeks: a read-only investigator that looks into forecast errors at solar sites (mostly the PVA-03 meter-fault case) and ends by drafting a ticket for a human to approve.
 
 ---
 
@@ -126,7 +126,7 @@ Delegate multi-station or archive pulls. Finish by calling submit_ticket. </proc
 Null result: "no_data for 3 days — treat feed as suspect; check pipeline status". </examples>
 
 ---- cache boundary ----
-<run> site SG-03, window 2026-09-07..09, triage: ..., MEMORY.md: ... </run>
+<run> site PVA-03, window 2026-09-07..09, triage: ..., MEMORY.md: ... </run>
 ```
 
 Everything above the boundary is the same for every site and every night. Everything below it changes per run.
@@ -157,7 +157,7 @@ Other mistakes:
 
 Rewrite your `run_site` system prompt into the four sections, plus a run block below a cache boundary. Keep the stable part under 400 tokens.
 
-Run the SG-03 meter-fault case four ways against your fake tools:
+Run the PVA-03 meter-fault case four ways against your fake tools:
 
 1. the full prompt;
 2. with `<examples>` deleted;
@@ -243,7 +243,7 @@ Anthropic's example: "Gets the stock price for a ticker" is poor. A good descrip
 - Use unambiguous names: `user_id`, not `user`; `window_days`, not `n`.
 - Use enums (a fixed list of allowed values) and object structure, so invalid states cannot be expressed: `agg: "hourly" | "daily"`, not a free string.
 - Keep things whose set of valid values changes over time (like site codes) as free strings, with an allow-list in the executor ([2.4](week-02-core-mechanics.md#24-structured-outputs-and-schemas)).
-- Do not make the model fill in arguments the harness already knows. If every call in this run is for SG-03, bind the site in code and remove the parameter.
+- Do not make the model fill in arguments the harness already knows. If every call in this run is for PVA-03, bind the site in code and remove the parameter.
 - Give every parameter a description and a default.
 - Offer a concise-or-detailed knob, so the model can ask for the short version. In Anthropic's example the same result was 72 tokens concise versus 206 detailed.
 
@@ -308,7 +308,7 @@ Take the five investigator tools: `get_site_metrics`, `get_weather_history`, `ge
 
 1. Rename each into a namespaced `verb_noun`. Rewrite each description in four parts: does / when vs. the sibling / parameters / returns and limits.
 2. Cut one parameter the harness already knows, and add one enum.
-3. Add a sixth tool that deliberately overlaps: `fetch_weather(site)` with a one-line description. Run the SG-03 case five times with it and five times without it. Count how often the overlap tool is chosen and what it costs in turns.
+3. Add a sixth tool that deliberately overlaps: `fetch_weather(site)` with a one-line description. Run the PVA-03 case five times with it and five times without it. Count how often the overlap tool is chosen and what it costs in turns.
 4. Remove the overlap. Ask a model to rewrite your five descriptions against three failure transcripts from earlier exercises, and diff the result against your own.
 
 Then one paragraph: which of the four decisions (which tools, names, descriptions, parameters) moved behaviour most, and which single description sentence you would keep if you could keep only one.
@@ -454,7 +454,7 @@ Take the investigator's executor.
 
 1. Define `ToolError(problem, fix, data, retryable)` and make every tool raise it for its own failure modes. At least: bad site, bad window, over-sized hourly request, vendor unavailable with partial data, and "no data" (which must *not* raise).
 2. Write an `ERROR_CATALOGUE`: one row per tool per failure mode, with the exact text returned.
-3. Run the SG-03 case five times with three planted faults — a window in DD/MM/YYYY, hourly for all stations, the vendor going down after 2 stations — under two executors: yours, and one that returns `f"{type(e).__name__}: {e}"`. Record turns-to-recover, and whether the model ever treated "no data" as a failure.
+3. Run the PVA-03 case five times with three planted faults — a window in DD/MM/YYYY, hourly for all stations, the vendor going down after 2 stations — under two executors: yours, and one that returns `f"{type(e).__name__}: {e}"`. Record turns-to-recover, and whether the model ever treated "no data" as a failure.
 4. One paragraph: which of the three faults should have been made impossible by the schema ([2.4](week-02-core-mechanics.md#24-structured-outputs-and-schemas)) rather than explained by the executor, and what that tells you about where the catalogue should shrink over time.
 
 ### Worked answer
@@ -552,13 +552,13 @@ Their editor matches an exact string instead of a line range, because line numbe
 A viewer over a time series for the investigator, instead of dumping all 720 rows:
 
 ```text
-series_open("SG-03", "actual_vs_forecast", at="2026-09-07 00:00")
+series_open("PVA-03", "actual_vs_forecast", at="2026-09-07 00:00")
 
-[SG-03 actual vs forecast | rows 145–192 of 720 | 672 omitted]
+[PVA-03 actual vs forecast | rows 145–192 of 720 | 672 omitted]
 145 09-07 06:00 f=1.20 a=0.41 err=-0.79
 146 09-07 07:00 f=2.85 a=1.62 err=-1.23
 …
-(Open: SG-03 actual_vs_forecast | cursor 145 | window 48)
+(Open: PVA-03 actual_vs_forecast | cursor 145 | window 48)
 Other commands: series_goto(ts), series_scroll(n),
                 series_find(cond) → row numbers only, max 20
 ```
@@ -590,7 +590,7 @@ Teams tune prompt wording while the interface wastes half the turns. The usual m
 
 *(10–15 min)*
 
-Build the three series commands above with fake data for SG-03's meter fault. Run the case 5 times at each window size: 12, 48 and 720 rows (a full dump). Record turns, peak input tokens, and whether the ticket carries the correct deciding number.
+Build the three series commands above with fake data for PVA-03's meter fault. Run the case 5 times at each window size: 12, 48 and 720 rows (a full dump). Record turns, peak input tokens, and whether the ticket carries the correct deciding number.
 
 Then remove the state footer, and count how often the agent re-opens a series it already has open.
 
@@ -598,7 +598,7 @@ Finally, one paragraph: which window won, what the shape of the curve tells you,
 
 ### Worked answer
 
-Five runs per window size over SG-03:
+Five runs per window size over PVA-03:
 
 - **12 rows.** The agent scrolls blind: 11–14 turns, low peak input (~7–9k). On one or two runs the step cap hits before it reaches the anomaly, so the ticket has no deciding number.
 - **48 rows.** `series_find(err < -1.0)` returns row numbers, then one `series_goto`, and one 48-row window covers the fault. 6–8 turns, peak ~10–12k, correct number every run.
@@ -669,7 +669,7 @@ system prompt (level 1):
 
 turn 4  tool_use read_file("skills/checking-weather-feed/SKILL.md")
         → 60 lines: steps, deciding thresholds, ticket wording
-turn 5  tool_use bash("python skills/.../scripts/station_deltas.py SG-03 2026-09-07 3")
+turn 5  tool_use bash("python skills/.../scripts/station_deltas.py PVA-03 2026-09-07 3")
         → "max cloud delta 4% | nulls 0/432 | verdict: feed OK"
 ```
 
@@ -716,7 +716,7 @@ How to tell skills apart from memory ([3.4](week-03-state-and-memory.md#34-persi
 
 1. Move the weather part of the investigator's `<procedure>` into `skills/checking-weather-feed/`: a `SKILL.md` under 60 lines, and a `scripts/station_deltas.py` that prints one line with the deciding numbers.
 2. Add a loader to `run_site`. It scans `skills/*/SKILL.md` and puts each name and description into the system prompt *above* the cache boundary (the skill list is stable text). Add `load_skill(name)`, which returns the body.
-3. Run five SG-03 meter-fault cases and five weather-outage cases. Record whether the skill loaded (it should load only for the outage), the turn-1 input tokens compared with leaving the procedure inline, and whether the ticket carries the script's number.
+3. Run five PVA-03 meter-fault cases and five weather-outage cases. Record whether the skill loaded (it should load only for the outage), the turn-1 input tokens compared with leaving the procedure inline, and whether the ticket carries the script's number.
 4. Change the description to "Helps with weather." and re-run.
 
 Then one paragraph: which parts of the investigator belong in the system prompt, which in a skill, which in a tool and which in memory, with one example of each.
@@ -748,7 +748,7 @@ max cloud delta 4% | nulls 0/432 | stale 0h | verdict: feed OK
 - **System prompt:** "finish by calling `submit_ticket`".
 - **Skill:** the weather-feed check and its thresholds.
 - **Tool:** `weather_get_history`.
-- **Memory:** "SG-03 meter under-reads below 200 W/m², since 2026-08-14".
+- **Memory:** "PVA-03 meter under-reads below 200 W/m², since 2026-08-14".
 
 Common slips:
 
@@ -886,7 +886,7 @@ Caching is the difference between an agent bill that grows roughly quadratically
 Add caching to `run_site`.
 
 1. Log `cache_read_input_tokens`, `cache_creation_input_tokens` and `input_tokens` per turn. Compute hit rate = read / (read + creation + input).
-2. Run the SG-03 case four ways:
+2. Run the PVA-03 case four ways:
    - (a) no `cache_control`;
    - (b) automatic caching (top-level `cache_control`);
    - (c) (b) with `datetime.now()` planted in the stable system text;
@@ -1000,7 +1000,7 @@ Measure hit rate from all three usage fields.
 
 ### Self-quiz
 
-**1.** Your investigator prompt has a constraint line: "never assert a root cause without a deciding number". Ablating it changes nothing across five SG-03 runs. Give two readings of that result. Which one decides whether you may delete the line, and what must exist in the executor either way?
+**1.** Your investigator prompt has a constraint line: "never assert a root cause without a deciding number". Ablating it changes nothing across five PVA-03 runs. Give two readings of that result. Which one decides whether you may delete the line, and what must exist in the executor either way?
 
 > **Answer.** Either the line does nothing, or none of the five runs was a borderline case that would test it. The second reading is the one that matters: rerun the test on a case where the ratio is borderline before you delete the line. Either way, the executor twin must exist: `ticket_submit` refuses a ticket that has no deciding number.
 

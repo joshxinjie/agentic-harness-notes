@@ -81,11 +81,11 @@ Only when the information was present, clear and allowed is it a model reasoning
 
 ### An example
 
-SG-03 was expected to be a meter fault. The run filed `root_cause=weather`, with status `success`. Render the run as a turn table:
+PVA-03 was expected to be a meter fault. The run filed `root_cause=weather`, with status `success`. Render the run as a turn table:
 
 | Turn | Call | Result |
 |---|---|---|
-| T1 | `read_memory sites/SG-03.md` | "meter under-reads <200 W/m² since 08-14" |
+| T1 | `read_memory sites/PVA-03.md` | "meter under-reads <200 W/m² since 08-14" |
 | T2 | `metrics_get_site` | MAE 3× from the 7th, worst at low irradiance |
 | T3 | `weather_get_history(agg=hourly, 6 stations)` | about 38k tokens |
 | T4 | *thinking* | "station 4 cloud variability high…" |
@@ -135,11 +135,11 @@ Typical mistakes:
 
 ### Try it
 
-*10 min.* MY-01 was expected to be `pipeline_stale`: the ETL (the data pipeline) was stuck and the actuals were forward-filled (the last value repeated). The run filed `meter_drift`.
+*10 min.* PVB-01 was expected to be `pipeline_stale`: the ETL (the data pipeline) was stuck and the actuals were forward-filled (the last value repeated). The run filed `meter_drift`.
 
 | Turn | Call | Result |
 |---|---|---|
-| T1 | `read_memory MEMORY.md` | "MY-01: no notes" |
+| T1 | `read_memory MEMORY.md` | "PVB-01: no notes" |
 | T2 | `metrics_get_site(3d)` | MAE 2.4×; actual flat at 4.1 MW from 10-12 14:00 to 10-14 02:00 |
 | T3 | *thinking* "flat actuals = stuck sensor" · `pipeline_get_status` | `is_error`: "Error: timeout" |
 | T4 | `weather_get_history(daily)` | normal, max delta 3% |
@@ -236,7 +236,7 @@ Even with step-level labels, its annotators only reached κ = 0.55. Its **AgentD
 
 Both papers make the same point as 7.1: early errors cascade, so you label the root, not the wreckage.
 
-**The harness twist.** Published labels describe what the *agent* did ("outcome misinterpretation"). Your own taxonomy should also say *where the fix lives*. The MY-01 failure from 7.1 is "causal misattribution" in the paper's terms, but the cause was an opaque tool error. So every category needs three things:
+**The harness twist.** Published labels describe what the *agent* did ("outcome misinterpretation"). Your own taxonomy should also say *where the fix lives*. The PVB-01 failure from 7.1 is "causal misattribution" in the paper's terms, but the cause was an opaque tool error. So every category needs three things:
 
 - a **definition**;
 - a **harness layer and owner**;
@@ -286,18 +286,18 @@ Without counts, you fix whichever failure you saw last. With them, the top two c
 
 *10–15 min.* Here are twelve open codes from the nightly batch:
 
-1. SG-03 T3: hourly weather pull → memory cleared → weather blamed.
-2. MY-01 T3: pipeline timeout, "Error: timeout" → pipeline n/a → meter filed.
-3. SG-05 T2: hourly pull, 40k tokens → budget, no ticket.
-4. SG-02 T4: cited `cloud_delta` 38% from an archive doc → provenance trip.
-5. SG-01 T7: ticket "multiple factors, monitor" (no action).
-6. SG-04 T5: vendor 429 after 2 stations → note "weather normal".
-7. MY-02 T6: `metrics_get_site` with identical args 4× → stuck.
-8. SG-03: grader expects `curtail_pct` 40; fixture stores 0.4 → unfair.
-9. SG-06 T8: meter confirmed, text-only `end_turn`, no `ticket_submit`.
-10. MY-01 T4: thinking says "check curtailment next", calls weather.
-11. SG-02 quiet day T5: filed `meter_drift` on 1.3× MAE, below threshold.
-12. SG-05 T3: pipeline timeout at 30 s in container → status error.
+1. PVA-03 T3: hourly weather pull → memory cleared → weather blamed.
+2. PVB-01 T3: pipeline timeout, "Error: timeout" → pipeline n/a → meter filed.
+3. PVA-05 T2: hourly pull, 40k tokens → budget, no ticket.
+4. PVA-02 T4: cited `cloud_delta` 38% from an archive doc → provenance trip.
+5. PVA-01 T7: ticket "multiple factors, monitor" (no action).
+6. PVA-04 T5: vendor 429 after 2 stations → note "weather normal".
+7. PVB-02 T6: `metrics_get_site` with identical args 4× → stuck.
+8. PVA-03: grader expects `curtail_pct` 40; fixture stores 0.4 → unfair.
+9. PVA-06 T8: meter confirmed, text-only `end_turn`, no `ticket_submit`.
+10. PVB-01 T4: thinking says "check curtailment next", calls weather.
+11. PVA-02 quiet day T5: filed `meter_drift` on 1.3× MAE, below threshold.
+12. PVA-05 T3: pipeline timeout at 30 s in container → status error.
 
 Your tasks:
 
@@ -422,7 +422,7 @@ class SimVendor:  # world: computed, not recorded
         return aggregate(self.series[site], start, days, agg, station)
 
 REVIEWER = """You are the on-call forecasting engineer.
-Hidden truth: SG-03 had a 40% curtailment cap on the 8th.
+Hidden truth: PVA-03 had a 40% curtailment cap on the 8th.
 Reveal it only if asked about curtailment. Approve a ticket only
 if root_cause=curtailment; otherwise reject in one sentence.
 End with ###DONE###."""
@@ -453,7 +453,7 @@ So:
 
 ### Try it
 
-1. Implement `SimVendor` over a 30-day hourly fixture for SG-03 with `timeout_after=2`. Confirm that a fork asking for a never-recorded `agg="hourly", station=4` now gets an answer.
+1. Implement `SimVendor` over a 30-day hourly fixture for PVA-03 with `timeout_after=2`. Confirm that a fork asking for a never-recorded `agg="hourly", station=4` now gets an answer.
 2. Implement `SimReviewer` from the prompt above as the counterparty for `escalate` and approval. Run the curtailment task 5 times with each of two personas: "terse" (answers only what is asked) and "helpful" (the default). Record:
    - the pass rate;
    - the number of turns;
@@ -661,7 +661,7 @@ The improvement loop is layer 6 (feedback and evals) driving changes into layers
 
 **2. Hypothesis: written down and falsifiable.** For example:
 
-> Category A, tool failure absorbed silently, happens because `pipeline_get_status` returns a bare "Error: timeout". If the executor retries and then returns "status UNKNOWN — not ruled out", at least 4 of 5 forks of the MY-01 trace end in `pipeline_stale` or an escalation, category-A tasks rise, and nothing else regresses.
+> Category A, tool failure absorbed silently, happens because `pipeline_get_status` returns a bare "Error: timeout". If the executor retries and then returns "status UNKNOWN — not ruled out", at least 4 of 5 forks of the PVB-01 trace end in `pipeline_stale` or an escalation, category-A tasks rise, and nothing else regresses.
 
 It names a cause, a layer, a change and a prediction, so it can fail.
 
@@ -734,7 +734,7 @@ Without the loop, fixes follow whatever failure was seen most recently, and gain
    - (i) a prompt line: "If `pipeline_get_status` times out, assume the pipeline is stale";
    - (ii) an executor retry plus "UNKNOWN — not ruled out" error text.
 
-   For each, fork the MY-01 trace 5 times, then run the paired comparison on dev and on held-out. Include a held-out task where the timeout is transient and the real cause is the meter. Report which fix wins where, and why.
+   For each, fork the PVB-01 trace 5 times, then run the paired comparison on dev and on held-out. Include a held-out task where the timeout is transient and the real cause is the meter. Report which fix wins where, and why.
 4. One paragraph: when do you stop iterating on A and move to B?
 
 Bonus: how is this the same discipline as tuning a solar forecast model on validation years and reporting on a held-out year?
@@ -743,7 +743,7 @@ Bonus: how is this the same discipline as tuning a solar forecast model on valid
 
 **Suite.** Add four tasks:
 
-- two for category A: SG-04, a vendor 429 after 2 stations where the real cause is the meter; and MY-03, a pipeline timeout that hides a stale ETL (data pipeline);
+- two for category A: PVA-04, a vendor 429 after 2 stations where the real cause is the meter; and PVB-03, a pipeline timeout that hides a stale ETL (data pipeline);
 - two for category B: an hourly pull cleared before its verdict, and a 40k-token dump.
 
 Split stratified: dev 8, held-out 4 (one A, one B, one C, one should-not-file). The held-out A task has a *transient* timeout and a meter fault.
@@ -754,13 +754,13 @@ Split stratified: dev 8, held-out 4 (one A, one B, one C, one should-not-file). 
 |---|---|
 | Hypothesis | A bare "Error: timeout" and partial results become "n/a" or "normal" verdicts (layer 2, tools and the executor) |
 | Change | Executor retry, then "UNKNOWN — not ruled out" text |
-| Prediction | At least 4 of 5 MY-01 forks flip; category-A dev tasks rise; no regression task falls |
+| Prediction | At least 4 of 5 PVB-01 forks flip; category-A dev tasks rise; no regression task falls |
 | Guards | Cost per success at most 1.1×; p90 turns (the value 90% of runs stay under, [6.4](week-06-evaluation-1.md#64-trajectory-level-metrics-passk-steps-cost-tool-call-accuracy)) at most +1 |
 | Ship rule | `compare()` says ship on dev, *and* held-out does not drop |
 
 **Result (illustrative).**
 
-- The prompt line wins the forks (5 of 5) and dev, because it hard-codes MY-01's answer. On held-out it files `pipeline_stale` on the transient-timeout meter task. That is overfitting.
+- The prompt line wins the forks (5 of 5) and dev, because it hard-codes PVB-01's answer. On held-out it files `pipeline_stale` on the transient-timeout meter task. That is overfitting.
 - The executor fix flips 4 of 5 forks: either the retry returns "stale since 10-12", or UNKNOWN keeps the hypothesis open. It passes held-out, because there the retry returns the real "fresh" status.
 
 Ship (ii).
@@ -957,7 +957,7 @@ A fix that wins only on the traces that inspired it is overfit.
 
 ### Self-quiz
 
-1. A failing SG-04 run filed a weather ticket. You fork at the step you think is decisive (T3), patch the tool result, and get 2 of 5 flips. What do you conclude, and what are your next two moves?
+1. A failing PVA-04 run filed a weather ticket. You fork at the step you think is decisive (T3), patch the tool result, and get 2 of 5 flips. What do you conclude, and what are your next two moves?
 2. Two engineers code the same 15 traces into your six categories and get κ = 0.35. What does that say about your counts? What do you change before re-coding, and why does "reasoning error" make a bad category even if κ were high?
 3. The curtailment task under `SimReviewer`: the "helpful" persona passes 5/5 with a 60% leak rate, and the "terse" persona passes 2/5 with a 0% leak rate. Which number goes in the report, what does the gap measure, and which two checks validate the simulator itself?
 4. Over two weeks the reviewer approval rate rose from 70% to 88%, the harness hash was unchanged, and no alert fired. Is that good news? Name the signal that would tell you, and its lag.
