@@ -1,0 +1,38 @@
+{
+ "meta": {
+  "reviewer": "gpt",
+  "provider": "codex",
+  "model": "gpt-6.1-sol",
+  "scope": "pr",
+  "date": "2026-10-27",
+  "input_tokens": 819965,
+  "output_tokens": 2136,
+  "attempts": 1,
+  "context_files": [
+   "PULL REQUEST",
+   "DIFF",
+   "reviews/decisions.md",
+   "STYLE.md",
+   "README.md",
+   "CHANGELOG.md",
+   "glossary.md",
+   "weeks/week-02-core-mechanics.md",
+   "weeks/week-03-state-and-memory.md",
+   "weeks/week-05-control-safety-reliability.md",
+   "weeks/week-06-evaluation-1.md",
+   "weeks/week-07-evaluation-2-and-iteration.md"
+  ],
+  "context_dropped": [],
+  "context_tokens_est": 143165,
+  "pr": 15,
+  "harness": "5bee3f78b3fd57414411528dae071cd984a84330",
+  "commit": "bfeea87c47e8bd28ff79fd34ca02f428664fd0de"
+ },
+ "review": {
+  "schema_version": 1,
+  "scope": "pr",
+  "verdict": "approve",
+  "summary": "Approve. No actionable findings in the diff.\nAll 23 tests pass; link checker reports bad 0.\nMocked checks pass for grader edge cases and truncated-response retries.\nExternal technical claims were not verified offline.",
+  "findings": []
+ }
+}
