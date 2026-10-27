@@ -93,7 +93,7 @@ Graders have bugs as well. Opus 4.5 scored 42% on CORE-Bench until two things we
 
 ### Where it lives in the harness
 
-Layer 6 (feedback and evals), as a second harness that drives the first. When you evaluate "an agent", you are really evaluating model plus harness. So every run must carry the harness hash from [5.5](week-05-control-safety-reliability.md#55-observability-tracing-logging-trajectories-replaying-runs) (a hash of the system prompt and tools, plus the skill listing where there is one, so results can be split by harness version).
+Layer 6 (feedback and evals), as a second harness that drives the first. When you evaluate "an agent", you are really evaluating model plus harness. So every run must carry the harness hash from [5.5](week-05-control-safety-reliability.md#55-observability-tracing-logging-trajectories-replaying-runs) (a hash of the system prompt and tools, plus the skill listing where there is one, so results can be split by harness version). *Note (2026-10-27):* the hash must also cover the code version, skill contents and behaviour-changing settings, as the [5.5 note](week-05-control-safety-reliability.md#55-observability-tracing-logging-trajectories-replaying-runs) explains.
 
 The sketch below runs one trial in a fresh environment, then grades it from the environment's end state:
 

@@ -678,7 +678,7 @@ Without traces, every failure is an anecdote and every fix is a guess.
 ### Try it
 
 1. Make `run_site` write `traces/<run_id>.jsonl` with five event types:
-   - `run_start`: site, harness hash of system + tools;
+   - `run_start`: site, harness hash of system + tools (note, 2026-10-27: plus the code version, skill contents and behaviour-changing settings, as the note above says);
    - `llm_call`: turn, latency, input / cache_read / cache_creation / output tokens, stop_reason, request_id;
    - `tool_call`: tool_use_id, name, sorted input, is_error, latency, result hash and length;
    - `guard` / `gate`: the check and its outcome;
@@ -693,7 +693,7 @@ Without traces, every failure is an anecdote and every fix is a guess.
 
 **(1) Trace writer.** One JSON line per event:
 
-- `run_start {run_id, site, harness hash of system + tools + skill listing}`
+- `run_start {run_id, site, harness hash of system + tools + skill listing}` (note, 2026-10-27: the hash must also cover the code version and skill contents, so it changes when the executor or a skill body changes; see the [note above](#55-observability-tracing-logging-trajectories-replaying-runs))
 - `llm_call {turn, latency, input / cache_read / cache_creation / output, stop_reason, request_id}`
 - `tool_call {tool_use_id, name, sorted input, is_error, latency, result hash, length}`
 - `guard` / `gate`
