@@ -1,0 +1,55 @@
+{
+ "meta": {
+  "reviewer": "gpt",
+  "provider": "codex",
+  "model": "gpt-6.1-sol",
+  "scope": "pr",
+  "date": "2026-10-27",
+  "input_tokens": 1008347,
+  "output_tokens": 3996,
+  "attempts": 1,
+  "context_files": [
+   "PULL REQUEST",
+   "DIFF",
+   "reviews/decisions.md",
+   "STYLE.md",
+   "README.md",
+   "CHANGELOG.md",
+   "glossary.md",
+   "weeks/week-02-core-mechanics.md",
+   "weeks/week-03-state-and-memory.md",
+   "weeks/week-05-control-safety-reliability.md",
+   "weeks/week-06-evaluation-1.md",
+   "weeks/week-07-evaluation-2-and-iteration.md"
+  ],
+  "context_dropped": [],
+  "context_tokens_est": 142228,
+  "pr": 15,
+  "harness": "5bee3f78b3fd57414411528dae071cd984a84330",
+  "commit": "dce8d955f834db05140a312432831a30aa178650"
+ },
+ "review": {
+  "schema_version": 1,
+  "scope": "pr",
+  "verdict": "changes_needed",
+  "summary": "Changes needed. 23 tests pass; link checker reports bad 0.\nThe transaction alternative still permits duplicate tickets without a saved operation identity, and the final Week 3 answer retains the unsafe recipe.",
+  "findings": [
+   {
+    "id": "F1",
+    "severity": "major",
+    "area": "accuracy",
+    "checklist_item": "A. Accuracy: code sketches and worked answers",
+    "title": "Preserve operation identity for the transaction alternative too",
+    "file": "weeks/week-03-state-and-memory.md",
+    "line_start": 779,
+    "line_end": 782,
+    "claim": "The saved-response requirement applies only to the idempotent-write bullet, leaving an atomic effect-plus-done transaction presented as sufficient by itself. With the existing save-after loop, recovery regenerates the tool-call id and bypasses even a durably committed done record. The final integrative answer also still recommends saving after results and checking st.done as sufficient protection.",
+    "evidence": "Executed the lesson's run_site sketch with mocked model responses and a SQLite transaction committing both the ticket and its done record. After a crash before store.save, recovery generated call_2 instead of call_1 and created a second ticket. Only the sketch's final return placeholder was adapted for execution. Lines 1042–1043 and 1053 retain the checkpoint-plus-done safety claim.",
+    "proposed_change": "Require a durably preserved operation identity for both alternatives, or have the transaction atomically advance recovery state so the completed operation cannot be regenerated. Carry that requirement into the final integrative answer. Verify that recovery after a committed write creates one ticket and reuses the saved call without invoking the model again.",
+    "verified_by": "ran_code",
+    "confidence": 0.99,
+    "related_decision": "PR15-F1"
+   }
+  ]
+ }
+}
