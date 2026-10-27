@@ -359,11 +359,16 @@ A plan-and-execute sketch for the SG-03 investigator:
 plan = call(PLANNER_PROMPT, task, tools=None)   # JSON: [{id, goal, tool, status}]
 # 1 metrics 30d  2 weather same window  3 curtailment log  4 compare  5 draft_ticket
 
-for step in plan.pending():
+for _ in range(MAX_STEPS):                                   # bounded
+    step = plan.next_pending()                               # read the *current* plan
+    if step is None:
+        break
     result = run_agent(step, tools=READ_ONLY, max_turns=4)   # small inner loop
     step.status, step.note = "done", summarise(result)
     plan = call(REPLAN_PROMPT, plan, step.note)              # may edit remaining steps
 ```
+
+The loop picks the next step from the plan again after every replan. (*Note, 2026-10-27:* an earlier version looped `for step in plan.pending()`. That iterator is built once, so a replanned `plan` was ignored: dropped steps still ran and inserted steps never did.)
 
 Suppose step 2 returns "all six stations null since the 7th". The replanner drops steps 3–4 and inserts "check pipeline status for the weather feed".
 
@@ -1041,22 +1046,30 @@ def run_site(site) -> RunResult:
     messages = [user(f"Plan: {plan.model_dump_json()}\n"
                      f"Investigate {site}; finish by calling submit_ticket.")]
 
+    cap = MAX_OUT
     for turn in range(12):                                   # (v) step cap
         if time.time() - t0 > WALL:                          # (v) wall-clock cap
             return RunResult("budget", turn, toks, last_text(messages))
         try:
-            resp = call_model(messages=messages, tools=TOOLS,
+            resp = call_model(messages=messages, tools=TOOLS, max_tokens=cap,
                               thinking={"type": "adaptive"},
                               output_config={"effort": "medium"})   # retry-with-jitter inside
         except RunFailed as e:
             return RunResult("error", turn, toks, str(e))
 
         toks += resp.usage.input_tokens; log(turn, resp.usage.input_tokens)
+        if resp.stop_reason == "max_tokens":                 # truncated: never keep or run it
+            cap *= 2                                         # retry from the consistent transcript
+            continue
+        if resp.stop_reason == "model_context_window_exceeded":
+            return RunResult("budget", turn, toks, last_text(messages))  # compaction is 3.2
         messages.append({"role": "assistant", "content": resp.content})  # untouched
 
         if resp.stop_reason == "refusal":
             return RunResult("refusal", turn, toks, last_text(messages))
-        if resp.stop_reason != "tool_use":
+        if resp.stop_reason == "pause_turn":                 # send it back as-is
+            continue
+        if resp.stop_reason != "tool_use":                   # end_turn without submit_ticket
             messages.append(user("Not submitted yet — call submit_ticket when done."))
             continue
 
@@ -1081,6 +1094,8 @@ def run_site(site) -> RunResult:
 
     return RunResult("budget", 12, toks, last_text(messages))
 ```
+
+*Note (2026-10-27):* an earlier version sent every stop other than `tool_use` and `refusal` the "Not submitted yet" nudge. On `max_tokens` that kept a half-written `tool_use` in the transcript with no result, breaking the pairing rule. The sketch now follows the stop-reason table in [2.5](#25-stopping-conditions-step-budgets-and-loop-detection): retry a truncation with a higher cap, send `pause_turn` back, and nudge only on a genuine end of turn.
 
 **Forty sites in sequence.** Wall-clock binds first. Forty sites × (up to 12 turns × several seconds, plus vendor calls) runs past the morning digest long before any single site hits 12 steps. So the batch needs a per-site wall-clock cap, and ideally a fan-out across sites (8.3).
 
