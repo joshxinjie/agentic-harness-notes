@@ -761,6 +761,8 @@ Then one paragraph: for the nightly batch, would you choose `exit`, `async` or `
 
 **(1)** Saving after tool results are appended: a kill at turn 5 and a restart with the same run id loads five consistent turns (every `tool_use` has its `tool_result`). The run makes exactly the remaining calls. The final transcript is byte-for-byte the same as an uninterrupted run.
 
+*Note (2026-10-27):* "byte-for-byte" holds only if the resumed model calls return what they would have returned anyway. The kill lands inside turn 6's executor, so turn 6's model call is made again, and a live model can answer differently. Turns 1–5 are identical; the rest is a fresh, consistent continuation.
+
 **(2)** Saving before tool execution leaves the checkpoint ending on dangling `tool_use` blocks. So every tool in that turn re-runs on resume — one to three calls. `draft_ticket` prints twice whenever the crash landed between running it and the next save: sent, not recorded, replayed.
 
 **(3)** A `done: set[tool_use_id]` in the state, checked by side-effect tools, makes replay safe wherever the save sits:
@@ -770,7 +772,18 @@ if block.id in st.done:
     return stored_result
 ```
 
-The id is stable, because it came from the model response, which is in the checkpoint.
+The id is stable, because it came from the model response, which is in the checkpoint. (Only once that response has been saved; see the note below.)
+
+*Note (2026-10-27):* "wherever the save sits" is too strong. The done set protects only effects whose `done` entry reached a save. If the crash lands after `draft_ticket` has filed but before the next save, the entry is lost with the process, and the resume files again — the same "sent, not recorded, replayed" gap as in (2).
+
+Any fix keys on `tool_use_id`, so that id must be saved *before* the tool runs. With the save after tool results, as in (1), the turn's model response is not yet in the checkpoint; the resume calls the model again, gets a new id, and nothing recorded under the old id matches. So first save the model response before executing its tools, and on resume run that saved `tool_use` instead of calling the model again. Then close the gap with one of two things:
+
+- the write itself is idempotent: the ticket system refuses a second ticket carrying the same `tool_use_id`;
+- the effect and its `done` record are saved together, in one transaction.
+
+*Note (2026-10-27, PR #15 review):* an earlier version of this note required the saved response only for the idempotent write. The transaction needs it too: a committed `done` record under the old id does not stop a regenerated id from filing again.
+
+Check all three crash points (before the write, after the write but before the save, after the save): each must leave at most one ticket. For the middle one, make a repeated model call return a new id: the resume must reuse the saved call without calling the model, and still leave one ticket.
 
 **Durability: `sync`, decided by `draft_ticket` alone.** Every other tool is read-only, so replaying them costs nothing. The one tool with a real-world cost sets the mode. If the ticket is instead gated behind human approval (a checkpoint waiting for input), `async` is acceptable for the investigation turns.
 
@@ -1006,6 +1019,8 @@ Memory is context, not enforced configuration. A planted line is an injection th
 **5.** `store.save` runs before tool execution, the process dies after `draft_ticket` sends, and the batch driver resumes. What happens? Which single addition to the state makes it safe regardless of where the save sits? And why must that addition be keyed on `tool_use_id` rather than on tool name plus arguments?
 
 > **Answer.** The checkpoint ends on a dangling `tool_use`, so the resume re-runs that turn's tools and `draft_ticket` fires twice. A `done: set[tool_use_id]`, checked by side-effect tools, is safe wherever the save sits. It is keyed on the id because the id is stable and already in the checkpoint; name-plus-arguments would wrongly skip a legitimate repeat call.
+>
+> *Note (2026-10-27):* in this exact scenario the done set alone does not help: the entry for the ticket was added after the save, so it dies with the process. The ticket write must also be idempotent on the `tool_use_id`, or saved in one transaction with its `done` record ([3.5 worked answer](#worked-answer-4)). Here the id is safe to rely on because the save ran before the tools, so the resume reuses the saved `tool_use`. With a save only after tool results, the resume calls the model again and gets a new id, so the model response must be saved before its tools run.
 
 ### Integrative exercise — `run_site`, week-3 edition
 
@@ -1031,6 +1046,8 @@ The week-3 `run_site` is the Week 2 function with a `State` wrapped around it:
 - One executor validates memory paths, refuses `checklist.md`, runs `delegate` as a nested six-turn read-only loop, and checks `st.done` before `draft_ticket`.
 - Save after results are appended.
 
+*Note (2026-10-27):* the `st.done` check is not enough on its own; see the note in [3.5's worked answer](#35-checkpointing-and-resumability). Save each model response before running its tools, resume from that saved `tool_use` without calling the model again, and make `draft_ticket` either idempotent on `tool_use_id` or one transaction with its `done` record.
+
 Results:
 
 - **Night 1:** parent peak about 8k, child about 60k, one dated memory line.
@@ -1039,7 +1056,7 @@ Results:
 
 **Drop first:** server-side compaction. With clearing and delegation in place, it never fires on a twelve-turn run.
 
-**Refuse to ship without:** the turn-boundary checkpoint plus the `done` set. It is the only thing that makes the one side effect safe.
+**Refuse to ship without:** the turn-boundary checkpoint plus the `done` set (with the saved model response and idempotent or transactional write from the note above). It is the only thing that makes the one side effect safe.
 
 Common slip: skipping the checkpoint because "the batch is short". It is short until the vendor API hangs at site 17.
 

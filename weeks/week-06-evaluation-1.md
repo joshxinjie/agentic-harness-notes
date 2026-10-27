@@ -93,7 +93,7 @@ Graders have bugs as well. Opus 4.5 scored 42% on CORE-Bench until two things we
 
 ### Where it lives in the harness
 
-Layer 6 (feedback and evals), as a second harness that drives the first. When you evaluate "an agent", you are really evaluating model plus harness. So every run must carry the harness hash from [5.5](week-05-control-safety-reliability.md#55-observability-tracing-logging-trajectories-replaying-runs) (a hash of the system prompt and tools, plus the skill listing where there is one, so results can be split by harness version).
+Layer 6 (feedback and evals), as a second harness that drives the first. When you evaluate "an agent", you are really evaluating model plus harness. So every run must carry the harness hash from [5.5](week-05-control-safety-reliability.md#55-observability-tracing-logging-trajectories-replaying-runs) (a hash of the system prompt and tools, plus the skill listing where there is one, so results can be split by harness version). *Note (2026-10-27):* the hash must also cover the code version, skill contents and behaviour-changing settings, as the [5.5 note](week-05-control-safety-reliability.md#55-observability-tracing-logging-trajectories-replaying-runs) explains.
 
 The sketch below runs one trial in a fresh environment, then grades it from the environment's end state:
 
@@ -359,16 +359,20 @@ def grade(trial, task):
     t = trial.sink.tickets                         # outcome, not message
     if task.expect_none:
         return G(len(t) == 0)                      # should-not-file
-    g = {}
-    g["one_ticket"] = len(t) == 1                  # state check
+    if len(t) != 1:                                # state check; t[0] needs exactly one
+        return G(False, partial=0.0, detail={"one_ticket": False})
+    g = {"one_ticket": True}
     g["cause"]  = t[0].root_cause == task.cause    # exact match on enum
     g["value"]  = abs(t[0].value - task.value) <= 0.5   # tolerance
-    g["prov"]   = t[0].value in trial.tool_values  # transcript check
+    g["prov"]   = t[0].value in trial.tool_values  # transcript check (data tools only)
     g["budget"] = trial.status == "success"        # path constraint
     hard = all(g.values())
-    g["actionable"] = judge("actionable", t[0], rubric=R1)   # pass/fail/unknown
-    return G(hard, partial=sum(g.values()) / len(g), detail=g)
+    verdict = judge("actionable", t[0], rubric=R1)   # pass/fail/unknown, kept apart
+    return G(hard, partial=sum(g.values()) / len(g), detail=g,
+             actionable=verdict)                  # unknown is reported, never a pass
 ```
+
+*Note (2026-10-27):* the first version of this sketch read `t[0]` before checking the ticket count, and summed the judge's pass/fail/unknown verdict with the boolean gates. Both raised errors on ordinary trials. It now returns early on a wrong count and keeps the verdict out of the partial credit.
 
 All the hard gates are code. The judge answers one narrow question: "Does the ticket name a specific action a technician could take tomorrow?" It gets two good tickets and two bad ones as few-shot examples. Its result is reported separately, so it never silently flips a pass.
 
@@ -397,6 +401,13 @@ The same code often does two jobs:
 
 - The provenance check (the deciding number must equal a value from this run's own tools) is a runtime guardrail in [5.3](week-05-control-safety-reliability.md#53-guardrails-inputoutput-validation-policy-checks-classifiers) and a grader here.
 - The 5.3 LLM judge that flags tickets is the same kind of object, and its "override rate" is exactly a TNR measurement.
+
+*Note (2026-10-27):* "exactly a TNR measurement" is wrong. The two divide by different groups:
+
+- **override rate** = flagged tickets that reviewers approved ÷ all flagged tickets (it looks only at what the judge flagged);
+- **TNR** = real fails the judge flagged ÷ all real fails, including the fails it let through.
+
+The override rate is a useful warning about false flags, but it cannot give you TNR. For TNR you need human labels on unflagged tickets too.
 
 ### Common mistakes
 

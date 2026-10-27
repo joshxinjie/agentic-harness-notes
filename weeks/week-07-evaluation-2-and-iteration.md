@@ -102,6 +102,8 @@ So the decisive step is T3: an hourly pull that both buried the evidence and tri
 
 Fork at T3 with `agg=daily`: 5 of 5 runs file meter. Confirmed.
 
+*Note (2026-10-27):* with the clearing set-up from 3.2 (keep the last 3 tool uses), this trace cannot lose T1: only three tool calls come before T4, so all three are kept. The story holds if clearing keeps 2, or if more tool calls sit between T1 and T4. Before calling it confirmed, check the response's record of applied edits: it should show T1's result among those cleared.
+
 **API details**
 
 | What | Value |
@@ -566,7 +568,7 @@ The rule: alert on rolling windows, or on counts with a hard floor, for example 
 
 Next, read the alert against the harness hash:
 
-- Reject rate and vendor-partial flags rise together, and the hash is unchanged? That points at the world (vendor degradation, drift), not your code.
+- Reject rate and vendor-partial flags rise together, and the hash is unchanged (a hash that covers code too, per the note in [5.5](week-05-control-safety-reliability.md#55-observability-tracing-logging-trajectories-replaying-runs))? That points at the world (vendor degradation, drift), not your code.
 - The hash changed the same night? Start with the paired comparison from [6.5](week-06-evaluation-1.md#65-regression-testing-a-harness-change-ab-on-prompts-and-tools) that you skipped.
 
 ### Where it lives in the harness
@@ -610,13 +612,13 @@ Report which alert fires on which night, how many false alarms you get on nights
 
 **Signals per night:** status mix, partial-flag rate, median turns, cost per run, reject rate, approve-without-edit rate, and confirmed rate (filled in three nights late).
 
-**Baseline:** the previous 7 nights for the same harness hash, not counting tonight. Rates alert when z = (p − p₀)/√(p₀(1−p₀)/n) is above 3, or on a count floor. Turns and cost alert on a z-score over the night's mean.
+**Baseline:** the previous 7 nights for the same harness hash, not counting tonight. Rates alert when z = (p − p₀)/√(p₀(1−p₀)/n) is above 3, or on a count floor. (*Note, 2026-10-27:* "above 3" fits rates where up is bad, such as partial flags and rejects. For rates where down is bad, such as the confirmed rate, alert when z is below −3. Otherwise an improvement alerts and a decline does not.) Turns and cost alert on a z-score over the night's mean.
 
 **(a) Vendor degradation.** At n=40, about 10 partial flags against an expected 2 gives z ≈ 5.8, so it fires on night 20. The hash didn't change, so the world moved, not the harness.
 
 **(b) Hash change on night 25.** The new hash has no history yet, so compare it with the last 7 nights of the old hash. Turns +2 and cost +25% fire the same night, while the status mix stays flat. That is a guard regression with no change in accuracy.
 
-**(c) Rubber-stamping.** The approve rate goes up, which looks like good news. Night 15's confirmations only arrive on night 18. With about 30 tickets a night, 0.85 → 0.60 gives z ≈ 3.8, so the earliest alert is night 18. A gradual slide shows up in the rolling window around nights 20–22, which is 3–7 nights late. The detector that works is the gap between approval and confirmation, not either rate on its own.
+**(c) Rubber-stamping.** The approve rate goes up, which looks like good news. Night 15's confirmations only arrive on night 18. With about 30 tickets a night, 0.85 → 0.60 gives z ≈ 3.8 (strictly −3.8: a fall, caught by the lower-tail rule above), so the earliest alert is night 18. A gradual slide shows up in the rolling window around nights 20–22, which is 3–7 nights late. The detector that works is the gap between approval and confirmation, not either rate on its own.
 
 **False alarms on nights 1–14.** Nights 1–7 have no baseline (warm-up). After that, expect roughly 0–2 alarms, mostly from small-count binomial tails, which the count floors suppress.
 
