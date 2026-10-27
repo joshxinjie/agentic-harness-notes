@@ -1,4 +1,3 @@
-# Review harness (scripts/review_harness/) and tests. The notes themselves need nothing.
-pyyaml
-requests
+# Tests (link checker, contents lists). The notes themselves need nothing; the review harness lives in
+# https://github.com/joshxinjie/cross-model-review.
 pytest

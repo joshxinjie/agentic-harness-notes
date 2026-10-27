@@ -47,11 +47,11 @@ A scheduled task runs every Saturday morning (UTC+8). It reads that week's brief
 
 ## How it's reviewed
 
-A different model (Fable) checks the notes against [REVIEW.md](REVIEW.md): technical accuracy, nothing lost or invented in the rewrite, the style guide, links, sources and diagrams. It only comments; it never approves or pushes.
+A model from a different family checks the notes against [REVIEW.md](REVIEW.md): technical accuracy, nothing lost or invented in the rewrite, the style guide, links, sources and diagrams. It only comments; it never approves or pushes.
 
-- **Weekly:** about 90 minutes after the update PR opens (Saturdays 11:23), Fable reviews it.
-- **Monthly:** on the 1st it reviews the whole repo and opens a `reviewer/` PR with its findings.
-- **On request:** comment `/review` on any PR (or `/review force` to re-review the same commit), or add the `review` label.
-- **Answering:** comment `/respond` on the reviewed PR. The author model decides on each finding (accept, modify, reject, defer), applies the fixes and opens a pull request into the reviewed branch. Merging it accepts the decisions; closing it rejects them.
+- **Every PR:** GPT (through Codex) reviews each pull request when it opens, so the Saturday update PR is reviewed as soon as it appears.
+- **Monthly:** on the 1st, Fable reviews the whole repo and opens a `reviewer/` PR with its findings.
+- **On request:** comment `/review` on any PR (`/review fable` for Fable, `/review force` to re-review the same commit), or add the `review` label.
+- **Answering:** comment `/respond` on the reviewed PR. Claude Opus, which wrote the notes, decides on each finding (accept, modify, reject, defer), applies the fixes, runs the tests and opens a pull request into the reviewed branch. Merging it accepts the decisions; closing it rejects them.
 
-Every review is archived on the `reviewer/archive` branch. Machinery: [review/](review/), [scripts/review_harness/](scripts/review_harness/), [.github/workflows/](.github/workflows/). Ported from the dalio-debt-cycle repo.
+Every review is archived on the `reviewer/archive` branch. Settings: [review/](review/) and [.github/workflows/](.github/workflows/). The machinery is shared with other repos: [cross-model-review](https://github.com/joshxinjie/cross-model-review).

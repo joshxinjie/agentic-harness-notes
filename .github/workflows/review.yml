@@ -1,15 +1,15 @@
 name: Cross-model review
 
-# A different model reviews pull requests and the project (REVIEW.md). Start it from the GitHub app:
-#   comment "/review" (or "/review <reviewer>") on a pull request, or add the "review" label;
-#   or Actions tab -> Cross-model review -> Run workflow.
-# The reviewer only comments; it never approves, merges or pushes to main.
+# A model from a different family reviews pull requests and the project, under REVIEW.md and review/config.yaml.
+# Start it from the GitHub app: comment "/review" (or "/review <reviewer>") on a pull request, or add the "review"
+# label; or Actions tab -> Cross-model review -> Run workflow. The reviewer only comments.
+# The machinery lives in https://github.com/joshxinjie/cross-model-review.
 
 on:
   issue_comment:
     types: [created]
   pull_request:
-    types: [labeled]
+    types: [labeled, opened, reopened, ready_for_review]   # review_on_open is true in review/config.yaml
   workflow_dispatch:
     inputs:
       scope:
@@ -26,214 +26,25 @@ on:
         required: false
         default: ""
       areas:
-        description: "Project scope: space-separated paths, e.g. weeks/week-05-control-safety-reliability.md (blank = defaults)"
+        description: "Project scope: space-separated paths (blank = config default_areas)"
         required: false
         default: ""
-  schedule:
-    - cron: "23 3 * * 6"            # Saturdays, 11:23 SGT: review the weekly update PR (weekly/YYYY-MM-DD)
-    - cron: "23 5 1 * *"            # 1st of each month, 13:23 SGT: whole-project review
-
-permissions:
-  contents: write          # push review records to the reviewer/archive branch and reviewer/ PR branches
-  pull-requests: write     # post review comments, open project-review PRs
-  issues: write            # comment on PRs, react to /review, remove the label
-
-concurrency:
-  group: cross-model-review-${{ github.event.issue.number || github.event.pull_request.number || github.event.inputs.pr || github.event.schedule || 'project' }}
-  cancel-in-progress: false
+  schedule:                       # each cron also needs an entry in review/config.yaml `schedules`
+    - cron: "23 5 1 * *"          # 1st of each month, 13:23 SGT: whole-repo review
 
 jobs:
   review:
-    # Cheap pre-filter so ordinary comments don't start a runner; gate.py makes the real decision.
+    # Cheap pre-filter so ordinary comments don't start a runner; the harness makes the real decision.
     if: >-
       github.event_name != 'issue_comment' ||
       (github.event.issue.pull_request && startsWith(github.event.comment.body, '/review'))
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      PYTHONPATH: scripts
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: main                 # harness, instructions and config always come from main
-          fetch-depth: 0
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install harness dependencies
-        run: pip install pyyaml requests
-
-      - name: Fetch the review archive
-        run: git fetch -q origin reviewer/archive:refs/remotes/origin/reviewer/archive || echo "No archive branch yet"
-
-      - name: Decide what to review
-        id: gate
-        run: python -m review_harness.gate
-
-      - name: Explain why not
-        if: steps.gate.outputs.run == 'false' && steps.gate.outputs.message != '' && steps.gate.outputs.pr != ''
-        env:
-          PR: ${{ steps.gate.outputs.pr }}
-          MSG: ${{ steps.gate.outputs.message }}
-        run: gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" -f body="ℹ️ $MSG"
-
-      - name: Acknowledge the command
-        if: steps.gate.outputs.run == 'true' && github.event_name == 'issue_comment'
-        run: gh api "repos/$GITHUB_REPOSITORY/issues/comments/${{ github.event.comment.id }}/reactions" -f content=eyes
-
-      - name: Check out the PR (harness stays from main)
-        if: steps.gate.outputs.run == 'true' && steps.gate.outputs.scope == 'pr'
-        env:
-          PR: ${{ steps.gate.outputs.pr }}
-          HEAD_SHA: ${{ steps.gate.outputs.head_sha }}
-        run: |
-          git fetch -q origin "pull/$PR/head:pr-head"
-          if [ "$(git rev-parse pr-head)" != "$HEAD_SHA" ]; then
-            echo "::warning::PR #$PR moved since the gate ran; reviewing its latest commit"
-          fi
-          git checkout -q pr-head
-          # A pull request must not be able to change how it is reviewed.
-          git checkout -q origin/main -- REVIEW.md review scripts/review_harness reviews/decisions.md \
-            tests/test_review_harness.py tests/test_review_contract.py   # harness tests match the harness
-
-      - name: Install Claude Code and the repo's dependencies (agentic reviewers run the checks)
-        if: steps.gate.outputs.run == 'true' && steps.gate.outputs.provider == 'claude-code'
-        run: |
-          npm install -g @anthropic-ai/claude-code
-          claude --version
-          # The harness and its tests come from main, so their dependencies do too: a PR branched before the
-          # review setup has no requirements.txt of its own. Add the PR's own, if it has one.
-          git show origin/main:requirements.txt > "$RUNNER_TEMP/requirements-main.txt"
-          pip install -r "$RUNNER_TEMP/requirements-main.txt"
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-
-      - name: Run the review
-        id: review
-        if: steps.gate.outputs.run == 'true'
-        env:
-          PROGRESS_PR: ${{ steps.gate.outputs.pr }}      # live progress comment (empty for project reviews)
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          SCOPE: ${{ steps.gate.outputs.scope }}
-          PR: ${{ steps.gate.outputs.pr }}
-          BASE: ${{ steps.gate.outputs.base }}
-          TITLE: ${{ steps.gate.outputs.title }}
-          REVIEWER: ${{ steps.gate.outputs.reviewer }}
-          AREAS: ${{ steps.gate.outputs.areas }}
-        run: |
-          set +e
-          if [ "$SCOPE" = "pr" ]; then
-            out=$(python -m review_harness.run --scope pr --reviewer "$REVIEWER" --base "origin/$BASE" \
-                  --head pr-head --pr "$PR" --title "$TITLE" --body-file "$RUNNER_TEMP/pr_body.md" \
-                  --error-file "$RUNNER_TEMP/review_error.txt")
-          else
-            # shellcheck disable=SC2086  # AREAS is deliberately split into separate paths
-            out=$(python -m review_harness.run --scope project --reviewer "$REVIEWER" ${AREAS:+--areas $AREAS} \
-                  --error-file "$RUNNER_TEMP/review_error.txt")
-          fi
-          code=$?
-          set -e
-          file=$(printf '%s\n' "$out" | tail -n 1)
-          if [ -f "$file" ]; then
-            cp "$file" "$RUNNER_TEMP/"
-            echo "file=$file" >> "$GITHUB_OUTPUT"
-            echo "name=$(basename "$file")" >> "$GITHUB_OUTPUT"
-          fi
-          exit $code
-
-      - name: Post the review on the PR
-        if: steps.gate.outputs.scope == 'pr' && steps.review.outcome == 'success'
-        env:
-          PR: ${{ steps.gate.outputs.pr }}
-          BASE: ${{ steps.gate.outputs.base }}
-          FILE: ${{ steps.review.outputs.file }}
-        run: |
-          python -m review_harness.post "$FILE" --repo "$GITHUB_REPOSITORY" --pr "$PR" \
-            --base "origin/$BASE" --head pr-head --post
-
-      - name: Open a PR with the project review
-        if: steps.gate.outputs.scope == 'project' && steps.review.outcome == 'success'
-        env:
-          FILE: ${{ steps.review.outputs.file }}
-          NAME: ${{ steps.review.outputs.name }}
-        run: |
-          python -m review_harness.post "$FILE" --summary-out "$RUNNER_TEMP/summary.md"
-          branch="reviewer/${NAME%.json}"
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git switch -q -c "$branch"
-          git add "$FILE"
-          git commit -q -m "Cross-model project review ${NAME%.json}"
-          git push -q origin "$branch"
-          # Opening a PR needs "Allow GitHub Actions to create and approve pull requests" in the repo's Actions
-          # settings; without it, fall back to an issue carrying the same summary and the branch name.
-          if ! gh api "repos/$GITHUB_REPOSITORY/pulls" -f title="Cross-model project review (${NAME%.json})" \
-                 -f head="$branch" -f base=main -F body=@"$RUNNER_TEMP/summary.md" --jq .html_url; then
-            printf '\n\nThe review file is on branch `%s`; open a PR from it to keep it on main.\n' "$branch" \
-              >> "$RUNNER_TEMP/summary.md"
-            gh api "repos/$GITHUB_REPOSITORY/issues" -f title="Cross-model project review (${NAME%.json})" \
-              -F body=@"$RUNNER_TEMP/summary.md" --jq .html_url
-          fi
-
-      - name: Archive the review record
-        if: always() && steps.review.outputs.name != ''
-        env:
-          NAME: ${{ steps.review.outputs.name }}
-        run: |
-          A="$RUNNER_TEMP/archive"
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if git rev-parse -q --verify origin/reviewer/archive >/dev/null; then
-            git worktree add -q -B reviewer/archive "$A" origin/reviewer/archive
-          else
-            git worktree add -q --detach "$A"
-            git -C "$A" checkout -q --orphan reviewer/archive
-            git -C "$A" rm -rfq .
-            printf '%s\n' "# Review archive" "" \
-              "Every cross-model review (REVIEW.md on main), valid or not, as saved by the workflow." \
-              "Never merged into main. Project reviews also arrive on main through their own PRs." > "$A/README.md"
-          fi
-          mkdir -p "$A/reviews"
-          dest="$NAME"
-          if [ -e "$A/reviews/$dest" ]; then       # never overwrite a record (run.py should already avoid this)
-            dest="${NAME%.json}-$(date -u +%H%M%S).json"
-            echo "::warning::$NAME already archived; saving this record as $dest"
-          fi
-          cp "$RUNNER_TEMP/$NAME" "$A/reviews/$dest"
-          git -C "$A" add -A
-          git -C "$A" commit -q -m "Archive $NAME"
-          for attempt in 1 2 3; do
-            if git -C "$A" push -q origin reviewer/archive; then exit 0; fi
-            git -C "$A" pull -q --rebase origin reviewer/archive
-          done
-          echo "::warning::Could not push the review record to reviewer/archive"
-
-      - uses: actions/upload-artifact@v4
-        if: always() && steps.review.outputs.name != ''
-        with:
-          name: ${{ steps.review.outputs.name }}
-          path: ${{ runner.temp }}/${{ steps.review.outputs.name }}
-
-      - name: Remove the label so it can be added again
-        if: always() && github.event_name == 'pull_request' && steps.gate.outputs.pr != ''
-        env:
-          PR: ${{ steps.gate.outputs.pr }}
-        run: gh api -X DELETE "repos/$GITHUB_REPOSITORY/issues/$PR/labels/review" || true
-
-      - name: Report a failure on the PR
-        if: failure() && steps.gate.outputs.pr != ''
-        env:
-          PR: ${{ steps.gate.outputs.pr }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: |
-          reason="see the run log"
-          if [ -s "$RUNNER_TEMP/review_error.txt" ]; then reason=$(head -c 800 "$RUNNER_TEMP/review_error.txt"); fi
-          printf '❌ Cross-model review failed.\n\n```\n%s\n```\n\nRun: %s\n' "$reason" "$RUN_URL" > "$RUNNER_TEMP/fail.md"
-          gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" -F body=@"$RUNNER_TEMP/fail.md"
+    permissions:
+      contents: write          # review records on reviewer/archive, project-review PR branches
+      pull-requests: write     # review comments, project-review PRs
+      issues: write            # comments, reactions, removing the label
+    uses: joshxinjie/cross-model-review/.github/workflows/review.yml@main
+    with:
+      harness-ref: main                   # keep in step with the ref after @ above
+      install: "if [ -f requirements.txt ]; then pip install -r requirements.txt; fi"
+      label: review
+    secrets: inherit
