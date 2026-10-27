@@ -654,6 +654,8 @@ In ten seconds you can see three things: the delegation takes 44% of the wall-cl
 
 Note `harness=a91f`. It is a hash of the system prompt plus the tool definitions. It lets you split every metric by harness version, which is what makes regression testing in [6.5](week-06-evaluation-1.md#65-regression-testing-a-harness-change-ab-on-prompts-and-tools) possible.
 
+*Note (2026-10-27):* a hash of prompt and tool text misses changes in code: the executor (the code that runs tool calls), loop control, guardrails, or a skill's body. Any of these can change outcomes while the hash stays the same, yet 6.5 says every harness change gets a new hash. So hash the code version too (for example the commit), plus skill contents and any setting that changes behaviour. Infrastructure settings stay a separate record, as 6.5 asks.
+
 ### Why it matters
 
 Without traces, every failure is an anecdote and every fix is a guess.
@@ -935,7 +937,7 @@ All are enforced as layer 3 (loop control) caps on cost and wall-clock per run, 
 Write `run_batch(sites, deadline)` for the nightly investigator. Aim for about 100 lines with fake tools, combining the whole week:
 
 1. `authorize()`: deny `memory_write` to `checklist.md`, allow read-only tools, and make `ticket_submit` an always-allowed *draft writer*, with filing as a separate human step.
-2. `guard_ticket`: an allow-list, then deciding-number provenance (the number must equal a value one of this run's tools returned), then an LLM-judge flag that never blocks.
+2. `guard_ticket`: an allow-list, then deciding-number provenance (the number must equal a value one of this run's tools returned — its data tools, never `archive_read_doc` or the extractor's output), then an LLM-judge flag that never blocks.
 3. `archive_read_doc` goes through a tool-less extractor that returns `IncidentFacts`, and a run that read the archive writes no memory.
 4. Every run writes `traces/<run_id>.jsonl` with the harness hash and status.
 5. Eight workers on a queue, a cache pre-warm, a per-site cap of (deadline − now) ÷ remaining waves, and `run_tools` from 5.6.
@@ -951,6 +953,8 @@ Finally, one paragraph: if you could ship only one check, which would you ship f
 - **Forged 38%.** The quarantined extractor passes it on as a well-typed value. `guard_ticket`'s provenance check rejects the ticket at submit, because no tool returned 38. The model then calls `weather_get_history` (4%) or escalates. The review card reads "provenance tripped: cited 38, own tools 4".
 - **Vendor down after 2 stations.** The tool client retries, then raises a `ToolError` with partial data (layer 2, tools and the executor). The ticket marks weather as "2/6 stations, unverified".
 - **Empty review queue at 08:00.** Because the design is draft-then-file, nothing gets filed. The draft expires at 24 hours and is never auto-approved, and the morning digest pages on-call that N drafts are unreviewed.
+
+*Note (2026-10-27):* "no tool returned 38" is true only if the provenance set leaves out `archive_read_doc` and the extractor. Both are tools in this run, and both carry the forged 38. So build the set from the data tools only (metrics, weather, curtailment), as the [glossary](../glossary.md#d) entry says: "never a figure taken from a document". Matching a bare number is also loose: 38 could equal an unrelated value from another metric, site or window. A stricter check matches the cited number to the `tool_use_id` that produced it, plus its metric, site and window.
 
 **If you ship only one check, ship provenance.** It is deterministic and costs nothing. It catches injected numbers and hallucinated numbers alike, and those are the wrong tickets that look most convincing.
 
