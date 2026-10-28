@@ -474,7 +474,7 @@ Finally, one paragraph: for the investigator's real incident archive (hundreds o
 
 ### Worked answer
 
-**Variant A (top-3 bodies injected before turn 1).** One or two calls, about 2.5–4k input tokens. It cites the right report only if the retriever ranked an PVA-03 meter report into the top 3. BM25 on "PVA-03 meter" usually does. But "deciding number" matches nothing, so other PVA-03 reports (curtailment, feed outage) can push the meter report out. And the failure is silent, because there is no second query.
+**Variant A (top-3 bodies injected before turn 1).** One or two calls, about 2.5–4k input tokens. It cites the right report only if the retriever ranked a PVA-03 meter report into the top 3. BM25 on "PVA-03 meter" usually does. But "deciding number" matches nothing, so other PVA-03 reports (curtailment, feed outage) can push the meter report out. And the failure is silent, because there is no second query.
 
 **Variant B (identifiers first).** `search_reports` returns 2–5 paths with first lines (about 300 tokens). `read_report` opens the best one or two. Then the answer. Three calls, with input growing from about 1.5k to 3k. It cites correctly, because the model chose what to open and the body was in context when it answered. A misleading first line costs one extra read, not a wrong answer.
 
