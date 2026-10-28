@@ -1,0 +1,75 @@
+{
+ "meta": {
+  "reviewer": "gpt",
+  "provider": "codex",
+  "model": "gpt-6.1-sol",
+  "scope": "pr",
+  "date": "2026-10-28",
+  "input_tokens": 474077,
+  "output_tokens": 1594,
+  "attempts": 1,
+  "context_files": [
+   "PULL REQUEST",
+   "DIFF",
+   "reviews/decisions.md",
+   "STYLE.md",
+   "README.md",
+   ".github/workflows/review.yml",
+   "CHANGELOG.md",
+   "diagrams/src/investigator-context-budget.py",
+   "review/config.yaml",
+   "weeks/week-01-what-an-agent-is.md",
+   "weeks/week-02-core-mechanics.md",
+   "weeks/week-04-prompt-and-tool-design.md",
+   "weeks/week-05-control-safety-reliability.md",
+   "weeks/week-06-evaluation-1.md",
+   "weeks/week-07-evaluation-2-and-iteration.md"
+  ],
+  "context_dropped": [
+   "glossary.md",
+   "weeks/week-03-state-and-memory.md"
+  ],
+  "context_tokens_est": 136996,
+  "pr": 19,
+  "harness": "5bee3f78b3fd57414411528dae071cd984a84330",
+  "commit": "05cae80e8e005dff26727e99867c221db176418e"
+ },
+ "review": {
+  "schema_version": 1,
+  "scope": "pr",
+  "verdict": "changes_needed",
+  "summary": "changes_needed\nCountry-coded identifiers remain beside the renamed Week 6 site.\nReview settings still expose the UTC+8 offset.\nChecks passed: 23 tests; link checker reports bad 0.",
+  "findings": [
+   {
+    "id": "F1",
+    "severity": "major",
+    "area": "clarity",
+    "checklist_item": "Keep it anonymous: use neutral site prefixes without country or place hints",
+    "title": "Neutralize the remaining site identifiers in the Task example",
+    "file": "weeks/week-06-evaluation-1.md",
+    "line_start": 223,
+    "line_end": 228,
+    "claim": "The example changes the site to PVA-03 but retains its country-coded spelling in the task ID and fixture/reference paths, making the anonymization incomplete.",
+    "evidence": "The Task still contains id=\"sg03-1008-curtail\", fixture=\"fixtures/sg03-1008/\", and reference=\"ref/sg03-1008.ticket.json\" immediately beside input={\"site\": \"PVA-03\", ...}. A case-insensitive search found these three remaining identifiers.",
+    "proposed_change": "Replace sg03 with pva03 in all three example strings. Repeat the anonymity search with case-insensitive patterns that also catch site identifiers without hyphens, then rerun pytest.",
+    "verified_by": "read_code",
+    "confidence": 1
+   },
+   {
+    "id": "F2",
+    "severity": "major",
+    "area": "clarity",
+    "checklist_item": "Keep it anonymous: remove location and time-zone hints",
+    "title": "Remove the remaining UTC+8 hint from the review settings",
+    "file": "review/config.yaml",
+    "line_start": 88,
+    "line_end": 88,
+    "claim": "Replacing the location name with its UTC offset retains the time-zone hint this pass is intended to remove.",
+    "evidence": "The diff changes '# Singapore day' to '# UTC+8 day'. The offset remains explicit despite the PR's stated removal of time-zone hints from review settings.",
+    "proposed_change": "Remove the offset from the comment, or describe it as the harness-defined daily window. Keep the setting and runtime behavior unchanged, and repeat the time-zone search.",
+    "verified_by": "read_docs",
+    "confidence": 0.98
+   }
+  ]
+ }
+}
