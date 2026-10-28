@@ -1,0 +1,75 @@
+{
+ "meta": {
+  "reviewer": "fable",
+  "provider": "claude-code",
+  "model": "claude-fable-5-1",
+  "scope": "pr",
+  "date": "2026-10-28",
+  "input_tokens": 917134,
+  "output_tokens": 5927,
+  "attempts": 1,
+  "context_files": [
+   "PULL REQUEST",
+   "DIFF",
+   "reviews/decisions.md",
+   "STYLE.md",
+   "README.md",
+   ".github/workflows/review.yml",
+   "CHANGELOG.md",
+   "diagrams/src/investigator-context-budget.py",
+   "review/config.yaml",
+   "weeks/week-01-what-an-agent-is.md",
+   "weeks/week-02-core-mechanics.md",
+   "weeks/week-04-prompt-and-tool-design.md",
+   "weeks/week-05-control-safety-reliability.md",
+   "weeks/week-06-evaluation-1.md",
+   "weeks/week-07-evaluation-2-and-iteration.md"
+  ],
+  "context_dropped": [
+   "glossary.md",
+   "weeks/week-03-state-and-memory.md"
+  ],
+  "context_tokens_est": 137077,
+  "verdict_adjusted_from": "approve_with_nits",
+  "pr": 19,
+  "harness": "521094d3179177e4b5d35d9c6e332ac41a75c050",
+  "commit": "bc2b6f148f9fedbe4fb452b5078c02ac867cf246"
+ },
+ "review": {
+  "schema_version": 1,
+  "scope": "pr",
+  "verdict": "approve",
+  "summary": "Approve with nits. Rename is complete and lossless: 133 old codes out, 133 new codes in; no SG-/MY-, SGT, UTC+8 or place names left in any tracked file (SVGs, reviews/, BACKLOG included); pytest 23 passed, link checker bad 0. F1: the new STYLE.md rule reads as banning any time-zone mention and requiring \"local time\" on every clock time, which 5.3's technical UTC/time-zone text and the config's \"05:23 UTC\" already break. F2: the config comment \"as the harness counts days\" says nothing; name the day boundary or drop it.",
+  "findings": [
+   {
+    "id": "F1",
+    "severity": "nit",
+    "area": "process",
+    "checklist_item": "Keep it anonymous: no countries, cities, regions or time zones; write \"local time\"",
+    "title": "New anonymity rule overreaches: technical time-zone mentions and bare clock times already break it",
+    "file": "STYLE.md",
+    "line_start": 42,
+    "line_end": 42,
+    "claim": "The new bullet says \"no ... time zones. Write 'local time' for clock times.\" Read literally, it forbids technical time-zone text and requires 'local time' after every clock time. The notes keep both kinds of text, correctly: 5.3's worked answer says sun elevation is computed in the site's timezone and names 'computing sun elevation in UTC' as a slip; 5.1 and 5.2 say '08:00' with no qualifier; this PR itself writes '05:23 UTC' in review/config.yaml and review.yml. None of these locates the owner, so the rule should say what it actually means.",
+    "evidence": "STYLE.md:42; weeks/week-05-control-safety-reliability.md:416 ('computed in the *site's* timezone'), :422 ('a timezone bug'), :429 ('computing sun elevation in UTC'); weeks/week-05-control-safety-reliability.md:832 ('06:00 local time, starting at 02:00'); review/config.yaml:101 ('05:23 UTC').",
+    "proposed_change": "Reword the bullet to the intent: \"Nothing that locates the sites or the owner: no countries, cities, regions, or a time zone that gives one away. Do not attach a time zone to clock times; where one is needed, write 'local time'. Technical references such as 'the site's time zone' or 'UTC' as a standard are fine.\" Test: re-read 5.3's worked answer and the config comments against the new wording; none should need a change.",
+    "verified_by": "read_code",
+    "confidence": 0.75
+   },
+   {
+    "id": "F2",
+    "severity": "nit",
+    "area": "tooling",
+    "title": "Rate-limit comment no longer says when the day resets",
+    "file": "review/config.yaml",
+    "line_start": 88,
+    "line_end": 88,
+    "claim": "The old comment told the reader which midnight the six-runs-per-day cap resets at. The replacement, 'per day, as the harness counts days', gives no information, so an owner hitting the cap cannot tell when it clears without reading the harness source.",
+    "evidence": "review/config.yaml:88: `max_runs_per_pr_per_day: 6   # per day, as the harness counts days`. The other schedule comments in the same file were switched to UTC (line 101), which is the natural reference here too.",
+    "proposed_change": "If the shared harness counts calendar days in UTC (the runner's clock), write '# per UTC day'. If it uses a rolling 24 hours, say that. If unsure, drop the comment rather than keep a clause that states nothing. Check against the cross-model-review README's description of the key.",
+    "verified_by": "read_code",
+    "confidence": 0.6
+   }
+  ]
+ }
+}
