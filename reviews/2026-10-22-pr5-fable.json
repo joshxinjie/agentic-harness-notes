@@ -40,7 +40,7 @@
   "schema_version": 1,
   "scope": "pr",
   "verdict": "approve_with_nits",
-  "summary": "approve_with_nits. Link checker bad 0; 83 tests pass; no ENGIE or owner name left in the notes, glossary or diagrams. 1) REVIEW.md still says \"He is experienced…\" one line after the anonymised goal, and clashes with \"they merge\" elsewhere. 2) \"SGT\"/\"Singapore\" prose survives in lesson 5.6 and in config and workflow comments although README was changed to UTC+8; STYLE.md's new rule is silent on location. 3) 17 compiled .pyc files are tracked (no .gitignore), so the PR diff carries binary churn and bytecode can carry stale text.",
+  "summary": "approve_with_nits. Link checker bad 0; 83 tests pass; no [employer] or owner name left in the notes, glossary or diagrams. 1) REVIEW.md still says \"He is experienced…\" one line after the anonymised goal, and clashes with \"they merge\" elsewhere. 2) \"[time zone]\"/\"[location]\" prose survives in lesson 5.6 and in config and workflow comments although README was changed to [time zone]; STYLE.md's new rule is silent on location. 3) 17 compiled .pyc files are tracked (no .gitignore), so the PR diff carries binary churn and bytecode can carry stale text.",
   "findings": [
    {
     "id": "F1",
@@ -62,13 +62,13 @@
     "severity": "minor",
     "area": "clarity",
     "checklist_item": "Keep it anonymous (new section): scope of what counts as identifying",
-    "title": "'SGT' and 'Singapore' prose remain after README was changed to UTC+8; STYLE rule silent on location",
+    "title": "'[time zone]' and '[location]' prose remain after README was changed to [time zone]; STYLE rule silent on location",
     "file": "weeks/week-05-control-safety-reliability.md",
     "line_start": 800,
     "line_end": 800,
-    "claim": "The PR treats the owner's time zone as identifying (README 'Singapore time' → 'UTC+8') and keeps only the Asia/Singapore machine settings. But the same wording survives as prose: lesson 5.6's exercise says '40 sites must finish by 06:00 SGT', and comments in review/config.yaml (lines 63, 72-73), scripts/review_harness/config.py (line 31, 'Review dates are Singapore dates') and .github/workflows/review.yml (lines 33-34, 'SGT') still name the location. The new STYLE.md section does not say whether locations and time zones count, so the weekly update has no rule to follow here.",
-    "evidence": "rg -n -i 'singapore|\\bSGT\\b' weeks/ review/config.yaml scripts/review_harness/config.py .github/workflows/review.yml → week-05 line 800 '06:00 SGT'; config.yaml 63 '# Singapore day', 72-73 '11:23 SGT', '13:23 SGT'; config.py 31; review.yml 33-34. README diff: '(Singapore time)' → '(UTC+8)'.",
-    "proposed_change": "Either (a) apply the README standard everywhere: lesson 5.6 '06:00 local time' (the exercise does not depend on the zone), and 'UTC+8' in the config.yaml, config.py and review.yml comments, keeping the TZ=Asia/Singapore settings; or (b) decide location is not identifying and revert the README change. In both cases add one line to STYLE.md 'Keep it anonymous' saying which it is. Test: the rg command above returns only the TZ= settings and cron comments you chose to keep.",
+    "claim": "The PR treats the owner's time zone as identifying (README '[location] time' → '[time zone]') and keeps only the [time zone] machine settings. But the same wording survives as prose: lesson 5.6's exercise says '40 sites must finish by 06:00 [time zone]', and comments in review/config.yaml (lines 63, 72-73), scripts/review_harness/config.py (line 31, 'Review dates are [location] dates') and .github/workflows/review.yml (lines 33-34, '[time zone]') still name the location. The new STYLE.md section does not say whether locations and time zones count, so the weekly update has no rule to follow here.",
+    "evidence": "rg -n -i '[location]|\\bSGT\\b' weeks/ review/config.yaml scripts/review_harness/config.py .github/workflows/review.yml → week-05 line 800 '06:00 [time zone]'; config.yaml 63 '# [location] day', 72-73 '11:23 [time zone]', '13:23 [time zone]'; config.py 31; review.yml 33-34. README diff: '([location] time)' → '([time zone])'.",
+    "proposed_change": "Either (a) apply the README standard everywhere: lesson 5.6 '06:00 local time' (the exercise does not depend on the zone), and '[time zone]' in the config.yaml, config.py and review.yml comments, keeping the TZ=[time zone] settings; or (b) decide location is not identifying and revert the README change. In both cases add one line to STYLE.md 'Keep it anonymous' saying which it is. Test: the rg command above returns only the TZ= settings and cron comments you chose to keep.",
     "verified_by": "read_code",
     "confidence": 0.85
    },
@@ -80,7 +80,7 @@
     "title": "Compiled .pyc files are tracked; the PR diff is 17 binary changes and bytecode can carry stale text",
     "file": "scripts/review_harness/__pycache__/respond.cpython-313.pyc",
     "claim": "The repo tracks 17 __pycache__/*.pyc files and has no .gitignore. This PR therefore ships 17 binary diffs that reviewers cannot read, and the tracked bytecode duplicates source strings (the respond.py docstring is in it), so a .pyc rebuilt from an older checkout would re-commit the removed wording. The ones in HEAD are current (0 hits for the old name, 1 for 'the owner merges'), but only because the author happened to re-run the tests before committing. The 312 bytecode now present as untracked files shows the churn will continue.",
-    "evidence": "git ls-files | grep -c pycache → 17; cat .gitignore → no such file; git show HEAD:scripts/review_harness/__pycache__/respond.cpython-313.pyc | strings | grep -c 'Xin Jie' → 0; grep -c 'the owner merges' → 1; git status shows 11 untracked *.cpython-312.pyc files.",
+    "evidence": "git ls-files | grep -c pycache → 17; cat .gitignore → no such file; git show HEAD:scripts/review_harness/__pycache__/respond.cpython-313.pyc | strings | grep -c '[owner]' → 0; grep -c 'the owner merges' → 1; git status shows 11 untracked *.cpython-312.pyc files.",
     "proposed_change": "In this PR or a follow-up: git rm -r --cached scripts/review_harness/__pycache__ scripts/review_harness/providers/__pycache__ tests/__pycache__; add a .gitignore with '__pycache__/' and '*.pyc'. Test: python -m pytest -q tests still passes and git status shows no .pyc after a run.",
     "verified_by": "ran_code",
     "confidence": 0.9
@@ -94,8 +94,8 @@
     "file": "tests/fixtures/decisions_sample.md",
     "line_start": 10,
     "line_end": 19,
-    "claim": "The PR leaves the owner's name in the fixture header ('Decided by: Xin Jie…', '(author; for Xin Jie to confirm)') because it is a copied sample. The tests only read the table rows and the '| ID |' header line, so the prose can be anonymised exactly as reviews/decisions.md was without changing any test behaviour. Leaving it means the name is still greppable in the repo one commit after a PR whose purpose was to remove it.",
-    "evidence": "tests/test_review_harness.py: test_live_log_has_the_same_format compares only the line starting with '| ID |'; table_rows(), decided() and row_prefix() in respond.py parse rows starting with '|' and skip the header/separator. rg -n 'Xin Jie' tests/fixtures/decisions_sample.md → lines 10, 11, 18, 19.",
+    "claim": "The PR leaves the owner's name in the fixture header ('Decided by: [owner]…', '(author; for [owner] to confirm)') because it is a copied sample. The tests only read the table rows and the '| ID |' header line, so the prose can be anonymised exactly as reviews/decisions.md was without changing any test behaviour. Leaving it means the name is still greppable in the repo one commit after a PR whose purpose was to remove it.",
+    "evidence": "tests/test_review_harness.py: test_live_log_has_the_same_format compares only the line starting with '| ID |'; table_rows(), decided() and row_prefix() in respond.py parse rows starting with '|' and skip the header/separator. rg -n '[owner]' tests/fixtures/decisions_sample.md → lines 10, 11, 18, 19.",
     "proposed_change": "Apply the same three edits as in reviews/decisions.md lines 10-19 to the fixture ('the owner'). Test: python -m pytest -q tests → 83 passed.",
     "verified_by": "read_code",
     "confidence": 0.85
@@ -124,7 +124,7 @@
     "line_start": 6,
     "line_end": 7,
     "claim": "The replacement kept the original capital letter from the name, so the comment reads '…nothing counts until\\n# The owner merges it.'",
-    "evidence": "Diff: '-# Xin Jie merges it.' → '+# The owner merges it.' following 'nothing counts until' on the previous line.",
+    "evidence": "Diff: '-# [owner] merges it.' → '+# The owner merges it.' following 'nothing counts until' on the previous line.",
     "proposed_change": "Lower-case to '# the owner merges it.'",
     "verified_by": "read_code",
     "confidence": 0.95
