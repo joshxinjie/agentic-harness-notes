@@ -85,7 +85,7 @@ limits:
   respond_max_agent_turns: 100 # the author edits, re-renders diagrams and runs the checks
   respond_agent_timeout_minutes: 40
   respond_codex_timeout_minutes: 40
-  max_runs_per_pr_per_day: 6   # UTC+8 day
+  max_runs_per_pr_per_day: 6   # per day, as the harness counts days
 
 triggers:
   pr_comment_command: /review

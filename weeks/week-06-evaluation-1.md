@@ -220,12 +220,12 @@ Say the reviewer rejected draft D-0412 with the note: "blamed weather; curtailme
 
 ```python
 task = Task(
-    id="sg03-1008-curtail",
+    id="pva03-1008-curtail",
     source="review reject D-0412",
     input={"site": "PVA-03", "window": "2026-10-06..08"},
-    fixture="fixtures/sg03-1008/",   # DB snapshot + tool cassette from trajectories/
+    fixture="fixtures/pva03-1008/",   # DB snapshot + tool cassette from trajectories/
     expected={"root_cause": "curtailment", "metric": "curtail_pct", "value": 40},
-    reference="ref/sg03-1008.ticket.json",
+    reference="ref/pva03-1008.ticket.json",
     kind="capability",               # fails today; graduates to regression once fixed
 )
 
