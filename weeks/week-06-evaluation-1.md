@@ -36,7 +36,7 @@ We start with why agent evals are not the same as the LLM evals you already know
 - we use all of that to decide whether a harness change ships (6.5);
 - we look at public benchmarks and what their numbers really mean (6.6).
 
-The running example is the same as in earlier weeks: the nightly investigator. It looks at a portfolio of solar sites (SG-03, MY-01 and so on), works out why output dropped, and files a draft ticket for a reviewer.
+The running example is the same as in earlier weeks: the nightly investigator. It looks at a portfolio of solar sites (PVA-03, PVB-01 and so on), works out why output dropped, and files a draft ticket for a reviewer.
 
 ---
 
@@ -152,7 +152,7 @@ Without repeated trials, a 3/5 → 4/5 "improvement" is noise. Without outcome g
 
 That is 18/25, so pass@1 = 0.72. pass^5 per task is C(c,5)/C(5,5), which is 1 only when c = 5. Only one task hits 5/5, so pass^5 = 1/5 = 0.20. The same agent looks fine at k=1 and cannot be shipped as a nightly job.
 
-**(2)** Without resetting `memory/`, the repeated tasks climb. Trial 1 writes "SG-03 meter fault" to the site file. Trials 2–5 read it and confirm in two calls. You are now measuring recall of the answer, not investigation. The nothing-wrong task gets *worse*, because the memory suggests a cause.
+**(2)** Without resetting `memory/`, the repeated tasks climb. Trial 1 writes "PVA-03 meter fault" to the site file. Trials 2–5 read it and confirm in two calls. You are now measuring recall of the answer, not investigation. The nothing-wrong task gets *worse*, because the memory suggests a cause.
 
 **(3)** The "meter" grader disagrees with the outcome grader in both directions:
 
@@ -220,12 +220,12 @@ Say the reviewer rejected draft D-0412 with the note: "blamed weather; curtailme
 
 ```python
 task = Task(
-    id="sg03-1008-curtail",
+    id="pva03-1008-curtail",
     source="review reject D-0412",
-    input={"site": "SG-03", "window": "2026-10-06..08"},
-    fixture="fixtures/sg03-1008/",   # DB snapshot + tool cassette from trajectories/
+    input={"site": "PVA-03", "window": "2026-10-06..08"},
+    fixture="fixtures/pva03-1008/",   # DB snapshot + tool cassette from trajectories/
     expected={"root_cause": "curtailment", "metric": "curtail_pct", "value": 40},
-    reference="ref/sg03-1008.ticket.json",
+    reference="ref/pva03-1008.ticket.json",
     kind="capability",               # fails today; graduates to regression once fixed
 )
 
@@ -264,11 +264,11 @@ An eval set invented at a desk measures the failures you already imagined. One b
 
 *15 min.* Here are five failures from a hypothetical first month of the nightly batch:
 
-- (a) SG-03 blamed weather; the real cause was a 40% curtailment cap.
-- (b) MY-01 filed "meter drift" on a day the pipeline was stale.
-- (c) SG-05 ran out of budget after an hourly weather pull, with no ticket.
-- (d) SG-02 cited `cloud_delta` 38% from a forged archive doc.
-- (e) SG-01's ticket said "performance degraded, multiple factors"; the reviewer called it useless.
+- (a) PVA-03 blamed weather; the real cause was a 40% curtailment cap.
+- (b) PVB-01 filed "meter drift" on a day the pipeline was stale.
+- (c) PVA-05 ran out of budget after an hourly weather pull, with no ticket.
+- (d) PVA-02 cited `cloud_delta` 38% from a forged archive doc.
+- (e) PVA-01's ticket said "performance degraded, multiple factors"; the reviewer called it useless.
 
 1. Write a Task record for each: input, what goes in the fixture, expected outcome, grader logic and reference.
 2. Add three balancing tasks.
@@ -280,11 +280,11 @@ An eval set invented at a desk measures the failures you already imagined. One b
 
 **1 and 4. Five Task records**, each with a fixture frozen from the failing run's trajectory:
 
-- **(a) SG-03 curtailment.** Fixture: DB snapshot with a 40% cap on the 8th, and a normal-weather cassette. Expected: `root_cause = curtailment`, `curtail_pct = 40`. Grader: exactly one ticket, enum match on the cause, and 40 found in this trial's tool results. *Capability.*
-- **(b) MY-01 stale pipeline.** Fixture: pipeline status stale, metrics drifting. Expected: `pipeline_stale`. Any `meter_drift` ticket fails. *Capability.*
-- **(c) SG-05 budget.** Fixture: the hourly weather cassette. Expected: status `success`, a ticket filed, and input tokens under the cap. That is an outcome check plus a path constraint (cost). *Regression*, since the `agg=daily` default already fixed it.
-- **(d) SG-02 forged doc.** Fixture: the forged archive report. Grader: no ticket cites 38, and the deciding number must come from the agent's own tool results. *Regression*, because the provenance guard already exists.
-- **(e) SG-01 vague ticket.** *Capability*, with no deterministic grader (see 5 below).
+- **(a) PVA-03 curtailment.** Fixture: DB snapshot with a 40% cap on the 8th, and a normal-weather cassette. Expected: `root_cause = curtailment`, `curtail_pct = 40`. Grader: exactly one ticket, enum match on the cause, and 40 found in this trial's tool results. *Capability.*
+- **(b) PVB-01 stale pipeline.** Fixture: pipeline status stale, metrics drifting. Expected: `pipeline_stale`. Any `meter_drift` ticket fails. *Capability.*
+- **(c) PVA-05 budget.** Fixture: the hourly weather cassette. Expected: status `success`, a ticket filed, and input tokens under the cap. That is an outcome check plus a path constraint (cost). *Regression*, since the `agg=daily` default already fixed it.
+- **(d) PVA-02 forged doc.** Fixture: the forged archive report. Grader: no ticket cites 38, and the deciding number must come from the agent's own tool results. *Regression*, because the provenance guard already exists.
+- **(e) PVA-01 vague ticket.** *Capability*, with no deterministic grader (see 5 below).
 
 **2. Balancing tasks:** a quiet day (expected: no ticket); bad weather that is not the cause (expected: a meter ticket); and a 5% curtailment that is a red herring.
 
@@ -427,7 +427,7 @@ If a failure "doesn't seem fair" when you read the transcript, fix the grader fi
 
 1. Write `grade()` above for the eight tasks from 6.2, including the should-not-file branch.
 2. Write the "actionable" judge: a prompt with three binary criteria (names a component, names an action, gives a deadline or threshold), pass/fail/unknown output, and a one-line critique.
-3. Make 20 tickets for SG-03: 10 good ones and 10 vague ones (e.g. "multiple factors, monitor"). Label them yourself, run the judge, and report its TPR and TNR.
+3. Make 20 tickets for PVA-03: 10 good ones and 10 vague ones (e.g. "multiple factors, monitor"). Label them yourself, run the judge, and report its TPR and TNR.
 4. Pad each vague ticket with 150 words of plausible detail but no action, then re-run. Does TNR fall? That is verbosity bias.
 5. In one paragraph: for the nightly batch's regression suite, which graders are hard gates, which feed partial credit, and would you ever let the judge block a release?
 
@@ -825,7 +825,7 @@ Use public numbers to pick 2–3 candidate models. Then run them through your ow
 
 **1. Sanity agents.** The eight tasks split into six should-file tasks and two should-not-file tasks:
 
-- should-file: curtailment, pipeline-stale, SG-05 budget, forged-38, vague-ticket, and bad-weather-but-meter;
+- should-file: curtailment, pipeline-stale, PVA-05 budget, forged-38, vague-ticket, and bad-weather-but-meter;
 - should-not-file: the quiet day and the 5% curtailment red herring.
 
 The **null agent** files nothing and claims success. It scores 0/6 on should-file and 2/2 on should-not-file. Its overall pass@1 is 25%, for doing nothing. That is why you report the two halves separately.

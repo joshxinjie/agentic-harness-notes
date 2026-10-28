@@ -30,7 +30,7 @@ on:
         required: false
         default: ""
   schedule:                       # each cron also needs an entry in review/config.yaml `schedules`
-    - cron: "23 5 1 * *"          # 1st of each month, 13:23 SGT: whole-repo review
+    - cron: "23 5 1 * *"          # 1st of each month, 05:23 UTC: whole-repo review
 
 jobs:
   review:

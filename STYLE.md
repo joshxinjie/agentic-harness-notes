@@ -38,7 +38,8 @@ Code examples keep their identifiers. The table is for prose only.
 The notes name no real employer, client, person or site. The emails sometimes do, because they tie exercises to the owner's day job; the notes do not.
 
 - Write "a solar forecasting team", "a portfolio of solar sites", "the owner" or "you" instead of a company or a person's name.
-- Keep the made-up example site codes the lessons use (SG-03, MY-01 and so on). Never swap in real site, plant or asset names, project codes, or customer names.
+- Use the made-up example site codes with neutral prefixes (PVA-03, PVB-01 and so on). If an email uses other prefixes, map them to these; never use a prefix that hints at a country or place. Never swap in real site, plant or asset names, project codes, or customer names.
+- Nothing that locates the sites or the owner: no countries, cities, regions, or a time zone that gives one away. Do not attach a time zone to clock times; where one is needed, write "local time". Technical references such as "the site's time zone" or UTC as a standard are fine.
 - No email addresses or other personal contact details. The GitHub username in repo URLs is fine; it is the repo's address.
 - Names of public companies, products, papers and authors that are *sources* (Anthropic, OpenAI, LangGraph, a paper's authors) stay: they are what the lesson cites.
 

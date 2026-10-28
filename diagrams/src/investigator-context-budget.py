@@ -1,4 +1,4 @@
-# Turn-9 input of the SG-03 investigator, from the numbers in lesson 2.1 (An example).
+# Turn-9 input of the PVA-03 investigator, from the numbers in lesson 2.1 (An example).
 import os
 import matplotlib
 matplotlib.use("Agg")

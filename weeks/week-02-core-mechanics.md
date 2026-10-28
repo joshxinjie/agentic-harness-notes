@@ -86,7 +86,7 @@ So "working memory" is the right analogy. The window is large, but recall of any
 
 ### An example
 
-Take the "why is SG-03 off?" investigator for the solar portfolio:
+Take the "why is PVA-03 off?" investigator for the solar portfolio:
 
 - System prompt and tool definitions: 3k tokens.
 - Turn 1 pulls 30 days of hourly forecast vs actual: 6k.
@@ -243,7 +243,7 @@ messages.append({"role": "assistant", "content": resp.content})
 #    tool_use get_curtailment_log]
 ```
 
-The thinking block is where the SG-03 investigator decides to move from weather to curtailment. You can read it in the transcript.
+The thinking block is where the PVA-03 investigator decides to move from weather to curtailment. You can read it in the transcript.
 
 ### Where it lives in the harness
 
@@ -289,7 +289,7 @@ For each, log per turn: `input_tokens`, `output_tokens`, `thinking_tokens`, and 
 
 Then add the "think" tool (description as quoted above) plus one system-prompt line: "Before any edit_file, call think to state what you will change and why." Run with thinking disabled, and count think calls.
 
-Report: turns, a total cost proxy (input + output tokens summed over turns), and whether any run changed the tool sequence. Finally, in one line each: which of the four setups would you use for the "why is SG-03 off?" investigator, and which for the nightly digest?
+Report: turns, a total cost proxy (input + output tokens summed over turns), and whether any run changed the tool sequence. Finally, in one line each: which of the four setups would you use for the "why is PVA-03 off?" investigator, and which for the nightly digest?
 
 ### Worked answer
 
@@ -298,7 +298,7 @@ Report: turns, a total cost proxy (input + output tokens summed over turns), and
 - **Adaptive, effort high.** A thinking block on every turn, often 1–3k tokens each. On keep-all models those tokens are re-sent as input on every later turn, so the cost proxy climbs noticeably faster than the transcript length suggests. For a task this simple, the tool sequence rarely changes.
 - **Think tool.** With the system-prompt line, exactly one think call lands before `edit_file`, so the run becomes six calls. The thought is the first place your hypothesis appears in the log in plain text.
 
-**Choices.** The SG-03 investigator gets adaptive thinking at medium or high, plus the think tool if the hypothesis checklist is long. The nightly digest runs with thinking off or low — its reasoning is in the code.
+**Choices.** The PVA-03 investigator gets adaptive thinking at medium or high, plus the think tool if the hypothesis checklist is long. The nightly digest runs with thinking off or low — its reasoning is in the code.
 
 Two common slips:
 
@@ -353,7 +353,7 @@ Two variants:
 
 ### An example
 
-A plan-and-execute sketch for the SG-03 investigator:
+A plan-and-execute sketch for the PVA-03 investigator:
 
 ```python
 plan = call(PLANNER_PROMPT, task, tools=None)   # JSON: [{id, goal, tool, status}]
@@ -409,7 +409,7 @@ Task: "Write mae.py that reports MAE, RMSE and mean bias between forecast.csv an
 
 Then delete three hours from `actual.csv` and watch. Does the model ask to change the plan (add a "handle missing rows" step) or plough on?
 
-Finally, one paragraph: for the SG-03 investigator, which steps belong in a fixed upfront plan, which should stay incremental, and why?
+Finally, one paragraph: for the PVA-03 investigator, which steps belong in a fixed upfront plan, which should stay incremental, and why?
 
 ### Worked answer
 
@@ -424,7 +424,7 @@ Finally, one paragraph: for the SG-03 investigator, which steps belong in a fixe
 
 So replanning needs two things: a plan-editing tool, and tool results that surface the anomaly.
 
-**SG-03.** Fixed upfront: the hypothesis checklist as steps (metrics, weather, curtailment, pipeline status, ticket draft). These can be listed in advance, and a human should review them before any side effect. Incremental: which evidence to pull next once a hypothesis is live, and which steps to skip once one is confirmed.
+**PVA-03.** Fixed upfront: the hypothesis checklist as steps (metrics, weather, curtailment, pipeline status, ticket draft). These can be listed in advance, and a human should review them before any side effect. Incremental: which evidence to pull next once a hypothesis is live, and which steps to skip once one is confirmed.
 
 Beginner mistakes:
 
@@ -523,7 +523,7 @@ TOOLS = [{
 - Structured output adds a hidden system prompt. Changing the format invalidates the prompt cache (the stored copy of an unchanged prompt prefix that makes repeat calls cheaper) for that thread.
 - There are per-request limits on how many strict tools and parameters you can use (see the table).
 
-**The guarantee is shape, not truth.** This is what makes it harness engineering. Constrained decoding promises that `{"site": "SG-99", "date": "2026-13-45"}` is two strings. It does not know SG-99 is not a site, or that month 13 does not exist. So validation keeps two layers:
+**The guarantee is shape, not truth.** This is what makes it harness engineering. Constrained decoding promises that `{"site": "PVA-99", "date": "2026-13-45"}` is two strings. It does not know PVA-99 is not a site, or that month 13 does not exist. So validation keeps two layers:
 
 - **Syntactic** — types, required keys, enums. This is now the API's job; delete that retry code.
 - **Semantic** — allow-lists, date ranges, an id that exists in the plan. This is still the executor's job. It returns an error result (a tool result marked as an error) with the fix, as in [1.3](week-01-what-an-agent-is.md#13-tool--function-calling).
@@ -579,7 +579,7 @@ Every hand-off from model to code used to break on formatting. Constrained decod
 - (c) Add `"minimum": 1` to `id` and inspect the schema the SDK actually sent. Note where the constraint went.
 - (d) Set `max_tokens=40` on the planner call. Record `stop_reason` and `parsed_output`, and write the two lines your loop needs.
 
-Then one paragraph for the SG-03 investigator. For `get_site_metrics`, `get_weather_history` and `draft_ticket`, should site codes be an enum in the schema, or a free string plus an executor allow-list? What happens to each choice when a site is added?
+Then one paragraph for the PVA-03 investigator. For `get_site_metrics`, `get_weather_history` and `draft_ticket`, should site codes be an enum in the schema, or a free string plus an executor allow-list? What happens to each choice when a site is added?
 
 ### Worked answer
 
@@ -595,7 +595,7 @@ Then one paragraph for the SG-03 investigator. For `get_site_metrics`, `get_weat
 
   Then retry with a bigger budget, or fall back to a default plan.
 
-**Site codes:** a free string plus an executor allow-list. An enum makes adding MY-04 a schema change that recompiles the grammar. Until then, the model is physically unable to name the new site. The allow-list is runtime config, and its error message lists the valid codes.
+**Site codes:** a free string plus an executor allow-list. An enum makes adding PVB-04 a schema change that recompiles the grammar. Until then, the model is physically unable to name the new site. The allow-list is runtime config, and its error message lists the valid codes.
 
 Beginner slips:
 
@@ -728,7 +728,7 @@ Take your 2.4 agent.
 3. Make `bash` lie: `python mae.py` always returns the same `FileNotFoundError`, even after a correct edit. Run the mae.py task. Record on which turn the nudge fires, whether the model changes approach, and on which turn the hard stop lands, compared with a bare `max_turns=15`.
 4. Return `{status: success|budget|stuck|refusal, turns, cost_proxy, last_message}` from the loop.
 
-Then one paragraph for the SG-03 investigator: when it runs nightly over 40 sites, which budget binds — steps, cost or wall-clock? What should the "budget reached" message ask the model to put in the ticket draft?
+Then one paragraph for the PVA-03 investigator: when it runs nightly over 40 sites, which budget binds — steps, cost or wall-clock? What should the "budget reached" message ask the model to put in the ticket draft?
 
 ### Worked answer
 
@@ -748,7 +748,7 @@ Some models instead call `submit` with "mae.py written but cannot be executed he
 | With detector | stuck | ~10 | ~35k |
 | Bare budget | budget | 15 | ~60k |
 
-**SG-03 nightly over 40 sites.** Wall-clock binds: the batch is due before the morning digest. Add a per-site step cap so one site cannot eat the batch. The budget message should still ask for a ticket draft with three parts: what is verified, what is unverified, and the leading hypothesis.
+**PVA-03 nightly over 40 sites.** Wall-clock binds: the batch is due before the morning digest. Add a per-site step cap so one site cannot eat the batch. The budget message should still ask for a ticket draft with three parts: what is verified, what is unverified, and the leading hypothesis.
 
 Two slips:
 
@@ -882,7 +882,7 @@ Take your 2.5 agent.
 - (b) Make it raise `anthropic.BadRequestError` once. Confirm the loop returns `{status: "error", reason: "BadRequestError"}` at once, with no retry.
 - (c) Give `bash` three failure modes — timeout, non-zero exit with stderr, command not found — and write the exact `is_error` text for each. Then plant a `SyntaxError` in mae.py and count turns-to-fix with your text versus a bare "error".
 
-Finally, one paragraph for the SG-03 investigator: the weather vendor rate-limits `get_weather_history` mid-run. Which path handles it, what does the model see, and what do you log?
+Finally, one paragraph for the PVA-03 investigator: the weather vendor rate-limits `get_weather_history` mid-run. Which path handles it, what does the model see, and what do you log?
 
 ### Worked answer
 
@@ -994,9 +994,9 @@ Never retry a bad tool call blindly, never paste a 529 into the transcript, neve
 
 > **Answer.** A tool that edits the plan object (layers 2 and 4: tools and state), and a harness that re-reads the plan to choose the next step (layer 3: loop control). Text in a message changes nothing.
 
-**4.** `draft_ticket` is a strict tool with `root_cause` as an enum over five hypotheses and `site` as a free string. The model calls it with `site: "SG-07"`, a site that does not exist. Which guarantees did strict mode give you here, which did it not, and what does the executor return?
+**4.** `draft_ticket` is a strict tool with `root_cause` as an enum over five hypotheses and `site` as a free string. The model calls it with `site: "PVA-07"`, a site that does not exist. Which guarantees did strict mode give you here, which did it not, and what does the executor return?
 
-> **Answer.** Strict mode guaranteed a valid tool name, the right types and enum shape, and `root_cause` being one of the five hypotheses. It did not guarantee that the site exists. The executor returns `is_error`: "No site 'SG-07'. Known: SG-01…SG-06. Fix the code or ask the user."
+> **Answer.** Strict mode guaranteed a valid tool name, the right types and enum shape, and `root_cause` being one of the five hypotheses. It did not guarantee that the site exists. The executor returns `is_error`: "No site 'PVA-07'. Known: PVA-01…PVA-06. Fix the code or ask the user."
 
 **5.** Nightly batch, 40 sites, one shared API key. Site 17's `get_weather_history` starts returning the same vendor timeout on every call. The model re-calls it four times, then the Anthropic API returns 529 twice. Trace which mechanism from 2.5 or 2.6 should fire at each point, in order, and what the run status for site 17 should be if nothing recovers.
 
@@ -1011,7 +1011,7 @@ Never retry a bad tool call blindly, never paste a 529 into the transcript, neve
 
 ### Integrative exercise
 
-Take the SG-03 investigator design from the [Week 1 review](week-01-what-an-agent-is.md#week-1-review) and upgrade its layer 3 (loop control) into a single `run_site(site) -> RunResult` function that combines the whole week. Requirements:
+Take the PVA-03 investigator design from the [Week 1 review](week-01-what-an-agent-is.md#week-1-review) and upgrade its layer 3 (loop control) into a single `run_site(site) -> RunResult` function that combines the whole week. Requirements:
 
 1. A tool-free planner call via `messages.parse(output_format=Plan)`, with `stop_reason` checked before `parsed_output`.
 2. An execution loop with adaptive thinking at medium effort, and assistant messages appended untouched.

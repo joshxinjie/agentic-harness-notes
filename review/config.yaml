@@ -85,7 +85,7 @@ limits:
   respond_max_agent_turns: 100 # the author edits, re-renders diagrams and runs the checks
   respond_agent_timeout_minutes: 40
   respond_codex_timeout_minutes: 40
-  max_runs_per_pr_per_day: 6   # Singapore day
+  max_runs_per_pr_per_day: 6
 
 triggers:
   pr_comment_command: /review
@@ -98,7 +98,7 @@ triggers:
 
 # Scheduled reviews: each cron is also in .github/workflows/review.yml `schedule:`.
 schedules:
-  - {cron: "23 5 1 * *", kind: project}     # 1st of each month, 13:23 SGT: the whole repo, by Fable
+  - {cron: "23 5 1 * *", kind: project}     # 1st of each month, 05:23 UTC: the whole repo, by Fable
 
 # Plain settings the reviewer and author need (never credentials). render_diagrams.py reads PUPPETEER_CONFIG; the
 # respond workflow's install writes that file, pointing mermaid-cli at the runner's Chrome.
