@@ -1,0 +1,60 @@
+{
+ "review": "2026-10-31-pr20-gpt.json",
+ "author": "claude-opus-5-5",
+ "date": "2026-11-01",
+ "harness": "47e920f5edacfe05d5234ee6bd651d81aef96582",
+ "response": {
+  "schema_version": 1,
+  "summary": "I accepted all 7 findings (0 modify, 0 reject, 0 defer), all in weeks/week-08-multi-agent-systems.md. I fixed the three code sketches (handoff loop, fan-in, SiteFinding schema) and the 8.2 exercise's tool lists. Each fix has a dated note \"(2026-11-01, PR #20 review)\" saying what the old version did wrong. Please check two edits to the record first: I added transfer_to_triage to the exercise as set, and I added a note to the 8.3 worked answer saying conflicts must be found before the quorum. I ran the new fan-in logic against stubs for the reviewer's cases and it behaved correctly. I did not run the handoff loop. Tests: 25 passed; link checker bad 0.",
+  "responses": [
+   {
+    "finding_id": "F1",
+    "decision": "accept",
+    "reason": "Confirmed: the old code counted every confirmed W2 finding. The quorum now counts a set of site ids, limited to the five W2 sites and to the feed hypothesis. I ran it with stubs: three duplicate PVA-01 findings gave False, three meter findings gave False, and three distinct sites gave True.",
+    "changes": "weeks/week-08-multi-agent-systems.md (8.3 example code, explanation, dated note); CHANGELOG.md"
+   },
+   {
+    "finding_id": "F2",
+    "decision": "accept",
+    "reason": "Confirmed: escalated groups were still counted. Conflicted (scope_id, hypothesis) groups now go into a set that is kept out of the quorum. The text now says a same-site contradiction is a conflict, while a W2 site that rejects the feed hypothesis is just not a yes vote. Stub run: two clean sites plus one conflicted site gave False. I added a dated note to the worked answer: find conflicts before the quorum.",
+    "changes": "weeks/week-08-multi-agent-systems.md (8.3 example code and text, dated note in the 8.3 worked answer)"
+   },
+   {
+    "finding_id": "F3",
+    "decision": "accept",
+    "reason": "Confirmed: p was a local variable that was never used, and the transcript was never appended. The loop now saves st.payload, appends the response and the tool results to st.messages, and passes the payload to history_for apart from the messages, so the remove-tools filter cannot drop it. The payload is checkpointed by save(st).",
+    "changes": "weeks/week-08-multi-agent-systems.md (8.2 loop sketch, explanation, dated note)"
+   },
+   {
+    "finding_id": "F4",
+    "decision": "accept",
+    "reason": "Confirmed: turn never advanced, the handoff count was never checked, and a reply with no tool calls looped again. The loop now uses st.turn and increments it, ends on a reply with no tool calls, returns 'stuck' before a fourth handoff (MAX_HANDOFFS, which matches the worked answer), and returns 'turn_cap' when the turn budget runs out.",
+    "changes": "weeks/week-08-multi-agent-systems.md (8.2 loop sketch)"
+   },
+   {
+    "finding_id": "F5",
+    "decision": "accept",
+    "reason": "Confirmed: calling t.result() on a failed task re-raises its error. Done tasks now check t.exception(), and a failed worker becomes Untested(spec, 'error: ...'). Late tasks are cancelled and awaited. Stub run: the healthy finding was kept, the crash and the timeout became Untested, and every task was finished. I also replaced t.spec with a spec_of map, because an asyncio Task has no spec attribute.",
+    "changes": "weeks/week-08-multi-agent-systems.md (8.3 example code and explanation)"
+   },
+   {
+    "finding_id": "F6",
+    "decision": "accept",
+    "reason": "Confirmed: only triage had transfer tools in the exercise, but worked answer (3) has the feed specialist hand back to triage. I added transfer_to_triage to both specialists and a dated note saying it was missing, which made the hand-back impossible. Return paths go to triage only.",
+    "changes": "weeks/week-08-multi-agent-systems.md (8.2 Try it tool lists, dated note)"
+   },
+   {
+    "finding_id": "F7",
+    "decision": "accept",
+    "reason": "Confirmed: the schema had only the scope kind, but the fan-in reads f.scope_id and f.cluster, and the worked answer sorts by site. The schema now has scope_id (\"PVA-03\" or \"W2\"), site (set for site scope) and cluster, and the fixed fan-in uses them.",
+    "changes": "weeks/week-08-multi-agent-systems.md (8.1 worked answer schema, dated note)"
+   }
+  ],
+  "tests": {
+   "ran": true,
+   "passed": true,
+   "detail": "python -m pytest -q: 25 passed. tools/check_links.py: bad 0. The fan-in logic was run against stubs for the reviewer's cases. I did not run the handoff loop sketch."
+  }
+ },
+ "reverted": []
+}
