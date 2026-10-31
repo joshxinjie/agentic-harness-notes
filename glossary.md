@@ -2,7 +2,7 @@
 
 Every term from the notes, A to Z, in plain words. Each entry links to the lesson that first explains it. Numbers in brackets such as (3.2) point to other lessons.
 
-[Numbers](#numbers) · [A](#a) · [B](#b) · [C](#c) · [D](#d) · [E](#e) · [F](#f) · [G](#g) · [H](#h) · [I](#i) · [J](#j) · [K](#k) · [L](#l) · [M](#m) · [N](#n) · [O](#o) · [P](#p) · [R](#r) · [S](#s) · [T](#t) · [U](#u) · [V](#v) · [W](#w)
+[Numbers](#numbers) · [A](#a) · [B](#b) · [C](#c) · [D](#d) · [E](#e) · [F](#f) · [G](#g) · [H](#h) · [I](#i) · [J](#j) · [K](#k) · [L](#l) · [M](#m) · [N](#n) · [O](#o) · [P](#p) · [Q](#q) · [R](#r) · [S](#s) · [T](#t) · [U](#u) · [V](#v) · [W](#w)
 
 ## Numbers
 
@@ -26,6 +26,9 @@ An attack tuned against one specific defence. *The Attacker Moves Second* (Oct 2
 
 **Agent**  
 A system where the LLM directs its own process and decides which tools to use. Willison's short version: "an LLM agent runs tools in a loop to achieve a goal". It breaks down as *model(s) + harness*. See [1.1](weeks/week-01-what-an-agent-is.md#11-llm-call-vs-workflow-vs-agent).
+
+**Agent as tool**  
+Bringing in a specialist by calling it like a tool: the parent calls the child, the child returns, and the parent carries on, so control comes back. Compare **handoff** and **routing**. See [8.2](weeks/week-08-multi-agent-systems.md#82-handoffs-routing-and-specialist-agents).
 
 **Agent loop**  
 The harness cycle: call the model with tools, run any tools it asks for, append the results, and call again. It repeats until the model stops asking for tools. See [1.2](weeks/week-01-what-an-agent-is.md#12-the-agent-loop).
@@ -117,6 +120,9 @@ The successor to τ-bench (adds a telecom domain): a simulated user + domain too
 **Binary / weighted / hybrid scoring**  
 Ways to combine graders: all must pass; a weighted sum must clear a threshold; or hard gates plus a weighted remainder. See [6.3](weeks/week-06-evaluation-1.md#63-graders-exact-match-rubric-llm-as-judge-outcome-checks).
 
+**Blackboard**  
+A shared-state design where a main agent posts requests to a common board without naming who should answer, and helper agents volunteer. Google's 2025 version keeps helpers' answers on a separate board that only the main agent reads, so helpers do not influence each other. See [8.4](weeks/week-08-multi-agent-systems.md#84-shared-state-vs-message-passing).
+
 **Budget-terminated run**  
 A run that ended because a budget ran out, not because it finished. It gets its own status (`error_max_turns`, `error_max_budget_usd`, `budget`) plus cost and turn count, and either no result or a clearly labelled partial one. The graceful version: "Budget reached — answer now, say what is unverified" plus one last `tool_choice="none"` call. See [2.5](weeks/week-02-core-mechanics.md#25-stopping-conditions-step-budgets-and-loop-detection).
 
@@ -206,6 +212,9 @@ The harness runs the several `tool_use` blocks of one assistant message at the s
 
 **Condensed summary (sub-agent return)**  
 The 1,000–2,000-token digest a sub-agent hands back after "using tens of thousands of tokens or more". It is the only channel from child to parent, so the task text must set its format (verdict, deciding number, what was not checked). See [3.6](weeks/week-03-state-and-memory.md#36-sub-agents-and-context-isolation).
+
+**Consensus inertia**  
+One of three weaknesses Xie et al. (2026) found in multi-agent collaboration, alongside cascade amplification and topological sensitivity: a single error seed can spread into a system-wide false consensus. A `copy_rate` detector (the share of findings whose only evidence is another agent's finding) watches for it. See [8.5](weeks/week-08-multi-agent-systems.md#85-failure-modes-of-multi-agent-systems).
 
 **Consolidation pass**  
 A regular rewrite that keeps a memory core under its cap and free of duplicates and stale lines (Claude Code's index-rewrite reminder; Letta's sleep-time agent; this course's review-day pass). Without it, a memory file grows into a second transcript. See [3.4](weeks/week-03-state-and-memory.md#34-persistent-memory-files-and-memory-as-documents).
@@ -321,6 +330,9 @@ Replying "Your command ran successfully and did not produce any output." instead
 **Environment isolation**  
 Every trial starts from a fresh copy of all state the agent can read or write (database, files, memory, checkpoints). Breaking this either inflates scores (leaked state) or links failures together (shared infrastructure faults). See [6.1](weeks/week-06-evaluation-1.md#61-why-agent-evals-differ-from-llm-evals).
 
+**Error amplification (multi-agent)**  
+Google's measure (Jan 2026) of how much a multi-agent system amplifies errors: 17.2× for independent agents, 4.4× when a central orchestrator checks the workers' output. See [8.1](weeks/week-08-multi-agent-systems.md#81-orchestratorworker-pattern).
+
 **Error catalogue**  
 One row per tool per failure mode, with the exact text returned. A reviewable artefact, like a prompt, and the layer-6 unit for errors-per-tool metrics. It should shrink over time: a recurring error is a description or parameter bug (4.2) or a schema gap (2.4) to close, not a message to polish. See [4.3](weeks/week-04-prompt-and-tool-design.md#43-tool-error-messages-as-instructions-designing-for-recovery).
 
@@ -329,6 +341,9 @@ Reading production traces (at least 100, the first ~30 annotated by hand) and wr
 
 **Error result as prompt**  
 An `is_error` tool result is prompt text. It lands where a successful result would, is re-read on every later turn, and is the model's only clue to why the action failed. The design question: what must the model read to choose a *different* action in one turn? See [4.3](weeks/week-04-prompt-and-tool-design.md#43-tool-error-messages-as-instructions-designing-for-recovery).
+
+**Error seed**  
+A single injected error (an "atomic error seed" in Xie et al., 2026) that spreads through the messages between agents into a system-wide false consensus. An `orphan_claim` detector flags cited values with no tool result in their lineage. See [8.5](weeks/week-08-multi-agent-systems.md#85-failure-modes-of-multi-agent-systems).
 
 **Error taxonomy**  
 A counted list of named failure categories, built by open-coding failing traces and then grouping the codes. Count one root category per trace and rank by count × severity; it tells you what to fix first. See [7.2](weeks/week-07-evaluation-2-and-iteration.md#72-error-taxonomies-and-common-failure-modes).
@@ -359,6 +374,9 @@ Wait `base * 2**attempt` between retries. Used alone, it lines up competing clie
 
 
 ## F
+
+**Fan-out and fan-in**  
+Fan-out creates N independent branches from one state; fan-in is a barrier that waits for the branches and merges their outputs into one state. Parallelism buys wall-clock time, not accuracy: accuracy is decided at fan-in. See [8.3](weeks/week-08-multi-agent-systems.md#83-parallel-agents-fan-out-and-fan-in).
 
 **Feature list**  
 Anthropic's artefact for long-running agents. An initializer agent expands the requirements into a JSON list of features, all marked "failing" at first. Each later session picks one, builds it, checks it, marks it, and leaves things clean. Upfront breakdown that spans sessions. See [2.3](weeks/week-02-core-mechanics.md#23-planning-and-task-decomposition).
@@ -399,6 +417,9 @@ General-assistant questions (browsing, files, several steps) graded by exact mat
 **Garbage collection (harness)**  
 A background job that scans for drift and proposes small fixes. In OpenAI's Codex team, background tasks open small refactor PRs; in the investigator's weekly version, it scans memory and skills (stale lines, duplicates, failing scripts, renamed tools) and makes only mechanical fixes without a person. See [7.6](weeks/week-07-evaluation-2-and-iteration.md#76-case-study-how-labs-iterate-on-coding-agent-harnesses).
 
+**Genealogy graph (lineage)**  
+A record, kept at the message layer, of which messages each claim came from. Xie et al.'s plugin built on it prevented final infection in at least 89% of runs. It extends provenance (5.3) from "which tool produced this number" to "which chain of messages carried it here". See [8.5](weeks/week-08-multi-agent-systems.md#85-failure-modes-of-multi-agent-systems).
+
 **Grader**  
 Logic that scores one aspect of a trial. A task may have several (outcome check, path constraint, rubric). See [6.1](weeks/week-06-evaluation-1.md#61-why-agent-evals-differ-from-llm-evals).
 
@@ -419,6 +440,12 @@ Block, reject with a message, repair (redact or clip), or escalate. A classifier
 
 
 ## H
+
+**Handoff**  
+The active agent passes the live conversation to another agent partway through a run. The run continues under the new agent's prompt and tools, and control does not come back unless someone hands it back. In code it is a tool that does no work: it only changes which agent is active (OpenAI Agents SDK: `transfer_to_<agent_name>`). See [8.2](weeks/week-08-multi-agent-systems.md#82-handoffs-routing-and-specialist-agents).
+
+**Handoff history policy**  
+What the receiving agent sees after a handoff: the full shared history (the default in the OpenAI Agents SDK and LangGraph), filtered (tool calls and results stripped), collapsed (earlier turns summarised), or task-only. The practical rule is a typed payload with the evidence, plus filtered history. See [8.2](weeks/week-08-multi-agent-systems.md#82-handoffs-routing-and-specialist-agents).
 
 **Harmlessness screen**  
 A light model that checks user input before the main model sees it (Anthropic docs). See [5.3](weeks/week-05-control-safety-reliability.md#53-guardrails-inputoutput-validation-policy-checks-classifiers).
@@ -470,6 +497,9 @@ Eval → hypothesis → harness change → re-eval → ship: pick the top catego
 
 **Incremental planning**  
 No separate plan; each turn's thinking block (2.2) picks the next step. Cheapest and most flexible, but short-sighted: nothing forces a rethink when early results should change the whole approach. See [2.3](weeks/week-02-core-mechanics.md#23-planning-and-task-decomposition).
+
+**Infection rate**  
+With a planted error seed, the share of a multi-agent run's final verdicts whose lineage reaches the seed. See [8.5](weeks/week-08-multi-agent-systems.md#85-failure-modes-of-multi-agent-systems).
 
 **Infrastructure error**  
 A failure on the way to the model (HTTP 429/500/504/529, a dropped connection, a client timeout). The model never sees it, the transcript does not change, and the harness retries the call. Layer 3. The same split applies inside a tool that calls an outside API: the tool's own client retries quietly, and only when that runs out does it become a task error. See [2.6](weeks/week-02-core-mechanics.md#26-error-handling-retries-backoff-and-feeding-tool-errors-back-to-the-model).
@@ -582,6 +612,9 @@ Only the first 200 lines or 25 KB of the index load at session start. Near the l
 **Message Batches API**  
 Asynchronous bulk requests at 50% of the standard price. Most finish within an hour, all within 24 h (or they expire); up to 100,000 requests / 256 MB; caching is best-effort (30–98% hits); results kept 29 days. Suits single-call stages, not multi-turn loops. See [5.6](weeks/week-05-control-safety-reliability.md#56-latency-and-cost-budgets-parallel-tool-calls-streaming).
 
+**Message passing**  
+Agents keep private state and share information only in explicit, addressed messages (AutoGen Core: "messages are the only means through which agents can communicate with each other"). It gives isolation and a typed contract, but it is lossy: the sender has to predict what the receiver needs. Compare **shared state**. See [8.4](weeks/week-08-multi-agent-systems.md#84-shared-state-vs-message-passing).
+
 **Minimal coding agent**  
 A loop plus three or four file and shell tools (`read_file`, `list_files`, `edit_file`, `bash`). It fits in about 40–200 lines and is the skeleton inside every production coding agent. See [1.5](weeks/week-01-what-an-agent-is.md#15-anatomy-of-a-real-agent).
 
@@ -634,7 +667,7 @@ A one-line diagnosis of a failed run, naming the first thing that went wrong, e.
 A scripted agent that asks exactly the right question must pass against the simulator, and a null agent must fail. If the oracle fails, the bug is in the simulator. See [7.3](weeks/week-07-evaluation-2-and-iteration.md#73-simulated-users-and-environments).
 
 **Orchestrator–worker (lead agent + sub-agents)**  
-Anthropic's Research architecture: a lead agent plans, starts sub-agents that "operate in parallel with their own context windows", and combines their short results. About 4× a chat's tokens for a single agent and about 15× for multi-agent; token usage explained 80% of the difference in performance; an Opus 4 lead with Sonnet 4 sub-agents beat a single Opus 4 by 90.2% on an internal breadth-first research eval. Covered fully in 8.1. See [3.6](weeks/week-03-state-and-memory.md#36-sub-agents-and-context-isolation).
+Anthropic's Research architecture: a lead agent plans, starts sub-agents that "operate in parallel with their own context windows", and combines their short results. About 4× a chat's tokens for a single agent and about 15× for multi-agent; token usage explained 80% of the difference in performance; an Opus 4 lead with Sonnet 4 sub-agents beat a single Opus 4 by 90.2% on an internal breadth-first research eval. 8.1 covers the general pattern: a central LLM breaks a task down dynamically, after seeing the input, delegates the pieces to workers and synthesises their results. See [3.6](weeks/week-03-state-and-memory.md#36-sub-agents-and-context-isolation) and [8.1](weeks/week-08-multi-agent-systems.md#81-orchestratorworker-pattern).
 
 **OTel GenAI semantic conventions**  
 Vendor-neutral span names and attributes for LLM and agent telemetry: `create_agent`, `invoke_agent`, `execute_tool`, `gen_ai.agent.name`, `gen_ai.conversation.id`, `gen_ai.usage.input_tokens`, `gen_ai.tool.call.id`. Message content is opt-in. Status: Development. See [5.5](weeks/week-05-control-safety-reliability.md#55-observability-tracing-logging-trajectories-replaying-runs).
@@ -666,6 +699,9 @@ Clear names (`user_id` not `user`, `window_days` not `n`); enums and object stru
 **Partial credit**  
 A score that reflects how far a multi-step trial got (right cause with a vague ticket scores higher than no cause). See [6.3](weeks/week-06-evaluation-1.md#63-graders-exact-match-rubric-llm-as-judge-outcome-checks).
 
+**Partial-with-flags**  
+A fan-in policy that keeps the branches that finished and marks the missing ones as untested, instead of discarding the whole round (all-or-nothing). For a 40-site nightly batch it keeps 39 good sites when one worker dies. See [8.3](weeks/week-08-multi-agent-systems.md#83-parallel-agents-fan-out-and-fan-in).
+
 **pass@k**  
 The chance that at least one of k trials succeeds. It goes up with k. Right when one success is enough (a person picks the best attempt). See [6.1](weeks/week-06-evaluation-1.md#61-why-agent-evals-differ-from-llm-evals).
 
@@ -695,6 +731,9 @@ The session-wide default for what needs a prompt. Claude Code: `default`/Manual,
 
 **Permission rule (allow / ask / deny)**  
 A policy for each tool call that the harness checks before running it: allow runs without approval, ask prompts a person, deny blocks it. Claude Code checks "deny, then ask, then allow. The first match in that order determines the outcome, and rule specificity doesn't change the order". A deny from any settings scope beats an allow from any other, and managed settings cannot be overridden. See [5.1](weeks/week-05-control-safety-reliability.md#51-permissions-and-sandboxing).
+
+**Ping-pong (handoffs)**  
+Control bouncing back and forth between agents (A→B→A). Cap handoffs per run, and feed them to the stuck detector (2.5). See [8.2](weeks/week-08-multi-agent-systems.md#82-handoffs-routing-and-specialist-agents).
 
 **Plan as state**  
 Keeping the plan as a structured object outside the transcript (a Python variable, a `PLAN.md`, Anthropic's `feature-list.json` with a status per item). It survives compaction, can be re-injected briefly each turn, and stops the agent from quietly redefining "done". Layer 4. See [2.3](weeks/week-02-core-mechanics.md#23-planning-and-task-decomposition).
@@ -745,6 +784,12 @@ The MCP spec's split. Protocol errors (unknown tool, invalid arguments, server e
 A published, frozen set of tasks, environments and graders (SWE-bench, Terminal-Bench, τ-bench, GAIA). A score on it belongs to model + harness + infrastructure + version, not to the model alone. See [6.6](weeks/week-06-evaluation-1.md#66-public-benchmarks-swe-bench-τ-bench-gaia-terminal-bench-and-their-limits).
 
 
+## Q
+
+**Quorum (fan-in)**  
+A minimum number of agreeing workers before a finding counts: for example, 3 of 5 sites in a cluster confirming a feed outage before one fleet ticket is filed. A quorum that is too strict lets a single dead worker block the finding. See [8.3](weeks/week-08-multi-agent-systems.md#83-parallel-agents-fan-out-and-fan-in).
+
+
 ## R
 
 **ReAct**  
@@ -761,6 +806,9 @@ Manus's attention trick: the agent rewrites a `todo.md` at the end of the contex
 
 **redacted_thinking**  
 A thinking block hidden for safety reasons (it has only `data`). It must also be passed back unchanged. Filtering on `block.type == "thinking"` alone quietly drops it and breaks the tool-use protocol. See [2.2](weeks/week-02-core-mechanics.md#22-react-and-reasoning-then-acting-extended-thinking-in-the-loop).
+
+**Reducer**  
+A rule for combining parallel writes to the same state key, for example appending both to a list (LangGraph: `Annotated[list, operator.add]`). Without one, the last write wins. See [8.3](weeks/week-08-multi-agent-systems.md#83-parallel-agents-fan-out-and-fan-in).
 
 **Reference solution**  
 A known-good outcome that passes the task's grader in its environment. It proves the task can be solved and the grader is wired up correctly. See [6.2](weeks/week-06-evaluation-1.md#62-building-an-eval-set-from-real-failures-the-taskgraderenvironment-triad).
@@ -819,6 +867,9 @@ Anthropic's target for agent instructions: specific enough to guide behaviour, g
 **Rolling-window alert**  
 An online alert computed over several nights (for example 7) rather than one, or on a count with a hard floor. With 40 runs a night, a 10% rate has a standard error of about 4.7 points, so single nights are mostly noise. See [7.4](weeks/week-07-evaluation-2-and-iteration.md#74-online-evaluation-and-monitoring).
 
+**Routing (router)**  
+A classification step that runs before any agent and sends the request to one or more specialists. The classifier can be code, one structured-output call that returns an enum, or an embedding match. It is a workflow: the graph is drawn in advance and only the branch is chosen. Give it an "unknown" class, or it is forced to misroute. First listed as a workflow shape in 1.1. See [8.2](weeks/week-08-multi-agent-systems.md#82-handoffs-routing-and-specialist-agents).
+
 **Rubric**  
 Explicit criteria a judge applies. Works best as several pass/fail criteria, each graded by its own separate judge, rather than one 1–5 score. See [6.3](weeks/week-06-evaluation-1.md#63-graders-exact-match-rubric-llm-as-judge-outcome-checks).
 
@@ -855,11 +906,17 @@ The saved conversation history of a run, written automatically as `~/.claude/pro
 **Shape vs truth**  
 Constrained decoding guarantees types, required keys and valid enum values. It says nothing about whether a value is *correct* (a site code that exists, a real date, an id that is in the plan). Syntax checks move to the API; meaning checks stay in the executor (allow-lists, ranges, existence checks → `is_error` with the fix). See [2.4](weeks/week-02-core-mechanics.md#24-structured-outputs-and-schemas).
 
+**Shared state (shared scratchpad)**  
+Agents read and write one common store, such as one list of messages every agent appends to. It avoids the "game of telephone" but costs context bloat, write conflicts and lost independence. Compare **message passing**. See [8.4](weeks/week-08-multi-agent-systems.md#84-shared-state-vs-message-passing).
+
 **Short-term memory**  
 The transcript: the message history for one thread, which "tracks the ongoing conversation by maintaining message history within a session" (LangChain). It lives in the harness's state object and dies or overflows with the run. Everything the model "remembers" mid-run is here, unless the harness copies it somewhere else. See [3.1](weeks/week-03-state-and-memory.md#31-short-term-vs-long-term-memory-scratchpads-conversation-state).
 
 **Silent wrong action**  
 A side effect taken on bad data or a wrong conclusion, with nothing to flag it (for example, forty tickets filed on a null weather feed, or made-up actuals written into the training set). This is what the side-effect question measures, and it is the case for a human gate. See [1.6](weeks/week-01-what-an-agent-is.md#16-when-not-to-build-an-agent).
+
+**Single writer**  
+The rule that each state key has exactly one agent allowed to write it (or else a reducer). In the running example, only the orchestrator writes verdicts, tickets, the done set, memory and the checkpoint. See [8.4](weeks/week-08-multi-agent-systems.md#84-shared-state-vs-message-passing).
 
 **Six layers**  
 The course's map of a harness: (1) prompts and injected context, (2) tools and executor, (3) loop control, (4) state, (5) guardrails and permissions, (6) feedback and evals. See [1.4](weeks/week-01-what-an-agent-is.md#14-what-a-harness-is).
@@ -923,6 +980,9 @@ Returning a capped list of all matches at once (SWE-agent: max 50, 18.0%) versus
 
 **Super-step**  
 One round of LangGraph execution in which all ready nodes run (in parallel if independent). A checkpoint is written once per super-step. See [3.5](weeks/week-03-state-and-memory.md#35-checkpointing-and-resumability).
+
+**Superstep (LangGraph)**  
+One round of parallel branches in a LangGraph graph. It is transactional: if one branch fails, none of the updates are applied. With a checkpointer, the successful branches are saved and are not re-run on resume. See [8.3](weeks/week-08-multi-agent-systems.md#83-parallel-agents-fan-out-and-fan-in).
 
 **Supported schema subset**  
 Supported: `type`, `properties`, `required`, `enum`, `const`, `additionalProperties: false`, `format: date` and similar. **Not** supported: `minimum`/`maximum`, `minLength`/`maxLength`, `pattern`. SDKs strip unsupported keywords and move them into the field description — that is, into prompt text, a hint and not a guarantee. Required properties are written first, then optional ones. See [2.4](weeks/week-02-core-mechanics.md#24-structured-outputs-and-schemas).
@@ -1088,6 +1148,9 @@ Zhang et al.'s benchmark (ICML 2025) for finding which agent caused a failure an
 
 **Windowed viewer**  
 A viewer for a file (or a data series) that shows a fixed window with line numbers, the path, the total length and a count of what is hidden, plus scroll and goto commands. SWE-agent's default is 100 lines. The alternative to dumping whole files. See [4.4](weeks/week-04-prompt-and-tool-design.md#44-agent-computer-interface-aci).
+
+**Worker spec**  
+The task an orchestrator gives a worker: the objective, a fixed window and baseline, the allowed tools, a turn cap, the output schema, and what it may not do (file tickets, write memory). See [8.1](weeks/week-08-multi-agent-systems.md#81-orchestratorworker-pattern).
 
 **Workflow**  
 A system where LLMs and tools run along code paths written in advance. The graph is fixed before any model runs. See [1.1](weeks/week-01-what-an-agent-is.md#11-llm-call-vs-workflow-vs-agent).

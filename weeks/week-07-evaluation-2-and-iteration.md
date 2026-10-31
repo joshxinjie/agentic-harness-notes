@@ -918,7 +918,7 @@ Typical slips: calling every component model-limit (the provenance guard is not)
 
 *Day 50 · 2026-10-23*
 
-Week 7 turned failures into fixes. It started from one bad number and one transcript, and ended with a loop that ships verified harness changes and removes the ones a better model no longer needs. [Week 8](../README.md#contents) moves on to multi-agent systems, starting with when a second agent earns its keep.
+Week 7 turned failures into fixes. It started from one bad number and one transcript, and ended with a loop that ships verified harness changes and removes the ones a better model no longer needs. [Week 8](week-08-multi-agent-systems.md) moves on to multi-agent systems, starting with when a second agent earns its keep.
 
 ### Recap
 
@@ -965,7 +965,11 @@ A fix that wins only on the traces that inspired it is overfit.
 
 ### Self-quiz answers
 
-*Answer coming in the next brief.*
+1. 2 of 5 flips misses the bar of at least 4 of 5. T3 contributes, but it is not the decisive step on its own. First run 5 unpatched control forks to get the baseline flip rate. Then rebuild the context at T3 and fork one step earlier, or try a second patch, until some step flips at least 4 of 5.
+2. κ = 0.35 means the counts are mostly coder noise. Rewrite each category definition with include and exclude examples, plus the borderline cases you disagreed on, then re-code a fresh 15 traces. "Reasoning error" fails even at high κ: it names no layer, no owner and no detector, so it can't drive a fix.
+3. Report both numbers, each with its leak rate. The terse persona's 2/5 is the headline, because it is closer to a real on-call engineer at 08:00. The gap measures how much of the agent's work the helpful simulator did for it. Validate the simulator itself with an oracle check (a scripted agent that asks the right question passes) and a null check (doing nothing fails).
+4. Not necessarily. Rubber-stamping looks exactly the same. The gap between approvals and confirmations tells the two apart, once confirmations land, about 3 nights later.
+5. Block. Wins on the forks and on dev, plus a drop on held-out, is the signature of overfitting. The ledger entry: the hypothesis, the harness hash, the dev and held-out results, the named held-out task, "blocked — overfit", and the next hypothesis.
 
 ### Integrative exercise
 
@@ -982,7 +986,16 @@ Then write one paragraph: which step would a real team most likely skip, and wha
 
 ### Integrative answer
 
-*Answer coming in the next brief.*
+A sketch of `improve_once`, step by step.
+
+1. `render_turn_table(run)` joins the trace and the trajectory by `tool_use_id`. An LLM proposes one open code per run; you accept or rewrite it.
+2. Cluster the codes into at most 6 categories, each with a layer, an owner and a detector (`detector(trace) -> bool`), ranked by count × severity. With the planted causes, "tool failure absorbed silently" comes out on top.
+3. The ledger entry: an executor retry plus "UNKNOWN — not ruled out" error text, at layer 2 (tools and the executor). Predicted: at least 4 of 5 forks flip, and the category-A tasks rise. Guard: cost at most 1.1×.
+4. Run the forks on `SimVendor`, so a re-called tool never misses the cassette. Then run the paired `compare()` on dev and on held-out.
+5. Run `monitor()` for 7 nights, with the category-A detector's rate per night split by harness hash. Illustratively, about 15% on the old hash and about 3% on the new one.
+6. The assumption-register row: retry plus UNKNOWN text, world-limit (vendors will always time out), keep.
+
+**The step most teams skip is 5**, because they treat "shipped" as "fixed". Without the detector split by hash, a category that only moved looks solved: for example, timeouts that now end as budget runs. The ledger then records a win that production never confirmed.
 
 ### Sources
 

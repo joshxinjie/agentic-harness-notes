@@ -1,0 +1,7 @@
+flowchart TD
+    I["Six sites flagged"] --> O["Orchestrator reads<br>aggregate metrics"]
+    O -->|"spawn_workers<br>(cap 4)"| W1["Worker: W2 feed<br>read-only, 6 turns"]
+    O -->|"spawn_workers"| W2["Worker: PVA-03 alone<br>read-only, 6 turns"]
+    W1 -->|"SiteFinding"| V["Orchestrator checks<br>provenance"]
+    W2 -->|"SiteFinding"| V
+    V --> T["Orchestrator files tickets<br>(only writer)"]

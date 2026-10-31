@@ -1,0 +1,17 @@
+flowchart TD
+    subgraph T["Agent as tool: control comes back"]
+        direction LR
+        P1["Parent"] -->|"call"| C1["Child runs"]
+        C1 -->|"result"| P2["Parent<br>continues"]
+    end
+    subgraph R["Routing: one choice, up front"]
+        direction LR
+        Q["Request"] --> K["Classifier"]
+        K --> S1["Specialist(s)"]
+        S1 --> Y["Synthesise"]
+    end
+    subgraph H["Handoff: control moves on"]
+        direction LR
+        A1["Active agent"] -->|"transfer"| B1["New agent takes<br>the conversation"]
+    end
+    T ~~~ R ~~~ H
