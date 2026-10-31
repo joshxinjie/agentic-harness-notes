@@ -1,0 +1,83 @@
+{
+ "meta": {
+  "reviewer": "gpt",
+  "provider": "codex",
+  "model": "gpt-6.1-sol",
+  "scope": "pr",
+  "date": "2026-11-01",
+  "input_tokens": 983849,
+  "output_tokens": 2780,
+  "attempts": 1,
+  "context_files": [
+   "PULL REQUEST",
+   "DIFF",
+   "reviews/decisions.md",
+   "STYLE.md",
+   "README.md",
+   "CHANGELOG.md",
+   "glossary.md",
+   "reading-list.md",
+   "weeks/week-07-evaluation-2-and-iteration.md",
+   "weeks/week-08-multi-agent-systems.md"
+  ],
+  "context_dropped": [],
+  "context_tokens_est": 109534,
+  "pr": 20,
+  "harness": "47e920f5edacfe05d5234ee6bd651d81aef96582",
+  "commit": "3464fcb93298cc0a59f00374e53d0c76ee418093"
+ },
+ "review": {
+  "schema_version": 1,
+  "scope": "pr",
+  "verdict": "changes_needed",
+  "summary": "changes_needed\n1. The worker-spawning sketch passes a generator incorrectly to gather.\n2. The reducer explanation misstates LangGraph's concurrent-write behavior.\n3. The fan-in answer still contradicts the corrected conflict rule.\nChecks: python -m pytest -q: 25 passed; link checker: bad 0.",
+  "findings": [
+   {
+    "id": "F1",
+    "severity": "major",
+    "area": "accuracy",
+    "checklist_item": "A. Accuracy: code sketches do what the text says",
+    "title": "Unpack and await the worker coroutines",
+    "file": "weeks/week-08-multi-agent-systems.md",
+    "line_start": 91,
+    "line_end": 96,
+    "claim": "With asyncio.gather, this passes one generator instead of individual awaitables, so the example fails instead of returning worker findings. No alternative gather helper is defined.",
+    "evidence": "Executed the extracted sketch with gather=asyncio.gather and an async run_loop stub: awaiting spawn_workers raised 'TypeError: An asyncio.Future, a coroutine or an awaitable is required'. Unpacking the coroutines returned ['finding']. The signature accepts individual awaitables: [Python documentation](https://docs.python.org/3.12/library/asyncio-task.html#asyncio.gather).",
+    "proposed_change": "Use async def spawn_workers and return await asyncio.gather(*(run_loop(...) for t in tasks)). Verify with two stub workers that both findings return and both workers run concurrently.",
+    "verified_by": "ran_code",
+    "confidence": 0.98
+   },
+   {
+    "id": "F2",
+    "severity": "major",
+    "area": "accuracy",
+    "checklist_item": "A. Accuracy: framework behavior",
+    "title": "Distinguish silent overwrites from LangGraph's concurrent-update error",
+    "file": "weeks/week-08-multi-agent-systems.md",
+    "line_start": 373,
+    "line_end": 373,
+    "claim": "The LangGraph reducer explanation says parallel writes without a reducer use last-write-wins behavior. LangGraph's default state channel instead rejects multiple updates in one step. The same misleading generalization appears in the common-mistakes bullet and the glossary's Reducer entry.",
+    "evidence": "Line 373 says 'Without one, the last write wins'; line 438 says findings 'silently overwrite each other'. The [official state reference](https://reference.langchain.com/python/langgraph/graph/state) specifies that the default LastValue channel can receive at most one value per step and identifies INVALID_CONCURRENT_GRAPH_UPDATE.",
+    "proposed_change": "Explain that an unprotected shared store may silently overwrite values, while LangGraph raises InvalidUpdateError for concurrent updates to a default state key. Carry that qualification into the common-mistakes bullet and glossary entry. Verify using two parallel nodes writing one unreduced key, then repeat with a list reducer.",
+    "verified_by": "external_source",
+    "confidence": 0.99
+   },
+   {
+    "id": "F3",
+    "severity": "major",
+    "area": "accuracy",
+    "checklist_item": "A. Accuracy: worked answers match the lesson",
+    "title": "Carry the corrected conflict definition into the worked answer",
+    "file": "weeks/week-08-multi-agent-systems.md",
+    "line_start": 465,
+    "line_end": 472,
+    "claim": "The worked answer defines a conflict as two conflicting hypotheses for one scope, whereas the corrected example detects different verdicts for the same scope and hypothesis. Following the answer can miss confirmed-versus-rejected reports about the same feed hypothesis. Its numbered order also still puts quorum before conflicts.",
+    "evidence": "Step 4 says 'two surviving, conflicting hypotheses'. The example groups by (f.scope_id, f.hypothesis) and checks whether verdicts differ. The dated note corrects the ordering but leaves the conflicting definition intact.",
+    "proposed_change": "Add a dated correction defining a conflict as different substantive verdicts within the same (scope_id, hypothesis) group, and present conflicts before quorum. Verify that confirmed and rejected feed findings for one site are escalated and excluded, while different hypotheses are assessed separately unless an explicit domain rule makes them incompatible.",
+    "verified_by": "read_code",
+    "confidence": 0.98,
+    "related_decision": "PR20-F2"
+   }
+  ]
+ }
+}
