@@ -1,0 +1,13 @@
+flowchart TD
+    F["Fan-out: N workers<br>(concurrency cap)"] --> D{"Done by<br>deadline?"}
+    D -->|"no"| U["Untested<br>(timeout)"]
+    D -->|"yes"| P{"Value in its own<br>tool results?"}
+    P -->|"no"| X["Dropped claim"]
+    P -->|"yes"| G["Sort, then group by<br>(scope, hypothesis)"]
+    G --> C{"Verdicts<br>agree?"}
+    C -->|"no"| E["Escalate conflict"]
+    C -->|"yes"| Q["Quorum per scope"]
+    U --> M["MergeResult"]
+    X --> M
+    E --> M
+    Q --> M
