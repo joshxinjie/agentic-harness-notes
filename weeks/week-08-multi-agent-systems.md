@@ -147,10 +147,16 @@ Other common mistakes:
 - "do not file tickets or write memory; return only a `SiteFinding`".
 
 ```python
-SiteFinding(scope: Literal["site", "cluster"], hypothesis: Enum,
+SiteFinding(scope: Literal["site", "cluster"],
+            scope_id: str,               # "PVA-03" or "W2"
+            site: str | None,            # set when scope is "site"
+            cluster: str | None,         # e.g. "W2"
+            hypothesis: Enum,
             verdict: confirmed | rejected | untested,
             deciding_value: float | None, tool_use_id: str)
 ```
+
+*Note (2026-11-01, PR #20 review):* an earlier version had only the scope kind, so two findings for different sites looked the same. Grouping, deduplication and the quorum in [8.3](#83-parallel-agents-fan-out-and-fan-in) need to know which site or cluster a finding is about, so the schema now carries `scope_id`, `site` and `cluster`.
 
 **(2) The three variants** (illustrative results).
 
@@ -199,21 +205,33 @@ There are three ways to bring in a specialist agent. They differ in who holds co
 Mechanically, a handoff is a tool whose executor does no work. It only changes which configuration the loop uses on the next call:
 
 ```python
-while turn < cap:
+while st.turn < cap:
     a = AGENTS[st.active]                 # prompt + tools for this turn
-    resp = call(a.system, a.tools, history_for(st.active, st.messages))
+    # the payload is passed apart from the messages, so a history filter can't drop it
+    resp = call(a.system, a.tools, history_for(st.active, st.messages, st.payload))
+    st.messages.append(assistant(resp))
+    if not tool_uses(resp):
+        return finish(st, resp)           # final answer: stop
+    results = []
     for b in tool_uses(resp):
         if b.name.startswith("transfer_to_"):
-            p = HandoffInput(**b.input)   # site, window, reason, evidence
+            if st.handoffs >= MAX_HANDOFFS:
+                return stop(st, "stuck")  # handoff cap reached
+            st.payload = HandoffInput(**b.input)  # site, window, reason, evidence
             results.append(tool_result(b.id, f"Handed to {b.name[12:]}"))
             st.active = b.name[12:]
             st.handoffs += 1
         else:
             results.append(execute(b))
-    save(st)                              # the active agent is state
+    st.messages.append(user(results))
+    st.turn += 1
+    save(st)                              # active agent, payload, turn: all state
+return stop(st, "turn_cap")
 ```
 
-Each turn, the loop looks up the active agent's prompt and tools. A `transfer_to_…` call gets a short tool result, and the next turn runs as the named agent (`b.name[12:]` drops the 12-character `transfer_to_` prefix). Every other call runs as usual.
+Each turn, the loop looks up the active agent's prompt and tools. A response with no tool calls ends the run. A `transfer_to_…` call gets a short tool result, the validated payload is saved in the state, and the next turn runs as the named agent (`b.name[12:]` drops the 12-character `transfer_to_` prefix). Every other call runs as usual. The response and its tool results go into the transcript, and the turn counter, the active agent and the payload are all checkpointed.
+
+*Note (2026-11-01, PR #20 review):* an earlier version of this sketch parsed the payload into a local variable and never passed it on, never added the response or tool results to the transcript, never advanced the turn counter and never checked the handoff cap. The receiver saw no evidence and the loop did not stop.
 
 **API details**
 
@@ -276,8 +294,10 @@ So handoffs fit staged, multi-turn conversations, and routers fit independent qu
 Build a three-agent "morning ops" front end:
 
 - `triage`: read-only metrics, plus the tools `transfer_to_feed_specialist` and `transfer_to_site_specialist`;
-- `feed_specialist`: the weather and pipeline tools, plus `ticket_draft`;
-- `site_specialist`: the series viewer, the curtailment tool and `ticket_draft`.
+- `feed_specialist`: the weather and pipeline tools, plus `ticket_draft` and `transfer_to_triage`;
+- `site_specialist`: the series viewer, the curtailment tool, `ticket_draft` and `transfer_to_triage`.
+
+*Note (2026-11-01, PR #20 review):* the specialists did not have `transfer_to_triage` at first. Without it they cannot hand back, so the hand-back and ping-pong in the worked answer to (3) could not happen. Both specialists may hand back only to triage.
 
 The payload is `HandoffInput(site, window, reason, evidence: list[{metric, value, tool_use_id}])`. Then:
 
@@ -378,18 +398,31 @@ Here is a fan-in for the six-site fixture from 8.1:
 
 ```python
 done, late = await asyncio.wait(tasks, timeout=deadline)
-results = [t.result() for t in done] + [Untested(t.spec, "timeout") for t in late]
+for t in late:
+    t.cancel()
+await asyncio.gather(*late, return_exceptions=True)   # no worker left running
+results = [Untested(spec_of[t], "timeout") for t in late]
+for t in done:                       # a crashed worker is untested, not an abort
+    e = t.exception()
+    results.append(Untested(spec_of[t], f"error: {e!r}") if e else t.result())
 ok = [f for f in results if isinstance(f, SiteFinding) and provenance_ok(f)]
 groups = group_by(sorted(ok, key=key), key=lambda f: (f.scope_id, f.hypothesis))
+conflicted = set()
 for g, fs in groups:
-    verdicts = {f.verdict for f in fs}
-    if len(verdicts) > 1:
+    if len({f.verdict for f in fs}) > 1:
         escalate(g, fs)              # conflict: never resolved by prose
-w2 = [f for f in ok if f.cluster == "W2" and f.verdict == "confirmed"]
+        conflicted.add(g)            # ...and never counted in the quorum
+W2_SITES = {"PVA-01", "PVA-02", "PVA-04", "PVA-05", "PVA-06"}
+w2 = {f.site for f in ok             # a set: one vote per site
+      if f.site in W2_SITES and f.hypothesis == "feed"
+      and f.verdict == "confirmed"
+      and (f.scope_id, f.hypothesis) not in conflicted}
 fleet_ticket = len(w2) >= 3          # quorum: 3 of 5 W2 sites
 ```
 
-Late branches become `Untested` results, never verdicts. Findings that fail provenance are dropped. The rest are sorted, grouped and checked for conflicts, and the fleet ticket needs 3 of the 5 W2 sites to confirm.
+Late branches are cancelled and become `Untested` results, never verdicts. A worker that crashed becomes `Untested` too, so the healthy findings still get merged. Findings that fail provenance are dropped. The rest are sorted, grouped and checked for conflicts. A conflict is the same site giving two verdicts on one hypothesis. It is escalated and kept out of the quorum. A W2 site that simply rejects the feed hypothesis is not a conflict; it just doesn't vote yes. The fleet ticket needs 3 of the 5 W2 sites, each counted once, to confirm the feed hypothesis.
+
+*Note (2026-11-01, PR #20 review):* an earlier version counted every confirmed W2 finding. Three duplicate findings from one site, or three meter findings, met the quorum, and so did a site whose own findings conflicted. A crashed worker also aborted the whole merge, and late workers were left running.
 
 One timed-out W2 worker leaves 4 of 5 confirmations. So the quorum still files a single fleet ticket, and the review card lists the missing site as untested.
 
@@ -433,6 +466,8 @@ Tasks:
 2. **Group** by (scope, hypothesis).
 3. **Quorum**, applied per scope.
 4. **Conflicts.** One scope with two surviving, conflicting hypotheses goes into `conflicts` and is escalated.
+
+*Note (2026-11-01, PR #20 review):* find the conflicts before the quorum runs, and leave the conflicted scopes out of it, as the [example](#an-example-1) does. Otherwise a site can be escalated and still count toward a ticket. Count each site once, and only for the hypothesis the ticket is about.
 
 Sort every list by (scope, hypothesis, site), and serialise with `sort_keys=True`. After that, five randomised completion orders give byte-identical JSON. Without the sort, they don't.
 
