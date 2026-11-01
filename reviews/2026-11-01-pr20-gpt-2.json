@@ -1,0 +1,84 @@
+{
+ "meta": {
+  "reviewer": "gpt",
+  "provider": "codex",
+  "model": "gpt-6.1-sol",
+  "scope": "pr",
+  "date": "2026-11-01",
+  "input_tokens": 687369,
+  "output_tokens": 3865,
+  "attempts": 1,
+  "context_files": [
+   "PULL REQUEST",
+   "DIFF",
+   "reviews/decisions.md",
+   "STYLE.md",
+   "README.md",
+   "CHANGELOG.md",
+   "glossary.md",
+   "reading-list.md",
+   "weeks/week-07-evaluation-2-and-iteration.md",
+   "weeks/week-08-multi-agent-systems.md"
+  ],
+  "context_dropped": [],
+  "context_tokens_est": 110905,
+  "pr": 20,
+  "harness": "47e920f5edacfe05d5234ee6bd651d81aef96582",
+  "commit": "1615023ab2adf313fba4b12479fe8006e6ad550a"
+ },
+ "review": {
+  "schema_version": 1,
+  "scope": "pr",
+  "verdict": "changes_needed",
+  "summary": "changes_needed\nThe handoff loop can repeat ticket writes after a crash.\nTruncated responses are incorrectly treated as final answers.\nConcurrent spawn calls exceed the stated four-worker cap.\nChecks: 25 tests passed; link checker reported bad 0.",
+  "findings": [
+   {
+    "id": "F1",
+    "severity": "major",
+    "area": "accuracy",
+    "checklist_item": "A. Accuracy: code sketches and contradictions between lessons",
+    "title": "Save pending tool calls before executing side effects",
+    "file": "weeks/week-08-multi-agent-systems.md",
+    "line_start": 213,
+    "line_end": 230,
+    "claim": "The handoff loop executes tools before saving the model response. A crash after ticket_draft writes but before save(st) makes resume call the model again, potentially generating a new tool id and duplicating the ticket even with destination-side idempotency.",
+    "evidence": "Ran the extracted loop with a checkpoint stub and a ticket writer idempotent on tool id. Crashing after the first write and resuming produced two model calls and two distinct ticket ids. Section 3.5, lines 779–784, explicitly requires saving the model response before its tools run.",
+    "proposed_change": "Carry the 3.5 replay protocol into this sketch: persist the pending response, resume its saved calls without another model call, and use an idempotent or transactional ticket write. Verify that crashes before execution, after writing and before the final checkpoint leave exactly one ticket.",
+    "verified_by": "ran_code",
+    "confidence": 0.99,
+    "related_decision": "PR15-2-F1"
+   },
+   {
+    "id": "F2",
+    "severity": "major",
+    "area": "accuracy",
+    "checklist_item": "A. Accuracy: code sketches and contradictions between lessons",
+    "title": "Check the stop reason before accepting a final response",
+    "file": "weeks/week-08-multi-agent-systems.md",
+    "line_start": 213,
+    "line_end": 216,
+    "claim": "The loop treats every response without tool calls as a final answer. That includes truncated responses, and it appends the response before checking whether it is safe to retain or execute.",
+    "evidence": "Ran the extracted loop with a response having stop_reason='max_tokens' and no tool calls; it invoked finish and returned ('finished', 'max_tokens'). Section 2.5 requires separate handling for truncation, pause_turn and refusal.",
+    "proposed_change": "Apply the stop-reason handling from 2.5 before appending or processing the response. Retry truncation from the consistent transcript, handle continuation and refusal separately, and accept only a valid final answer. Verify truncated responses both with and without partial tool calls.",
+    "verified_by": "ran_code",
+    "confidence": 0.99,
+    "related_decision": "PROJ-2026-10-27-F4"
+   },
+   {
+    "id": "F3",
+    "severity": "major",
+    "area": "accuracy",
+    "checklist_item": "A. Accuracy: code sketches",
+    "title": "Enforce the worker cap across concurrent spawn calls",
+    "file": "weeks/week-08-multi-agent-systems.md",
+    "line_start": 91,
+    "line_end": 96,
+    "claim": "The assertion limits one spawn_workers call to four tasks, but does not enforce the stated limit of four workers running at once. Section 8.3 explicitly allows the model to issue several worker calls concurrently.",
+    "evidence": "Ran the exact spawn_workers sketch with stub workers and two concurrent calls containing four tasks each. Both passed the assertion, and the measured peak was eight active workers. Line 58 defines the fan-out limit as 'how many workers at once'.",
+    "proposed_change": "Enforce a shared per-run limit in the worker executor, such as a semaphore acquired around each worker loop. Verify that concurrent spawn calls never exceed four active workers.",
+    "verified_by": "ran_code",
+    "confidence": 0.99
+   }
+  ]
+ }
+}
