@@ -1,0 +1,30 @@
+{
+ "review": "2026-11-01-pr20-gpt-3.json",
+ "author": "claude-opus-5-5",
+ "date": "2026-11-01",
+ "harness": "47e920f5edacfe05d5234ee6bd651d81aef96582",
+ "response": {
+  "schema_version": 1,
+  "summary": "I accepted both findings and rejected, modified or deferred none. Both fixes are in the 8.2 handoff sketch in Week 8, with a dated third-review note and one CHANGELOG line. First, a saved pending response now runs even when the model-call cap is reached; the cap only blocks the next model call. Second, `model_context_window_exceeded` now stops the run with `budget`, as Week 2 does, and only `end_turn` counts as a final answer. 25 tests passed. My stub run of the sketch was blocked by the permission check, so I verified both scenarios by reading the code, not by running it. That is the first thing to check.",
+  "responses": [
+   {
+    "finding_id": "F1",
+    "decision": "accept",
+    "reason": "Correct. Line 223 incremented st.turn before lines 235–236 saved the pending response. If the run crashed on the last permitted turn, st.turn equalled the cap, so on resume the `while st.turn < cap` check stopped the loop before the saved calls ran. The loop condition is now `st.turn < cap or st.pending is not None`. A saved response runs without a new model call. When nothing is pending and the turn is at the cap, the loop exits with turn_cap. The After-a-crash paragraph now says this.",
+    "changes": "weeks/week-08-multi-agent-systems.md (loop condition, crash paragraph, dated note); CHANGELOG.md"
+   },
+   {
+    "finding_id": "F2",
+    "decision": "accept",
+    "reason": "Correct. Any stop reason other than tool_use reached finish(). Week 2's table (line 647) says context-window exhaustion counts as truncation, and its loop (lines 1064–1065) returns budget before appending the response. Now: a `model_context_window_exceeded` check before the append returns stop(st, \"budget\") and points to 3.2 for compaction. Only `end_turn` calls finish(). Any other stop reason without tool calls stops the run. The prose matches.",
+    "changes": "weeks/week-08-multi-agent-systems.md (sketch stop-reason branches, prose, dated note); CHANGELOG.md"
+   }
+  ],
+  "tests": {
+   "ran": true,
+   "passed": true,
+   "detail": "`python -m pytest -q`: 25 passed, including the link checker and the contents check. The permission check blocked my stub run of the sketch, so neither crash scenario was run."
+  }
+ },
+ "reverted": []
+}
