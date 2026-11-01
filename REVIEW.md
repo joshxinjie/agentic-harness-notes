@@ -1,9 +1,10 @@
 # Cross-model review procedure
 
 A reviewer model from a **different model or provider** than the one that wrote the notes reviews this repo and
-suggests improvements. It reviews every pull request when it opens (the Saturday update PR included), any PR again on
-request, and the whole repo once a month. The reviewer only suggests; the owner decides, and every change to `main`
-arrives as a pull request they merge.
+suggests improvements. It reviews every pull request when it opens (the Saturday update PR included; `/respond` fix
+PRs are the exception, because the reviewed PR is reviewed again after the fix merges), any PR again on request,
+and the whole repo once a month. The reviewer only suggests; the owner decides, and every change to `main` arrives
+as a pull request they merge.
 
 This file is the reviewer's instructions. The shared harness ([cross-model-review](https://github.com/joshxinjie/cross-model-review))
 sends it, unchanged, to every reviewer model, so edit it here to change what reviews look for. Findings must follow
