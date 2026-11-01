@@ -1,0 +1,52 @@
+{
+ "meta": {
+  "reviewer": "gpt",
+  "provider": "codex",
+  "model": "gpt-6.1-sol",
+  "scope": "pr",
+  "date": "2026-11-01",
+  "input_tokens": 551695,
+  "output_tokens": 2153,
+  "attempts": 1,
+  "context_files": [
+   "PULL REQUEST",
+   "DIFF",
+   "reviews/decisions.md",
+   "STYLE.md",
+   "README.md",
+   "CHANGELOG.md",
+   "glossary.md",
+   "reading-list.md",
+   "weeks/week-07-evaluation-2-and-iteration.md",
+   "weeks/week-08-multi-agent-systems.md"
+  ],
+  "context_dropped": [],
+  "context_tokens_est": 113982,
+  "pr": 20,
+  "harness": "47e920f5edacfe05d5234ee6bd651d81aef96582",
+  "commit": "abeb28d5853fc846a45cdb56f504842bbe28ba45"
+ },
+ "review": {
+  "schema_version": 1,
+  "scope": "pr",
+  "verdict": "changes_needed",
+  "summary": "changes_needed\nMultiple handoffs in one response acknowledge transfers to agents that never run.\nChecks: 25 tests passed; link checker reported bad 0.",
+  "findings": [
+   {
+    "id": "F1",
+    "severity": "major",
+    "area": "accuracy",
+    "checklist_item": "A. Accuracy: code sketches do what the text says",
+    "title": "Handle multiple handoff calls before changing the active agent",
+    "file": "weeks/week-08-multi-agent-systems.md",
+    "line_start": 242,
+    "line_end": 249,
+    "claim": "The loop accepts every transfer in a response, but each overwrites the active agent and payload. Only the last recipient runs, although earlier transfers receive successful acknowledgements. Triage exposes two transfer tools, and the sketch neither prevents nor rejects calling both.",
+    "evidence": "Executed the extracted loop with a stub response containing transfer_to_feed_specialist followed by transfer_to_site_specialist. It acknowledged both transfers, but the model-call sequence was ['triage', 'site_specialist']; feed_specialist never ran.",
+    "proposed_change": "Define and enforce a single-handoff policy before mutating state. Select one recipient deterministically and return explicit rejection results for additional transfers, or reject the ambiguous transfer batch. Verify with a response containing both transfer tools: no successful acknowledgement should name a recipient that never receives control.",
+    "verified_by": "ran_code",
+    "confidence": 0.99
+   }
+  ]
+ }
+}
