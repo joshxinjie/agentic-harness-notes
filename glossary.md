@@ -808,7 +808,7 @@ Manus's attention trick: the agent rewrites a `todo.md` at the end of the contex
 A thinking block hidden for safety reasons (it has only `data`). It must also be passed back unchanged. Filtering on `block.type == "thinking"` alone quietly drops it and breaks the tool-use protocol. See [2.2](weeks/week-02-core-mechanics.md#22-react-and-reasoning-then-acting-extended-thinking-in-the-loop).
 
 **Reducer**  
-A rule for combining parallel writes to the same state key, for example appending both to a list (LangGraph: `Annotated[list, operator.add]`). Without one, the last write wins. See [8.3](weeks/week-08-multi-agent-systems.md#83-parallel-agents-fan-out-and-fan-in).
+A rule for combining parallel writes to the same state key, for example appending both to a list (LangGraph: `Annotated[list, operator.add]`). Without one, the last write wins in a plain shared store; LangGraph instead raises `InvalidUpdateError` when two parallel branches write a key that has no reducer. See [8.3](weeks/week-08-multi-agent-systems.md#83-parallel-agents-fan-out-and-fan-in).
 
 **Reference solution**  
 A known-good outcome that passes the task's grader in its environment. It proves the task can be solved and the grader is wired up correctly. See [6.2](weeks/week-06-evaluation-1.md#62-building-an-eval-set-from-real-failures-the-taskgraderenvironment-triad).

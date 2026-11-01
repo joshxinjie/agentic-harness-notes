@@ -88,13 +88,15 @@ Tools: metrics, weather(agg=daily), pipeline. Max 6 turns.
 Return SiteFinding JSON: scope, hypothesis, verdict,
 deciding_value, tool_use_id. Do not file tickets or write memory."""
 
-def spawn_workers(tasks):            # the orchestrator's tool
+async def spawn_workers(tasks):      # the orchestrator's tool
     assert len(tasks) <= 4           # fan-out cap
-    return gather(run_loop(WORKER_ROLE, WORKER_SPEC.format(**t),
-                           tools=READ_ONLY, max_turns=6,
-                           output_format=SiteFinding)
-                  for t in tasks)
+    return await asyncio.gather(*(run_loop(WORKER_ROLE, WORKER_SPEC.format(**t),
+                                           tools=READ_ONLY, max_turns=6,
+                                           output_format=SiteFinding)
+                                  for t in tasks))
 ```
+
+*Note (2026-11-01, PR #20 review):* an earlier version passed one generator to `gather`, which `asyncio.gather` rejects with a `TypeError`. Its arguments must be separate awaitables, so the coroutines are unpacked with `*`.
 
 `spawn_workers` refuses more than four workers. Every worker gets read-only tools, at most six turns, and must return a `SiteFinding`. The spec says what to test, over which window, against which baseline, and what it may not do.
 
@@ -370,7 +372,7 @@ Typical slip: using handoffs for work that is really parallel. That is the next 
 
 Fan-out is the easy half. Fan-in forces four decisions, and they live in layers 3 (loop control) and 4 (state).
 
-**1. A merge rule for shared keys.** When parallel branches write the same key, you need a **reducer**: a function that says how two writes combine (for example, append both to a list). Without one, the last write wins. LangGraph's docs warn that updates from a parallel step "may not be ordered consistently", so sort by a stable key before merging. Reproducibility depends on it, and so does your prompt cache ([4.6](week-04-prompt-and-tool-design.md#46-prompt-caching-and-cost)).
+**1. A merge rule for shared keys.** When parallel branches write the same key, you need a **reducer**: a function that says how two writes combine (for example, append both to a list). Without one, the last write wins. *Note (2026-11-01, PR #20 review):* that holds for an unprotected shared store. In LangGraph, a state key with no reducer accepts at most one value per step, so two parallel writes raise `InvalidUpdateError` (`INVALID_CONCURRENT_GRAPH_UPDATE`) instead ([state reference](https://reference.langchain.com/python/langgraph/graph/state)). LangGraph's docs warn that updates from a parallel step "may not be ordered consistently", so sort by a stable key before merging. Reproducibility depends on it, and so does your prompt cache ([4.6](week-04-prompt-and-tool-design.md#46-prompt-caching-and-cost)).
 
 **2. Partial failure.** A LangGraph superstep (one round of parallel branches) is transactional: if one branch fails, "none of the updates are applied". With a checkpointer, the successful branches are saved and are not re-run on resume. That suits correctness. For an investigation, though, a missing branch usually means "untested", not "abort". So choose a policy for each task: all-or-nothing, a quorum, or partial results with flags.
 
@@ -435,7 +437,7 @@ One timed-out W2 worker leaves 4 of 5 confirmations. So the quorum still files a
 Parallelism buys wall-clock time, not accuracy. Accuracy is decided at fan-in. Typical mistakes:
 
 - concatenating worker prose and asking a model to "summarise", which loses provenance and lets one confident hallucination dominate;
-- no reducer, so findings silently overwrite each other;
+- no reducer, so findings silently overwrite each other in a plain shared store (LangGraph raises `InvalidUpdateError` instead);
 - treating a timeout as a negative verdict. That is category A from [7.2](week-07-evaluation-2-and-iteration.md#72-error-taxonomies-and-common-failure-modes), "tool failure absorbed silently", in a new place;
 - merge output that depends on the order in which workers finish.
 
@@ -468,6 +470,8 @@ Tasks:
 4. **Conflicts.** One scope with two surviving, conflicting hypotheses goes into `conflicts` and is escalated.
 
 *Note (2026-11-01, PR #20 review):* find the conflicts before the quorum runs, and leave the conflicted scopes out of it, as the [example](#an-example-1) does. Otherwise a site can be escalated and still count toward a ticket. Count each site once, and only for the hypothesis the ticket is about.
+
+*Note (2026-11-01, PR #20 follow-up review):* steps 3 and 4 also define a conflict wrongly. A conflict is two different verdicts within one (scope, hypothesis) group, for example one site's feed finding *confirmed* and another *rejected*. Two different hypotheses for one scope are assessed separately, unless a domain rule says they cannot both hold. The order is: provenance, group, conflicts, then quorum.
 
 Sort every list by (scope, hypothesis, site), and serialise with `sort_keys=True`. After that, five randomised completion orders give byte-identical JSON. Without the sort, they don't.
 
