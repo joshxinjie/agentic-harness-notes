@@ -1,0 +1,32 @@
+{
+ "meta": {
+  "reviewer": "gpt",
+  "provider": "codex",
+  "model": "gpt-6.1-sol",
+  "scope": "pr",
+  "date": "2026-11-01",
+  "input_tokens": 144710,
+  "output_tokens": 578,
+  "attempts": 1,
+  "context_files": [
+   "PULL REQUEST",
+   "DIFF",
+   "reviews/decisions.md",
+   "STYLE.md",
+   "README.md",
+   "CHANGELOG.md"
+  ],
+  "context_dropped": [],
+  "context_tokens_est": 15065,
+  "pr": 26,
+  "harness": "ac0b3fd183c441285d93b4a37c4dd4eecf52329f",
+  "commit": "38b05f9adeabbe8702a7c6536ae9a4d7b83b0f7c"
+ },
+ "review": {
+  "schema_version": 1,
+  "scope": "pr",
+  "verdict": "approve",
+  "summary": "approve — No actionable findings in the diff. Tests: python -m pytest -q — 25 passed; link checker — bad 0. The shared harness behavior could not be independently verified offline.",
+  "findings": []
+ }
+}
