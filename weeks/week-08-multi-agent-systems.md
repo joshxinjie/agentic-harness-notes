@@ -238,15 +238,20 @@ while st.turn < cap or st.pending is not None:  # a saved response still runs at
             return stop(st, resp.stop_reason)  # anything else is not a final answer
         st.pending = resp
         save(st)                          # the tool ids are on disk before any tool runs
-    results = []
+    results, moved = [], False
     for b in tool_uses(st.pending):
         if b.name.startswith("transfer_to_"):
+            if moved:                     # one handoff per response: the first wins
+                results.append(tool_result(b.id, "Rejected: one handoff per turn",
+                                           is_error=True))
+                continue
             if st.handoffs >= MAX_HANDOFFS:
                 return stop(st, "stuck")  # handoff cap reached
             st.payload = HandoffInput(**b.input)  # site, window, reason, evidence
             results.append(tool_result(b.id, f"Handed to {b.name[12:]}"))
             st.active = b.name[12:]
             st.handoffs += 1
+            moved = True
         else:
             results.append(execute(b))    # ticket_draft is idempotent on b.id
     st.messages.append(user(results))
@@ -255,9 +260,11 @@ while st.turn < cap or st.pending is not None:  # a saved response still runs at
 return stop(st, "turn_cap")
 ```
 
-Each turn, the loop looks up the active agent's prompt and tools. It checks the stop reason before keeping the response, as in [2.5](week-02-core-mechanics.md#25-stopping-conditions-step-budgets-and-loop-detection): a truncated response is dropped and retried with a higher output cap, a context-window overflow is dropped and stops the run with `budget` (compaction is [3.2](week-03-state-and-memory.md#32-context-management-summarisation-compaction-truncation)), a refusal stops the run, a `pause_turn` is sent back as-is, and only `end_turn` ends the run as a final answer; any other stop reason without tool calls stops it. A response with tool calls is saved as `st.pending` before any of them runs. A `transfer_to_…` call gets a short tool result, the validated payload is saved in the state, and the next turn runs as the named agent (`b.name[12:]` drops the 12-character `transfer_to_` prefix). Every other call runs as usual. The response and its tool results go into the transcript, and the turn counter, the active agent and the payload are all checkpointed.
+Each turn, the loop looks up the active agent's prompt and tools. It checks the stop reason before keeping the response, as in [2.5](week-02-core-mechanics.md#25-stopping-conditions-step-budgets-and-loop-detection): a truncated response is dropped and retried with a higher output cap, a context-window overflow is dropped and stops the run with `budget` (compaction is [3.2](week-03-state-and-memory.md#32-context-management-summarisation-compaction-truncation)), a refusal stops the run, a `pause_turn` is sent back as-is, and only `end_turn` ends the run as a final answer; any other stop reason without tool calls stops it. A response with tool calls is saved as `st.pending` before any of them runs. A `transfer_to_…` call gets a short tool result, the validated payload is saved in the state, and the next turn runs as the named agent (`b.name[12:]` drops the 12-character `transfer_to_` prefix). Only the first transfer in a response counts: any later one gets an error result, so no acknowledgement names an agent that never runs. Every other call runs as usual. The response and its tool results go into the transcript, and the turn counter, the active agent and the payload are all checkpointed.
 
 **After a crash.** A resume loads the checkpoint. If `st.pending` is set, it runs that saved response's calls again without calling the model, so every `tool_use` keeps its id. The loop runs a saved response even when the turn counter has reached the cap; the cap only blocks the next model call. `ticket_draft` must refuse a second ticket with the same `tool_use_id` (or save the ticket and its `done` record in one transaction), as in the note in [3.5](week-03-state-and-memory.md#35-checkpointing-and-resumability). Then a crash before the write, after the write but before the last save, or after that save leaves exactly one ticket.
+
+*Note (2026-11-01, fourth PR #20 review):* the previous version accepted every transfer in a response. Each one overwrote the active agent and the payload, so only the last recipient ran, yet every earlier transfer got a "Handed to" result.
 
 *Note (2026-11-01, third PR #20 review):* the previous version checked the turn cap before running a saved response. A crash after saving the last permitted response made the resume stop with `turn_cap` and never run its calls. It also sent `model_context_window_exceeded` to `finish()` as a final answer.
 
