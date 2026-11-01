@@ -1,0 +1,36 @@
+{
+ "review": "2026-11-01-pr20-gpt-2.json",
+ "author": "claude-opus-5-5",
+ "date": "2026-11-01",
+ "harness": "47e920f5edacfe05d5234ee6bd651d81aef96582",
+ "response": {
+  "schema_version": 1,
+  "summary": "3 accept, 0 modify/reject/defer. The 8.2 handoff loop now checks the stop reason before keeping a response and saves the response with tool calls as st.pending before any tool runs. On resume it reruns that saved response without calling the model again. 8.1 adds a shared Semaphore(4) so concurrent spawn calls stay capped at four workers. Dated notes and a CHANGELOG line added. Look first at the rewritten loop in week-08 lines 216–251. My crash and concurrency simulation was blocked by a permission prompt, so I checked the sketches by reading them, not by running them.",
+  "responses": [
+   {
+    "finding_id": "F1",
+    "decision": "accept",
+    "reason": "Right: the old sketch ran execute(b) before any save, so a crash after ticket_draft wrote made the resume call the model again and get a new id. 3.5's note (week-03 lines 779–786) requires saving the response before its tools run. The loop now stores the response as st.pending and saves it before tools run. On resume it reruns the saved calls with no model call, and ticket_draft is idempotent on tool_use_id or one transaction. The prose covers the three crash points from 3.5. I could not run the simulation here (permission denied).",
+    "changes": "weeks/week-08-multi-agent-systems.md (8.2 loop sketch, 'After a crash' paragraph, dated note); CHANGELOG.md"
+   },
+   {
+    "finding_id": "F2",
+    "decision": "accept",
+    "reason": "Right: any response with no tool calls went to finish(), including a max_tokens truncation. The loop now follows the 2.5 stop-reason table, as week-02's run_site does (lines 1061–1074). A truncation is never kept: the loop doubles max_out and retries from the consistent transcript. A refusal stops without re-asking. pause_turn is appended and sent back. Only end_turn with no tool calls finishes. The truncation retry counts against the turn cap, so it cannot loop forever.",
+    "changes": "weeks/week-08-multi-agent-systems.md (8.2 loop sketch, prose after it, dated note); CHANGELOG.md"
+   },
+   {
+    "finding_id": "F3",
+    "decision": "accept",
+    "reason": "Right: line 58 defines the cap as 'how many workers at once', and 8.3 (line 364) says the orchestrator can issue several worker calls in one message, which run concurrently. The assert only bounds one call. Added SLOTS = asyncio.Semaphore(4), one per orchestrator run, acquired in run_worker around each worker loop. I kept the assert as a per-call limit and updated the prose and the dated note.",
+    "changes": "weeks/week-08-multi-agent-systems.md (8.1 spawn_workers sketch, the sentence after it, dated note); CHANGELOG.md"
+   }
+  ],
+  "tests": {
+   "ran": true,
+   "passed": true,
+   "detail": "python -m pytest -q: 25 passed (includes link checker and contents check). A separate simulation of the crash, truncation and concurrency cases was blocked by a permission prompt and not run."
+  }
+ },
+ "reverted": []
+}
