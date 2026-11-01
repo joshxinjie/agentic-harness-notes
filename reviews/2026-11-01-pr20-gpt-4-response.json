@@ -1,0 +1,24 @@
+{
+ "review": "2026-11-01-pr20-gpt-4.json",
+ "author": "claude-opus-5-5",
+ "date": "2026-11-01",
+ "harness": "47e920f5edacfe05d5234ee6bd651d81aef96582",
+ "response": {
+  "schema_version": 1,
+  "summary": "1 accepted. In the 8.2 handoff loop, only the first transfer in a response now counts. Any later transfer in the same response gets an error result (\"Rejected: one handoff per turn\"), so no acknowledgement names an agent that never runs. The prose now states the rule, and a dated note for the fourth review records the old behaviour. CHANGELOG line added. 25 tests pass. Worth checking first: the 'first wins' rule. The other option was rejecting the whole batch.",
+  "responses": [
+   {
+    "finding_id": "F1",
+    "decision": "accept",
+    "reason": "The finding is correct. In the old loop, weeks/week-08-multi-agent-systems.md:242-249 overwrote st.active and st.payload on every transfer_to_ block, and each one got a 'Handed to …' result, so only the last recipient ran. Now a `moved` flag lets the first transfer through. Later transfers get tool_result(..., is_error=True) and change no state, so every successful acknowledgement names the agent that actually runs next. Non-transfer calls run as before.",
+    "changes": "weeks/week-08-multi-agent-systems.md (sketch, prose after it, dated note); CHANGELOG.md"
+   }
+  ],
+  "tests": {
+   "ran": true,
+   "passed": true,
+   "detail": "python -m pytest -q: 25 passed (the suite includes the link checker and the contents check)."
+  }
+ },
+ "reverted": []
+}
