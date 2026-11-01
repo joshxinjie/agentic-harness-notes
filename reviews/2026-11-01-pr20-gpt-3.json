@@ -1,0 +1,69 @@
+{
+ "meta": {
+  "reviewer": "gpt",
+  "provider": "codex",
+  "model": "gpt-6.1-sol",
+  "scope": "pr",
+  "date": "2026-11-01",
+  "input_tokens": 570194,
+  "output_tokens": 2375,
+  "attempts": 1,
+  "context_files": [
+   "PULL REQUEST",
+   "DIFF",
+   "reviews/decisions.md",
+   "STYLE.md",
+   "README.md",
+   "CHANGELOG.md",
+   "glossary.md",
+   "reading-list.md",
+   "weeks/week-07-evaluation-2-and-iteration.md",
+   "weeks/week-08-multi-agent-systems.md"
+  ],
+  "context_dropped": [],
+  "context_tokens_est": 112990,
+  "pr": 20,
+  "harness": "47e920f5edacfe05d5234ee6bd651d81aef96582",
+  "commit": "1e66383aa216cb645789e13b9b96635dac1bfc4b"
+ },
+ "review": {
+  "schema_version": 1,
+  "scope": "pr",
+  "verdict": "changes_needed",
+  "summary": "changes_needed\nPending tool calls are skipped on resume at the turn cap.\nContext-window truncation is still accepted as a final answer.\nChecks: 25 tests passed; link checker bad 0.",
+  "findings": [
+   {
+    "id": "F1",
+    "severity": "major",
+    "area": "accuracy",
+    "checklist_item": "A. Accuracy: code sketches must do what the text says",
+    "title": "Drain saved pending calls before enforcing the model-call cap",
+    "file": "weeks/week-08-multi-agent-systems.md",
+    "line_start": 217,
+    "line_end": 219,
+    "claim": "A crash after saving the last permitted model response leaves st.turn equal to cap and st.pending populated. On resume, the while condition skips execution entirely. This contradicts the promise that pending calls resume and a crash before the write still leaves exactly one ticket.",
+    "evidence": "Executed the extracted sketch with stubbed dependencies and cap=1. The uninterrupted run executed tu_ticket. Resuming its checkpoint saved before execution returned turn_cap with zero writes and pending still populated. Line 223 increments the turn before lines 235–236 save the pending response.",
+    "proposed_change": "Allow the loop to continue while a saved response is pending, even when the model-call cap is reached; enforce the cap before making another model call. Test crashes before and after the ticket write on the final permitted turn, asserting one ticket and no additional model call.",
+    "verified_by": "ran_code",
+    "confidence": 1,
+    "related_decision": "PR20-3-F1"
+   },
+   {
+    "id": "F2",
+    "severity": "major",
+    "area": "accuracy",
+    "checklist_item": "A. Accuracy: code sketches must do what the text says",
+    "title": "Handle context-window exhaustion before accepting a final answer",
+    "file": "weeks/week-08-multi-agent-systems.md",
+    "line_start": 233,
+    "line_end": 234,
+    "claim": "The fallback still sends model_context_window_exceeded to finish(), accepting an incomplete response as final. The prose says only a genuine end_turn finishes, and lesson 2.5 requires context-window exhaustion to be treated as truncation.",
+    "evidence": "Executed the extracted sketch with a stub response whose stop_reason was model_context_window_exceeded; it called finish(). Week 2's stop-reason table at line 647 requires truncation handling, and its integrative loop at lines 1064–1067 returns budget for this case. The earlier decision fixed max_tokens but left this separate path.",
+    "proposed_change": "Handle model_context_window_exceeded before appending or finishing the response: compact and continue, or return budget as Week 2 does. Restrict successful finalization explicitly to end_turn. Verify that context-window exhaustion never calls finish().",
+    "verified_by": "ran_code",
+    "confidence": 1,
+    "related_decision": "PR20-3-F2"
+   }
+  ]
+ }
+}

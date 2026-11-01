@@ -1,0 +1,18 @@
+flowchart TD
+    subgraph A["1. Specification and communication"]
+        direction LR
+        A1["Spec or report misses<br>what the other needs"] --> A2["Fix: typed spec, typed<br>finding, discoveries"]
+    end
+    subgraph B["2. Coordination"]
+        direction LR
+        B1["Duplicates, clashes,<br>stalls, ping-pong"] --> B2["Fix: one writer per key,<br>caps, deadlines"]
+    end
+    subgraph C["3. Cost"]
+        direction LR
+        C1["Tokens multiply<br>across children"] --> C2["Fix: run budget<br>that counts children"]
+    end
+    subgraph D["4. Error cascades"]
+        direction LR
+        D1["One error spreads<br>to false consensus"] --> D2["Fix: lineage for<br>every claim"]
+    end
+    A ~~~ B ~~~ C ~~~ D

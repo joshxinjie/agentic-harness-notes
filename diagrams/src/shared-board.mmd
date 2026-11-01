@@ -1,0 +1,6 @@
+flowchart TD
+    WA["Worker A<br>private transcript"] -->|"append fact +<br>tool_use_id"| B[("Append-only board:<br>facts, references")]
+    B -.->|"read facts<br>in scope"| WB["Worker B<br>private transcript"]
+    WA -->|"typed finding"| O["Orchestrator:<br>only writer"]
+    WB -->|"typed finding"| O
+    O --> T["Verdicts and tickets"]
