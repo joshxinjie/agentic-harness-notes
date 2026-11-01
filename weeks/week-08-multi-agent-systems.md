@@ -88,17 +88,24 @@ Tools: metrics, weather(agg=daily), pipeline. Max 6 turns.
 Return SiteFinding JSON: scope, hypothesis, verdict,
 deciding_value, tool_use_id. Do not file tickets or write memory."""
 
+SLOTS = asyncio.Semaphore(4)         # one per orchestrator run, shared by every spawn call
+
+async def run_worker(t):
+    async with SLOTS:                # fan-out cap: at most 4 workers at once
+        return await run_loop(WORKER_ROLE, WORKER_SPEC.format(**t),
+                              tools=READ_ONLY, max_turns=6,
+                              output_format=SiteFinding)
+
 async def spawn_workers(tasks):      # the orchestrator's tool
-    assert len(tasks) <= 4           # fan-out cap
-    return await asyncio.gather(*(run_loop(WORKER_ROLE, WORKER_SPEC.format(**t),
-                                           tools=READ_ONLY, max_turns=6,
-                                           output_format=SiteFinding)
-                                  for t in tasks))
+    assert len(tasks) <= 4           # at most 4 tasks per call
+    return await asyncio.gather(*(run_worker(t) for t in tasks))
 ```
+
+*Note (2026-11-01, second PR #20 review):* the previous version had only the `assert`. It limits one call to four tasks, but the orchestrator can issue several `spawn_workers` calls in one message, and they run concurrently ([8.3](#83-parallel-agents-fan-out-and-fan-in)): two calls of four tasks ran eight workers at once. The semaphore, shared across calls, holds the run to four.
 
 *Note (2026-11-01, PR #20 review):* an earlier version passed one generator to `gather`, which `asyncio.gather` rejects with a `TypeError`. Its arguments must be separate awaitables, so the coroutines are unpacked with `*`.
 
-`spawn_workers` refuses more than four workers. Every worker gets read-only tools, at most six turns, and must return a `SiteFinding`. The spec says what to test, over which window, against which baseline, and what it may not do.
+`spawn_workers` refuses more than four tasks in one call, and the shared semaphore keeps no more than four workers running at once across all calls in the run. Every worker gets read-only tools, at most six turns, and must return a `SiteFinding`. The spec says what to test, over which window, against which baseline, and what it may not do.
 
 The orchestrator's trace:
 
@@ -209,13 +216,26 @@ Mechanically, a handoff is a tool whose executor does no work. It only changes w
 ```python
 while st.turn < cap:
     a = AGENTS[st.active]                 # prompt + tools for this turn
-    # the payload is passed apart from the messages, so a history filter can't drop it
-    resp = call(a.system, a.tools, history_for(st.active, st.messages, st.payload))
-    st.messages.append(assistant(resp))
-    if not tool_uses(resp):
-        return finish(st, resp)           # final answer: stop
+    if st.pending is None:                # on resume, reuse the saved response: no new call
+        # the payload is passed apart from the messages, so a history filter can't drop it
+        resp = call(a.system, a.tools, history_for(st.active, st.messages, st.payload),
+                    max_tokens=st.max_out)
+        st.turn += 1
+        if resp.stop_reason == "max_tokens":  # truncated: never keep or run it
+            st.max_out *= 2                    # retry from the consistent transcript
+            continue
+        if resp.stop_reason == "refusal":
+            return stop(st, "refusal")         # do not re-ask
+        st.messages.append(assistant(resp))
+        if resp.stop_reason == "pause_turn":   # send it back as-is
+            save(st)
+            continue
+        if resp.stop_reason != "tool_use":
+            return finish(st, resp)            # end_turn: final answer, stop
+        st.pending = resp
+        save(st)                          # the tool ids are on disk before any tool runs
     results = []
-    for b in tool_uses(resp):
+    for b in tool_uses(st.pending):
         if b.name.startswith("transfer_to_"):
             if st.handoffs >= MAX_HANDOFFS:
                 return stop(st, "stuck")  # handoff cap reached
@@ -224,14 +244,18 @@ while st.turn < cap:
             st.active = b.name[12:]
             st.handoffs += 1
         else:
-            results.append(execute(b))
+            results.append(execute(b))    # ticket_draft is idempotent on b.id
     st.messages.append(user(results))
-    st.turn += 1
+    st.pending = None
     save(st)                              # active agent, payload, turn: all state
 return stop(st, "turn_cap")
 ```
 
-Each turn, the loop looks up the active agent's prompt and tools. A response with no tool calls ends the run. A `transfer_to_…` call gets a short tool result, the validated payload is saved in the state, and the next turn runs as the named agent (`b.name[12:]` drops the 12-character `transfer_to_` prefix). Every other call runs as usual. The response and its tool results go into the transcript, and the turn counter, the active agent and the payload are all checkpointed.
+Each turn, the loop looks up the active agent's prompt and tools. It checks the stop reason before keeping the response, as in [2.5](week-02-core-mechanics.md#25-stopping-conditions-step-budgets-and-loop-detection): a truncated response is dropped and retried with a higher output cap, a refusal stops the run, a `pause_turn` is sent back as-is, and only a genuine end of turn with no tool calls ends the run as a final answer. A response with tool calls is saved as `st.pending` before any of them runs. A `transfer_to_…` call gets a short tool result, the validated payload is saved in the state, and the next turn runs as the named agent (`b.name[12:]` drops the 12-character `transfer_to_` prefix). Every other call runs as usual. The response and its tool results go into the transcript, and the turn counter, the active agent and the payload are all checkpointed.
+
+**After a crash.** A resume loads the checkpoint. If `st.pending` is set, it runs that saved response's calls again without calling the model, so every `tool_use` keeps its id. `ticket_draft` must refuse a second ticket with the same `tool_use_id` (or save the ticket and its `done` record in one transaction), as in the note in [3.5](week-03-state-and-memory.md#35-checkpointing-and-resumability). Then a crash before the write, after the write but before the last save, or after that save leaves exactly one ticket.
+
+*Note (2026-11-01, second PR #20 review):* the previous version ran the tools before anything was saved, and treated any response without tool calls as a final answer. A crash after `ticket_draft` wrote made the resume call the model again; the new response had a new id, so the write ran again and filed a second ticket. A truncated (`max_tokens`) response was returned as the final answer.
 
 *Note (2026-11-01, PR #20 review):* an earlier version of this sketch parsed the payload into a local variable and never passed it on, never added the response or tool results to the transcript, never advanced the turn counter and never checked the handoff cap. The receiver saw no evidence and the loop did not stop.
 
