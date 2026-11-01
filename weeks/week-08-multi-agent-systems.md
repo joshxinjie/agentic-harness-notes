@@ -214,7 +214,7 @@ There are three ways to bring in a specialist agent. They differ in who holds co
 Mechanically, a handoff is a tool whose executor does no work. It only changes which configuration the loop uses on the next call:
 
 ```python
-while st.turn < cap:
+while st.turn < cap or st.pending is not None:  # a saved response still runs at the cap
     a = AGENTS[st.active]                 # prompt + tools for this turn
     if st.pending is None:                # on resume, reuse the saved response: no new call
         # the payload is passed apart from the messages, so a history filter can't drop it
@@ -224,14 +224,18 @@ while st.turn < cap:
         if resp.stop_reason == "max_tokens":  # truncated: never keep or run it
             st.max_out *= 2                    # retry from the consistent transcript
             continue
+        if resp.stop_reason == "model_context_window_exceeded":
+            return stop(st, "budget")          # truncated too: never keep it; compaction is 3.2
         if resp.stop_reason == "refusal":
             return stop(st, "refusal")         # do not re-ask
         st.messages.append(assistant(resp))
         if resp.stop_reason == "pause_turn":   # send it back as-is
             save(st)
             continue
+        if resp.stop_reason == "end_turn":
+            return finish(st, resp)            # the only final answer
         if resp.stop_reason != "tool_use":
-            return finish(st, resp)            # end_turn: final answer, stop
+            return stop(st, resp.stop_reason)  # anything else is not a final answer
         st.pending = resp
         save(st)                          # the tool ids are on disk before any tool runs
     results = []
@@ -251,9 +255,11 @@ while st.turn < cap:
 return stop(st, "turn_cap")
 ```
 
-Each turn, the loop looks up the active agent's prompt and tools. It checks the stop reason before keeping the response, as in [2.5](week-02-core-mechanics.md#25-stopping-conditions-step-budgets-and-loop-detection): a truncated response is dropped and retried with a higher output cap, a refusal stops the run, a `pause_turn` is sent back as-is, and only a genuine end of turn with no tool calls ends the run as a final answer. A response with tool calls is saved as `st.pending` before any of them runs. A `transfer_to_…` call gets a short tool result, the validated payload is saved in the state, and the next turn runs as the named agent (`b.name[12:]` drops the 12-character `transfer_to_` prefix). Every other call runs as usual. The response and its tool results go into the transcript, and the turn counter, the active agent and the payload are all checkpointed.
+Each turn, the loop looks up the active agent's prompt and tools. It checks the stop reason before keeping the response, as in [2.5](week-02-core-mechanics.md#25-stopping-conditions-step-budgets-and-loop-detection): a truncated response is dropped and retried with a higher output cap, a context-window overflow is dropped and stops the run with `budget` (compaction is [3.2](week-03-state-and-memory.md#32-context-management-summarisation-compaction-truncation)), a refusal stops the run, a `pause_turn` is sent back as-is, and only `end_turn` ends the run as a final answer; any other stop reason without tool calls stops it. A response with tool calls is saved as `st.pending` before any of them runs. A `transfer_to_…` call gets a short tool result, the validated payload is saved in the state, and the next turn runs as the named agent (`b.name[12:]` drops the 12-character `transfer_to_` prefix). Every other call runs as usual. The response and its tool results go into the transcript, and the turn counter, the active agent and the payload are all checkpointed.
 
-**After a crash.** A resume loads the checkpoint. If `st.pending` is set, it runs that saved response's calls again without calling the model, so every `tool_use` keeps its id. `ticket_draft` must refuse a second ticket with the same `tool_use_id` (or save the ticket and its `done` record in one transaction), as in the note in [3.5](week-03-state-and-memory.md#35-checkpointing-and-resumability). Then a crash before the write, after the write but before the last save, or after that save leaves exactly one ticket.
+**After a crash.** A resume loads the checkpoint. If `st.pending` is set, it runs that saved response's calls again without calling the model, so every `tool_use` keeps its id. The loop runs a saved response even when the turn counter has reached the cap; the cap only blocks the next model call. `ticket_draft` must refuse a second ticket with the same `tool_use_id` (or save the ticket and its `done` record in one transaction), as in the note in [3.5](week-03-state-and-memory.md#35-checkpointing-and-resumability). Then a crash before the write, after the write but before the last save, or after that save leaves exactly one ticket.
+
+*Note (2026-11-01, third PR #20 review):* the previous version checked the turn cap before running a saved response. A crash after saving the last permitted response made the resume stop with `turn_cap` and never run its calls. It also sent `model_context_window_exceeded` to `finish()` as a final answer.
 
 *Note (2026-11-01, second PR #20 review):* the previous version ran the tools before anything was saved, and treated any response without tool calls as a final answer. A crash after `ticket_draft` wrote made the resume call the model again; the new response had a new id, so the write ran again and filed a second ticket. A truncated (`max_tokens`) response was returned as the final answer.
 
