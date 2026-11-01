@@ -1,0 +1,67 @@
+{
+ "meta": {
+  "reviewer": "gpt",
+  "provider": "codex",
+  "model": "gpt-6.1-sol",
+  "scope": "pr",
+  "date": "2026-11-01",
+  "input_tokens": 557352,
+  "output_tokens": 2428,
+  "attempts": 1,
+  "context_files": [
+   "PULL REQUEST",
+   "DIFF",
+   "reviews/decisions.md",
+   "STYLE.md",
+   "README.md",
+   "CHANGELOG.md",
+   "glossary.md",
+   "reading-list.md",
+   "weeks/week-07-evaluation-2-and-iteration.md",
+   "weeks/week-08-multi-agent-systems.md"
+  ],
+  "context_dropped": [],
+  "context_tokens_est": 114599,
+  "pr": 20,
+  "harness": "47e920f5edacfe05d5234ee6bd651d81aef96582",
+  "commit": "a85eb14dc038c6fc77f96097c79b0679d856686a"
+ },
+ "review": {
+  "schema_version": 1,
+  "scope": "pr",
+  "verdict": "approve_with_nits",
+  "summary": "approve_with_nits\nThe handoff explanation needs splitting for phone reading.\nTwo glossary entries define the same LangGraph term.\nValidation: 25 tests passed; link checker reported bad 0. External sources were not verified offline.",
+  "findings": [
+   {
+    "id": "F1",
+    "severity": "minor",
+    "area": "clarity",
+    "checklist_item": "Plain language: paragraphs of at most about 80 words; parallel items become a list",
+    "title": "Split the handoff loop explanation into smaller units",
+    "file": "weeks/week-08-multi-agent-systems.md",
+    "line_start": 263,
+    "line_end": 263,
+    "claim": "One paragraph combines stop-reason handling, pending-response persistence, transfer selection and checkpointing, making the explanation difficult to follow on a phone.",
+    "evidence": "The paragraph contains 178 whitespace-separated words, more than twice STYLE.md's approximate 80-word limit.",
+    "proposed_change": "List the stop-reason cases, then use separate short paragraphs for saving pending calls and processing transfers. Preserve every behavior and identifier; rerun pytest after editing.",
+    "verified_by": "ran_code",
+    "confidence": 1
+   },
+   {
+    "id": "F2",
+    "severity": "nit",
+    "area": "structure",
+    "checklist_item": "Files: glossary terms point to the lesson that introduces them",
+    "title": "Combine the two glossary entries for superstep",
+    "file": "glossary.md",
+    "line_start": 981,
+    "line_end": 985,
+    "claim": "The adjacent entries 'Super-step' and 'Superstep (LangGraph)' describe the same concept under different spellings, which can suggest they are separate terms.",
+    "evidence": "Both entries define one round of LangGraph execution. The existing entry links to 3.5; the new entry adds transactional and resume behavior from 8.3.",
+    "proposed_change": "Keep one entry with both spellings, preserve the checkpoint and recovery details, and link to 3.5 as the introduction and 8.3 for parallel failure handling. Run the link checker.",
+    "verified_by": "read_docs",
+    "confidence": 0.99
+   }
+  ]
+ }
+}
