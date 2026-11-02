@@ -86,6 +86,9 @@ limits:
   respond_agent_timeout_minutes: 40
   respond_codex_timeout_minutes: 40
   max_runs_per_pr_per_day: 6
+  full_reviews: 2              # a PR's first 2 reviews are full; from the 3rd on a review is a closing review and
+                               # open findings go to the owner instead of another round (REVIEW.md "Review rounds").
+                               # `/review full` asks for a full one.
 
 triggers:
   pr_comment_command: /review
