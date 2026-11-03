@@ -60,6 +60,10 @@ an accuracy finding from what the lesson's own sources say, or from well-establi
 - Is anything stated as current that is likely out of date? Say what changed and give the source.
 - Code sketches: would they run, or at least do what the text says? Off-by-one loops, missing returns, a loop that
   cannot stop, a guard that never fires.
+- Sketches illustrate a lesson; they are not production code. Omit optional production hardening the lesson does not
+  teach (logging, metrics, config, retries with backoff, input validation beyond what the text discusses). Severity
+  still follows impact: a sketch that crashes, does the opposite of the text, or contradicts an earlier lesson is
+  `critical` or `major` like any other wrong claim.
 - Arithmetic and counts in the text and in charts ("four tools", token costs, pass@k numbers).
 - Contradictions between lessons (lesson 7.1 says one thing, 5.5 another).
 - Worked answers: do they actually answer the exercise as set, and are they right?
@@ -159,3 +163,21 @@ The summary must fit on a phone screen: the verdict, then the top three findings
    on the `reviewer/` PR that carries it.
 3. Every decision is added to [reviews/decisions.md](reviews/decisions.md). Deferred items go to
    [BACKLOG.md](BACKLOG.md).
+4. **Review rounds.** A PR gets 2 full reviews (`limits.full_reviews` in [review/config.yaml](review/config.yaml)).
+   From the 3rd review on, a review is a *closing review*. It checks:
+   - every finding from the earlier reviews: fixed in the files now, still open, or settled by a decision on `main`;
+   - the fixes made since the earlier reviews, what they touch, and any regressions they cause.
+
+   In text and code the fixes did not change, it reports only new `critical` and `major` findings, and a `question`
+   only when one is needed to establish correctness. Severities and verdicts are unchanged. Open findings then go to
+   the owner to decide, recorded in [reviews/decisions.md](reviews/decisions.md); they are never cleared
+   automatically, and no further `/respond` or review runs unless the owner asks.
+   - If an owner-requested `/respond` after a closing review changes what was reviewed, comment `/review` once its
+     fix PR is merged: one more closing review, on the PR's final head. If it only records the owner's decisions, no
+     further review is needed.
+   - `/review full` asks for a full review whatever the count. The reviewer still sees the decision log, so it is
+     not a blind review.
+
+   Reviews are counted from `reviewer/archive`: valid, completed reviews of the PR, across dates and reviewers,
+   `/review force` repeats included; responses, project reviews and failed runs don't count. If the archive can't be
+   read, the review is a full one.

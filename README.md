@@ -53,5 +53,6 @@ A model from a different family checks the notes against [REVIEW.md](REVIEW.md):
 - **Monthly:** on the 1st, Fable reviews the whole repo and opens a `reviewer/` PR with its findings.
 - **On request:** comment `/review` on any PR (`/review fable` for Fable, `/review force` to re-review the same commit), or add the `review` label.
 - **Answering:** comment `/respond` on the reviewed PR. Claude Opus, which wrote the notes, decides on each finding (accept, modify, reject, defer), applies the fixes, runs the tests and opens a pull request into the reviewed branch. Merging it accepts the decisions; closing it rejects them.
+- **Rounds:** a PR gets 2 full reviews. From the 3rd on, a review is a *closing review*: it checks the earlier fixes and every open finding, and what is still open comes to me to decide instead of another round ([REVIEW.md](REVIEW.md#after-the-review)).
 
 Every review is archived on the `reviewer/archive` branch. Settings: [review/](review/) and [.github/workflows/](.github/workflows/). The machinery is shared with other repos: [cross-model-review](https://github.com/joshxinjie/cross-model-review).
