@@ -516,7 +516,7 @@ Two teams with the same model get wildly different results; the difference is al
 
 ### Try it
 
-Take your 1.3 code and write a one-page **harness inventory**: a table with the six layers as rows. For each layer write (i) what exists today, and (ii) what is missing that bit you yesterday or could bite in production. Be specific: "no budget — a stuck tool loops forever", not "needs guardrails".
+Take your 1.3 code and write a one-page **harness inventory**: a table with the six layers as rows. For each layer write (i) what exists today, and (ii) what is missing that bit you in the 1.3 exercise or could bite in production. Be specific: "no budget — a stuck tool loops forever", not "needs guardrails".
 
 Then pick *one* cheap addition for each of layers 3, 5 and 6 (loop control, guardrails, feedback), and implement or sketch it:
 

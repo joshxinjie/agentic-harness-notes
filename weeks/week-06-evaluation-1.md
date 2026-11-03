@@ -602,6 +602,8 @@ One number hides the trade-off. Kapoor et al. argue that benchmarking on accurac
 
 One 8×10 run cannot see a change smaller than that.
 
+*Note (2026-11-03, project review):* ±25 uses the normal multiplier 1.96 (1.96 × 0.126 ≈ 0.25). With 8 tasks, [6.5](#65-regression-testing-a-harness-change-ab-on-prompts-and-tools) uses the t multiplier for 7 degrees of freedom, 2.36, which gives about ±30 points (2.36 × 0.126 ≈ 0.30). Use the t multiplier.
+
 Slips: headlining pass@3 = 0.98; computing the SE over 80 trials as if they were independent.
 
 ### Sources
