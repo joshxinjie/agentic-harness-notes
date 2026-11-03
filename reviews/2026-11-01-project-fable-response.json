@@ -1,0 +1,112 @@
+{
+ "review": "2026-11-01-project-fable.json",
+ "author": "claude-opus-5-5",
+ "date": "2026-11-03",
+ "harness": "7c985f04d980b32e6b6c9fb5c54c0351ccbc6d1b",
+ "response": {
+  "schema_version": 1,
+  "summary": "8 findings: 6 accept, 2 modify, 0 reject, 0 defer. Check these first: F1 changes the 8.1 code shape. The semaphore is now made per run by a make_spawn_workers() factory, and a stub test showed 4 workers per run and 8 across two runs. F5 keeps the email's ±25 and adds a dated note saying t with 7 df gives ±30, so the emails stay the record. F2 rewords the fan-in intro and adds a note about 8.1's cluster-scope finding; the quorum code is unchanged. Tests: 25 passed, link checker bad 0, contents check ok.",
+  "responses": [
+   {
+    "finding_id": "F1",
+    "decision": "accept",
+    "reason": "Correct: the module-level Semaphore(4) was shared by every run in the process. I took the first option the reviewer proposed. The semaphore is now made inside make_spawn_workers(), which each orchestrator run calls once, so the comment 'one per orchestrator run' is now true. A dated note explains the change.",
+    "changes": "weeks/week-08-multi-agent-systems.md (8.1 code sketch + dated note); CHANGELOG.md",
+    "verification": {
+     "method": "ran",
+     "outcome": "passed",
+     "detail": "/tmp/check/run.py: the new sketch with a stub run_loop that sleeps 0.2 s; peak was 4 for one run (two spawn calls) and 8 for two concurrent runs"
+    }
+   },
+   {
+    "finding_id": "F2",
+    "decision": "modify",
+    "reason": "The problem is real. I combined the two options without changing the code: the intro now says the fan-in is for the one-worker-per-W2-site split (variant C and the Try it fixture). A dated note says that in 8.1's own run the one cluster-scope W2 finding has no site, so it would get no quorum votes. There, the finding is the fleet verdict on its own once it passes provenance, which matches 8.1 T4. Adding a code branch would mean more new logic than the finding needs.",
+    "changes": "weeks/week-08-multi-agent-systems.md (8.3 example intro + dated note); CHANGELOG.md",
+    "verification": {
+     "method": "read",
+     "outcome": "passed",
+     "detail": "Read 8.1 T2/T4 and SiteFinding (site set only for scope 'site') against the quorum on f.site in the 8.3 code"
+    }
+   },
+   {
+    "finding_id": "F3",
+    "decision": "modify",
+    "reason": "Correct: seven 'Day N' references. I checked each mapping against the lessons' '*Day X ·' lines: 3→1.3, 4→1.4, 7→Week 1 review, 11→2.3, 19→3.4, 23→4.1, 24→4.2. For inline references I used the glossary's own style, plain (N.M) numbers as its header describes, with an extra link only for the Week 1 review, which has no number. Each entry already ends with a 'See [N.M]' link.",
+    "changes": "glossary.md (7 entries); CHANGELOG.md",
+    "verification": {
+     "method": "ran",
+     "outcome": "passed",
+     "detail": "grep 'Day [0-9]+' glossary.md returns nothing; pytest 25 passed; check_links bad 0"
+    }
+   },
+   {
+    "finding_id": "F4",
+    "decision": "accept",
+    "reason": "Correct: 'another' reads as another site, which is a separate group, and the body text says that is not a conflict. I reworded the example as the reviewer proposed.",
+    "changes": "weeks/week-08-multi-agent-systems.md (8.3 worked-answer note); CHANGELOG.md",
+    "verification": {
+     "method": "read",
+     "outcome": "passed",
+     "detail": "Read the reworded note against the paragraph after the 8.3 code block; they now agree"
+    }
+   },
+   {
+    "finding_id": "F5",
+    "decision": "modify",
+    "reason": "The arithmetic is right: SD 0.356, SE 0.126, 1.96×SE = 0.247 and 2.36×SE = 0.297. RESPOND rule 2 says the emails are the record, so I kept ±25 and added a dated note. The note says ±25 uses 1.96, that the t multiplier 6.5 uses gives about ±30, and to use t. I did not replace the number.",
+    "changes": "weeks/week-06-evaluation-1.md (6.4 worked answer, dated note); CHANGELOG.md",
+    "verification": {
+     "method": "ran",
+     "outcome": "passed",
+     "detail": "python: comb-based pass^3 for c=[10,9,8,7,5,10,9,6] gives mean .551, SD .356, SE .126, ±.247 (1.96) and ±.297 (2.36)"
+    }
+   },
+   {
+    "finding_id": "F6",
+    "decision": "accept",
+    "reason": "Correct: the two Super-step entries duplicate each other, and τ²-bench was filed under B. I merged them into one 'Super-step (LangGraph)' entry that keeps every fact and links both 3.5 and 8.3. I moved τ²-bench to the end of T, after Turn latency. No links pointed at the old anchors.",
+    "changes": "glossary.md; CHANGELOG.md",
+    "verification": {
+     "method": "ran",
+     "outcome": "passed",
+     "detail": "grep for '#super-?step' anchors found none; check_links bad 0; pytest 25 passed"
+    }
+   },
+   {
+    "finding_id": "F7",
+    "decision": "accept",
+    "reason": "Correct: 8.3 cites the LangGraph state reference inline, but it was missing from the reading list. I added it under Week 8, after the Graph API entry, with the description the reviewer proposed.",
+    "changes": "reading-list.md; CHANGELOG.md",
+    "verification": {
+     "method": "read",
+     "outcome": "passed",
+     "detail": "URL matches the inline link in week-08 8.3 exactly; I could not fetch the URL from here, so it was not checked live"
+    }
+   },
+   {
+    "finding_id": "F8",
+    "decision": "accept",
+    "reason": "Correct: 'yesterday' is left over from the email structure, which STYLE.md says to drop. I reworded it to 'bit you in the 1.3 exercise', which matches 'Take your 1.3 code' earlier in the same sentence.",
+    "changes": "weeks/week-01-what-an-agent-is.md (1.4 Try it); CHANGELOG.md",
+    "verification": {
+     "method": "read",
+     "outcome": "passed",
+     "detail": "Read week-01 line 519 after the edit"
+    }
+   }
+  ],
+  "tests": {
+   "ran": true,
+   "passed": true,
+   "detail": "python -m pytest -q: 25 passed. python tools/check_links.py .: bad 0. python tools/make_toc.py --check: ok."
+  }
+ },
+ "reverted": [],
+ "denials": [
+  {
+   "tool": "Bash",
+   "command": "grep … — 5 commands (;); pipe"
+  }
+ ]
+}
