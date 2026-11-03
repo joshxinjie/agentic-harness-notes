@@ -114,9 +114,6 @@ Denying a tool by name alone (`Bash`) removes it from the model's context comple
 **Batch-level deadline**  
 The wall-clock time by which a whole batch of runs (for example 40 sites) must finish. Divided by concurrency, it sets each run's time cap. See [5.6](weeks/week-05-control-safety-reliability.md#56-latency-and-cost-budgets-parallel-tool-calls-streaming).
 
-**τ²-bench**  
-The successor to τ-bench (adds a telecom domain): a simulated user + domain tools + a policy, graded on the final database state with pass^k. See [6.6](weeks/week-06-evaluation-1.md#66-public-benchmarks-swe-bench-τ-bench-gaia-terminal-bench-and-their-limits).
-
 **Binary / weighted / hybrid scoring**  
 Ways to combine graders: all must pass; a weighted sum must clear a threshold; or hard gates plus a weighted remainder. See [6.3](weeks/week-06-evaluation-1.md#63-graders-exact-match-rubric-llm-as-judge-outcome-checks).
 
@@ -385,7 +382,7 @@ Anthropic's artefact for long-running agents. An initializer agent expands the r
 A rule on command text (deny `curl`) is a filter the model can get around (`python -c "urllib…"`, a script that opens files itself). A sandbox or a missing credential is a wall that holds whatever the model decides, including under prompt injection. See [5.1](weeks/week-05-control-safety-reliability.md#51-permissions-and-sandboxing).
 
 **Findings vs errors**  
-Results that are answers, not failures: "no incidents match", "station 4 returned no data". Sent back as errors, they teach the model to retry a correct answer; sent back as empty lists, they teach it nothing was wrong (the Day 7 null-weather case). The executor sorts each outcome per tool: error (model must act differently), finding (model should reason about it), or invisible (retried inside the tool, 2.6). See [4.3](weeks/week-04-prompt-and-tool-design.md#43-tool-error-messages-as-instructions-designing-for-recovery).
+Results that are answers, not failures: "no incidents match", "station 4 returned no data". Sent back as errors, they teach the model to retry a correct answer; sent back as empty lists, they teach it nothing was wrong (the null-weather case from the [Week 1 review](weeks/week-01-what-an-agent-is.md#week-1-review)). The executor sorts each outcome per tool: error (model must act differently), finding (model should reason about it), or invisible (retried inside the tool, 2.6). See [4.3](weeks/week-04-prompt-and-tool-design.md#43-tool-error-messages-as-instructions-designing-for-recovery).
 
 **Fine-grained tool streaming (eager_input_streaming)**  
 A per-tool flag that streams a tool's input as `input_json_delta` pieces without server-side buffering or JSON checks. Lower latency for large parameters, but the input may be partial or invalid JSON (return it as an `is_error` result wrapping `{"INVALID_JSON": …}`). Replaces the deprecated `fine-grained-tool-streaming-2025-05-14` beta header. See [5.6](weeks/week-05-control-safety-reliability.md#56-latency-and-cost-budgets-parallel-tool-calls-streaming).
@@ -598,7 +595,7 @@ A labelled string with a character limit (originally `persona` and `human`), put
 Course shorthand for the four places state is held, each with its own lifetime, owner and injection rule: transcript (one run), scratchpad (one task), long-term store (across runs), procedural memory (edited by humans). Most "memory failures" are facts kept in the wrong container. See [3.1](weeks/week-03-state-and-memory.md#31-short-term-vs-long-term-memory-scratchpads-conversation-state).
 
 **Memory injection (via own memory)**  
-A wrong or planted line in a memory file that the model obeys because the file is injected as trusted context (Day 19's "skip weather checks"). Nothing in the transcript shows whether a line was written by the model, a person or a bug. Defences are in layer 5: refuse procedural or command-like writes outside files people own, and present memory on read as evidence about the past, not as instructions (5.4). See [3.4](weeks/week-03-state-and-memory.md#34-persistent-memory-files-and-memory-as-documents).
+A wrong or planted line in a memory file that the model obeys because the file is injected as trusted context (the "skip weather checks" line in 3.4). Nothing in the transcript shows whether a line was written by the model, a person or a bug. Defences are in layer 5: refuse procedural or command-like writes outside files people own, and present memory on read as evidence about the past, not as instructions (5.4). See [3.4](weeks/week-03-state-and-memory.md#34-persistent-memory-files-and-memory-as-documents).
 
 **Memory tool**  
 Claude API tool `type: "memory_20250818"` (Claude 4+): six file commands (`view`, `create`, `str_replace`, `insert`, `delete`, `rename`) over a virtual `/memories` folder. It runs client-side: the model asks for file operations, and the harness runs them and maps `/memories` to real storage. The handler must check every path to block path traversal. Turning it on injects a memory protocol (view memory first, record progress, "ASSUME INTERRUPTION"). See [3.1](weeks/week-03-state-and-memory.md#31-short-term-vs-long-term-memory-scratchpads-conversation-state).
@@ -619,7 +616,7 @@ Agents keep private state and share information only in explicit, addressed mess
 A loop plus three or four file and shell tools (`read_file`, `list_files`, `edit_file`, `bash`). It fits in about 40–200 lines and is the skeleton inside every production coding agent. See [1.5](weeks/week-01-what-an-agent-is.md#15-anatomy-of-a-real-agent).
 
 **Minimal-prompt rule**  
-Start with a minimal prompt on the best model, then add instructions and examples only for failures you have actually seen (the Day 4 discipline applied to text). Two deletion tests: move any line the executor could enforce into the executor, and cut any line whose removal changes no decision across ten transcripts. See [4.1](weeks/week-04-prompt-and-tool-design.md#41-system-prompt-architecture-for-agents).
+Start with a minimal prompt on the best model, then add instructions and examples only for failures you have actually seen (the 1.4 discipline applied to text). Two deletion tests: move any line the executor could enforce into the executor, and cut any line whose removal changes no decision across ten transcripts. See [4.1](weeks/week-04-prompt-and-tool-design.md#41-system-prompt-architecture-for-agents).
 
 **Minimum detectable effect (MDE)**  
 The smallest true difference the suite can reliably detect: about 2.8 × SE_diff at 80% power, α = 0.05 two-sided. See [6.5](weeks/week-06-evaluation-1.md#65-regression-testing-a-harness-change-ab-on-prompts-and-tools).
@@ -679,7 +676,7 @@ The final state of the environment after a trial (a row in the database, a ticke
 Whether a benchmark's pass/fail really reflects task success (ABC). Broken by graders that accept empty answers or a scatter of every possible answer. See [6.6](weeks/week-06-evaluation-1.md#66-public-benchmarks-swe-bench-τ-bench-gaia-terminal-bench-and-their-limits).
 
 **Overlap tool**  
-Two tools that can answer the same request (`fetch_weather` next to `weather_get_history`). The model picks by name and argument count, so the shorter one wins some calls however good the descriptions are. Day 24's finding: which tools exist changes behaviour more than any wording — remove the coin flip before polishing text. See [4.2](weeks/week-04-prompt-and-tool-design.md#42-tool-design-naming-descriptions-parameters).
+Two tools that can answer the same request (`fetch_weather` next to `weather_get_history`). The model picks by name and argument count, so the shorter one wins some calls however good the descriptions are. The 4.2 finding: which tools exist changes behaviour more than any wording — remove the coin flip before polishing text. See [4.2](weeks/week-04-prompt-and-tool-design.md#42-tool-design-naming-descriptions-parameters).
 
 
 ## P
@@ -823,7 +820,7 @@ A per-task rule (for example, a regression-set task failing 2 or more of 10) tha
 Taking a harness component out and re-running the tasks it guards, to see if it still earns its place. Run it whenever the model changes. See [7.6](weeks/week-07-evaluation-2-and-iteration.md#76-case-study-how-labs-iterate-on-coding-agent-harnesses).
 
 **Replanning**  
-Revising the rest of the plan after a step's result. This is what lets a fixed upfront plan survive contact with real results. It needs a tool that edits the plan object *and* tool results that show the surprise (Day 11). See [2.3](weeks/week-02-core-mechanics.md#23-planning-and-task-decomposition).
+Revising the rest of the plan after a step's result. This is what lets a fixed upfront plan survive contact with real results. It needs a tool that edits the plan object *and* tool results that show the surprise (2.3). See [2.3](weeks/week-02-core-mechanics.md#23-planning-and-task-decomposition).
 
 **Replay / time travel**  
 Calling a graph with an earlier `checkpoint_id` re-runs the nodes after that checkpoint from that state. `get_state_history` lists the thread's snapshots, newest first. `update_state` makes a new checkpoint with edited values rather than changing an old one (history is append-only). See [3.5](weeks/week-03-state-and-memory.md#35-checkpointing-and-resumability).
@@ -895,7 +892,7 @@ Working memory the model writes on purpose outside the transcript during a run (
 Sen et al. (May 2026): the same documents and model scored 93.1% under one harness and 76.7% under another. Retrieval, harness and delivery path must be "a single jointly evaluated system rather than independent design choices". See [3.3](weeks/week-03-state-and-memory.md#33-retrieval-for-agents-rag-vs-agentic-search).
 
 **Section ablation**  
-The eval move for a system prompt: run the same task with one section removed at a time and record which removal changes behaviour (turns, completion signal, deciding number present, ignored results). Sections whose removal changes nothing are cut or moved into code (6.5). Day 23's result: procedure moves decisions, examples move format, constraints move only the hard case — and one run of a random system proves nothing; use five. See [4.1](weeks/week-04-prompt-and-tool-design.md#41-system-prompt-architecture-for-agents).
+The eval move for a system prompt: run the same task with one section removed at a time and record which removal changes behaviour (turns, completion signal, deciding number present, ignored results). Sections whose removal changes nothing are cut or moved into code (6.5). The 4.1 result: procedure moves decisions, examples move format, constraints move only the hard case — and one run of a random system proves nothing; use five. See [4.1](weeks/week-04-prompt-and-tool-design.md#41-system-prompt-architecture-for-agents).
 
 **Semantic / episodic / procedural memory**  
 LangChain's three kinds of long-term memory: facts ("PVA-03 recabled 2026-08-12"); past events and actions ("last three PVA-03 incidents were curtailment"); and rules for doing the job (system prompt, hypothesis checklist — memory that changes behaviour rather than facts). See [3.1](weeks/week-03-state-and-memory.md#31-short-term-vs-long-term-memory-scratchpads-conversation-state).
@@ -978,11 +975,8 @@ Replacing a stretch of the transcript with a summary the model writes. It loses 
 **Summarised vs iterative search**  
 Returning a capped list of all matches at once (SWE-agent: max 50, 18.0%) versus stepping through matches one at a time like an IDE (12.0%, below no search at all at 15.7%). What is friendly for people can be hostile for agents, because every step is another billed turn. See [4.4](weeks/week-04-prompt-and-tool-design.md#44-agent-computer-interface-aci).
 
-**Super-step**  
-One round of LangGraph execution in which all ready nodes run (in parallel if independent). A checkpoint is written once per super-step. See [3.5](weeks/week-03-state-and-memory.md#35-checkpointing-and-resumability).
-
-**Superstep (LangGraph)**  
-One round of parallel branches in a LangGraph graph. It is transactional: if one branch fails, none of the updates are applied. With a checkpointer, the successful branches are saved and are not re-run on resume. See [8.3](weeks/week-08-multi-agent-systems.md#83-parallel-agents-fan-out-and-fan-in).
+**Super-step (LangGraph)**  
+One round of LangGraph execution in which all ready nodes run (in parallel if independent). A checkpoint is written once per super-step. It is transactional: if one branch fails, none of the updates are applied. With a checkpointer, the successful branches are saved and are not re-run on resume. See [3.5](weeks/week-03-state-and-memory.md#35-checkpointing-and-resumability) and [8.3](weeks/week-08-multi-agent-systems.md#83-parallel-agents-fan-out-and-fan-in).
 
 **Supported schema subset**  
 Supported: `type`, `properties`, `required`, `enum`, `const`, `additionalProperties: false`, `format: date` and similar. **Not** supported: `minimum`/`maximum`, `minLength`/`maxLength`, `pattern`. SDKs strip unsupported keywords and move them into the field description — that is, into prompt text, a hint and not a guarantee. Required properties are written first, then optional ones. See [2.4](weeks/week-02-core-mechanics.md#24-structured-outputs-and-schemas).
@@ -1110,6 +1104,9 @@ One pass through the agent loop: one model call plus the tool runs it triggers. 
 **Turn latency**  
 Time to first token + output generation + tool running time for one loop pass. A run's wall-clock time is roughly the sum over turns, so the number of turns is the main driver of latency. See [5.6](weeks/week-05-control-safety-reliability.md#56-latency-and-cost-budgets-parallel-tool-calls-streaming).
 
+**τ²-bench**  
+The successor to τ-bench (adds a telecom domain): a simulated user + domain tools + a policy, graded on the final database state with pass^k. See [6.6](weeks/week-06-evaluation-1.md#66-public-benchmarks-swe-bench-τ-bench-gaia-terminal-bench-and-their-limits).
+
 
 ## U
 
@@ -1156,4 +1153,4 @@ The task an orchestrator gives a worker: the objective, a fixed window and basel
 A system where LLMs and tools run along code paths written in advance. The graph is fixed before any model runs. See [1.1](weeks/week-01-what-an-agent-is.md#11-llm-call-vs-workflow-vs-agent).
 
 **Workflow-shaped tool**  
-A tool that fits how the agent actually works instead of copying one API endpoint: `schedule_event` instead of `list_users` + `list_events` + `create_event`, with the joining done inside the tool. Each call removed takes one factor out of the compounding-error product (1.6). Keep these next to the basic tools, not in place of them (Day 3's `get_site_metrics`). See [4.2](weeks/week-04-prompt-and-tool-design.md#42-tool-design-naming-descriptions-parameters).
+A tool that fits how the agent actually works instead of copying one API endpoint: `schedule_event` instead of `list_users` + `list_events` + `create_event`, with the joining done inside the tool. Each call removed takes one factor out of the compounding-error product (1.6). Keep these next to the basic tools, not in place of them (the `get_site_metrics` tool from 1.3). See [4.2](weeks/week-04-prompt-and-tool-design.md#42-tool-design-naming-descriptions-parameters).

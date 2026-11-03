@@ -88,18 +88,23 @@ Tools: metrics, weather(agg=daily), pipeline. Max 6 turns.
 Return SiteFinding JSON: scope, hypothesis, verdict,
 deciding_value, tool_use_id. Do not file tickets or write memory."""
 
-SLOTS = asyncio.Semaphore(4)         # one per orchestrator run, shared by every spawn call
+def make_spawn_workers():            # called once at the start of each orchestrator run
+    slots = asyncio.Semaphore(4)     # one per orchestrator run, shared by every spawn call
 
-async def run_worker(t):
-    async with SLOTS:                # fan-out cap: at most 4 workers at once
-        return await run_loop(WORKER_ROLE, WORKER_SPEC.format(**t),
-                              tools=READ_ONLY, max_turns=6,
-                              output_format=SiteFinding)
+    async def run_worker(t):
+        async with slots:            # fan-out cap: at most 4 workers at once
+            return await run_loop(WORKER_ROLE, WORKER_SPEC.format(**t),
+                                  tools=READ_ONLY, max_turns=6,
+                                  output_format=SiteFinding)
 
-async def spawn_workers(tasks):      # the orchestrator's tool
-    assert len(tasks) <= 4           # at most 4 tasks per call
-    return await asyncio.gather(*(run_worker(t) for t in tasks))
+    async def spawn_workers(tasks):  # the orchestrator's tool
+        assert len(tasks) <= 4       # at most 4 tasks per call
+        return await asyncio.gather(*(run_worker(t) for t in tasks))
+
+    return spawn_workers
 ```
+
+*Note (2026-11-03, project review):* the previous version created the semaphore at module level, outside any run. Every orchestrator run in the process then shared it, so a batch of concurrent runs had at most four workers in total, not four per run. Each run now calls `make_spawn_workers()` and gets its own semaphore.
 
 *Note (2026-11-01, second PR #20 review):* the previous version had only the `assert`. It limits one call to four tasks, but the orchestrator can issue several `spawn_workers` calls in one message, and they run concurrently ([8.3](#83-parallel-agents-fan-out-and-fan-in)): two calls of four tasks ran eight workers at once. The semaphore, shared across calls, holds the run to four.
 
@@ -433,7 +438,7 @@ For large outputs, Anthropic's artifact pattern applies: workers write to storag
 
 ### An example
 
-Here is a fan-in for the six-site fixture from 8.1:
+Here is a fan-in for the six-site fixture from 8.1, split one worker per W2 site (8.1's variant C, and the fixture in Try it below):
 
 ```python
 done, late = await asyncio.wait(tasks, timeout=deadline)
@@ -460,6 +465,8 @@ fleet_ticket = len(w2) >= 3          # quorum: 3 of 5 W2 sites
 ```
 
 Late branches are cancelled and become `Untested` results, never verdicts. A worker that crashed becomes `Untested` too, so the healthy findings still get merged. Findings that fail provenance are dropped. The rest are sorted, grouped and checked for conflicts. A conflict is the same site giving two verdicts on one hypothesis. It is escalated and kept out of the quorum. A W2 site that simply rejects the feed hypothesis is not a conflict; it just doesn't vote yes. The fleet ticket needs 3 of the 5 W2 sites, each counted once, to confirm the feed hypothesis.
+
+*Note (2026-11-03, project review):* the quorum is for that per-site split. In 8.1's own run, one cluster-scope worker tests the W2 feed and returns a finding with no `site`, so this code would count no votes and file no fleet ticket. There, the cluster finding that passes provenance is the fleet verdict on its own.
 
 *Note (2026-11-01, PR #20 review):* an earlier version counted every confirmed W2 finding. Three duplicate findings from one site, or three meter findings, met the quorum, and so did a site whose own findings conflicted. A crashed worker also aborted the whole merge, and late workers were left running.
 
@@ -508,7 +515,7 @@ Tasks:
 
 *Note (2026-11-01, PR #20 review):* find the conflicts before the quorum runs, and leave the conflicted scopes out of it, as the [example](#an-example-1) does. Otherwise a site can be escalated and still count toward a ticket. Count each site once, and only for the hypothesis the ticket is about.
 
-*Note (2026-11-01, PR #20 follow-up review):* steps 3 and 4 also define a conflict wrongly. A conflict is two different verdicts within one (scope, hypothesis) group, for example one site's feed finding *confirmed* and another *rejected*. Two different hypotheses for one scope are assessed separately, unless a domain rule says they cannot both hold. The order is: provenance, group, conflicts, then quorum.
+*Note (2026-11-01, PR #20 follow-up review):* steps 3 and 4 also define a conflict wrongly. A conflict is two different verdicts within one (scope, hypothesis) group, for example two findings for the same site on the feed hypothesis, one *confirmed* and one *rejected*. A different site rejecting the feed hypothesis is a separate group and simply does not vote yes. Two different hypotheses for one scope are assessed separately, unless a domain rule says they cannot both hold. The order is: provenance, group, conflicts, then quorum.
 
 Sort every list by (scope, hypothesis, site), and serialise with `sort_keys=True`. After that, five randomised completion orders give byte-identical JSON. Without the sort, they don't.
 
