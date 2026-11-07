@@ -133,25 +133,32 @@ Mark each cell "built in (name it)", "hook point (name it)" or "you write it". T
 | Trace with harness hash | tracing built in; you attach the hash as metadata | same | same |
 | Fan-in with quorum | fan-out built in (`Send` plus a reducer); the quorum is yours | fan-out built in (sub-agents); the quorum is yours | fan-out built in (agents-as-tools); the quorum is yours |
 
-**The provenance guard in the Claude Agent SDK**, about 15 lines. One hook records every number returned by the run's `mcp__ops__` tools. A second hook, on the ticket tool, denies the call if its deciding value is not within 0.5 of a recorded number, and says why.
+**The provenance guard in the Claude Agent SDK**, about 20 lines. Each run calls `make_hooks()` and gets its own evidence set. One hook records every number returned by the run's data tools, an allow-list inside `mcp__ops__`. A second hook, on the ticket tool, denies the call if its deciding value is not within 0.5 of a recorded number, and says why.
 
 ```python
-seen = set()
+DATA_TOOLS = {"mcp__ops__metrics_get_site", "mcp__ops__weather_get_history"}  # data tools only
 
-async def record(inp, tid, ctx):                  # PostToolUse
-    seen.update(numbers_in(inp["tool_response"])); return {}
+def make_hooks():                                 # one evidence set per run
+    seen = set()
 
-async def provenance(inp, tid, ctx):              # PreToolUse
-    v = inp["tool_input"].get("deciding_value")
-    if v is None or not any(abs(v - s) <= 0.5 for s in seen):
-        return {"hookSpecificOutput": {"hookEventName": "PreToolUse",
-            "permissionDecision": "deny",
-            "permissionDecisionReason": f"{v} was not returned by any tool this run; cite your own tool result."}}
-    return {}
+    async def record(inp, tid, ctx):              # PostToolUse
+        if inp["tool_name"] in DATA_TOOLS:        # never archive_read_doc, the extractor or tickets
+            seen.update(numbers_in(inp["tool_response"]))
+        return {}
 
-hooks = {"PreToolUse":  [HookMatcher("mcp__ops__ticket_submit", [provenance])],
-         "PostToolUse": [HookMatcher("mcp__ops__.*", [record])]}
+    async def provenance(inp, tid, ctx):          # PreToolUse
+        v = inp["tool_input"].get("deciding_value")
+        if v is None or not any(abs(v - s) <= 0.5 for s in seen):
+            return {"hookSpecificOutput": {"hookEventName": "PreToolUse",
+                "permissionDecision": "deny",
+                "permissionDecisionReason": f"{v} was not returned by any data tool this run; cite your own tool result."}}
+        return {}
+
+    return {"PreToolUse":  [HookMatcher("mcp__ops__ticket_submit", [provenance])],
+            "PostToolUse": [HookMatcher("mcp__ops__.*", [record])]}
 ```
+
+*Note (2026-11-07, PR #30 review):* the previous version recorded numbers from every `mcp__ops__` tool, including `archive_read_doc`, so a forged 38 in a document passed. It also kept one module-level set, so a value from an earlier run could pass in a later one. The set now holds this run's data-tool results only, as the dated note in the [Week 5 review](week-05-control-safety-reliability.md#week-5-review) requires. Matching a bare number stays loose; the stricter check in that note ties it to the `tool_use_id`, metric, site and window.
 
 **Which framework:** LangGraph for the nightly batch. It gives you durable state, interrupts and fan-out owned by code. The price is that you lose the most control over fan-in: super-steps are transactional, so one failed branch applies no updates from that step. Each worker therefore has to catch its own failures and return `Untested`.
 
@@ -361,19 +368,29 @@ A key design principle is **opaque execution**: agents share capabilities and re
 
 ### An example
 
-Suppose your weather vendor exposes a "weather-QA agent" over A2A. Your investigator sees it as one tool, `weather_qa_ask(cluster, window)`. Its executor sends the request, saves the remote task id in the checkpoint *before* waiting, then polls until the task ends, stopping at the human gate or the deadline:
+Suppose your weather vendor exposes a "weather-QA agent" over A2A. Your investigator sees it as one tool, `weather_qa_ask(cluster, window)`. Its executor first looks in the checkpoint for a task it already started. If there is none, it sends the request and saves the remote task id *before* waiting. Then it polls until the task ends, stopping at the human gate or the deadline. Only a completed task's data part becomes an answer:
 
 ```python
-task = a2a.send_message(parts=[DataPart({"cluster": "W2", "window": "2026-11-03/05"})])
-st.remote[block.id] = task.id; store.save(st)               # checkpoint BEFORE waiting
+tid = st.remote.get(block.id)
+if tid:
+    task = a2a.get_task(tid)                                 # resume: never send again
+else:
+    task = a2a.send_message(parts=[DataPart({"cluster": "W2", "window": "2026-11-03/05"})])
+    st.remote[block.id] = task.id; store.save(st)            # checkpoint BEFORE waiting
 while task.state not in TERMINAL:
-    if task.state == "INPUT_REQUIRED": return pending(task)  # 5.2 gate, durable
+    if task.state in ("INPUT_REQUIRED", "AUTH_REQUIRED"):
+        return pending(task)                                 # 5.2 gate, durable
     if time.monotonic() > deadline:
         a2a.cancel_task(task.id); return untested()
     task = a2a.get_task(task.id)                             # or SubscribeToTask
-facts = QAFacts.model_validate(task.artifacts[0].data)      # typed, no free text
+if task.state != "COMPLETED":
+    return failed(task.state)                                # FAILED, CANCELED, REJECTED: no answer
+data = next(p.data for p in task.artifacts[0].parts if p.data is not None)  # data part only
+facts = QAFacts.model_validate(data)                         # typed, no free text
 return render(facts)                                         # e.g. null_rate 0.31
 ```
+
+*Note (2026-11-07, PR #30 review):* the previous version always sent a new message, so a restart started a second remote task. Only `INPUT_REQUIRED` reached the gate, so an `AUTH_REQUIRED` task was polled until the deadline. A failed, canceled or rejected task fell through to the result parsing. And it read `artifacts[0].data`, but an artifact is made of parts, and the data sits on a part.
 
 ### Where it lives in the harness
 

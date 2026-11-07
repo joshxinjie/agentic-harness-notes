@@ -815,6 +815,9 @@ Take the system apart layer by layer ([1.4](week-01-what-an-agent-is.md#14-what-
 - **Layer 4 (state): decomposition and shared state.** There is no manager. A bare git repo is the shared state. An agent claims work by writing a lock file into a task folder and pushing it. If two agents claim the same task, git rejects the second push, and that agent picks another task. This is **optimistic concurrency**: nobody asks permission first, and git detects the conflict. The lock file is the single-writer rule from [8.4](#84-shared-state-vs-message-passing). Agents have no other channel to each other.
 - **Layer 6 (feedback and evals): the verifier.** The test suites are the oracle, the judge of what counts as correct. The author's warning: if the verifier is unreliable, Claude "will solve the wrong problem". CI was added later, so that new commits could not break tests that already passed. That is a regression gate ([6.5](week-06-evaluation-1.md#65-regression-testing-a-harness-change-ab-on-prompts-and-tools)) on every push.
 - **Layer 2 (tools and the executor): the ACI** ([4.4](week-04-prompt-and-tool-design.md#44-agent-computer-interface-aci)). The test harness prints a few lines and logs the rest. Errors are tagged with a fixed word and the reason on the same line, so grep finds them. Summary statistics are computed in advance. A fast mode runs a 1% or 10% sample of the tests: the same sample every time for one agent, a different random one on each VM. No agent burns hours on the full suite, yet the fleet as a whole covers every test.
+
+  *Note (2026-11-07, PR #30 review):* different samples broaden what the fleet covers, but they do not guarantee every test runs. Sixteen fixed 1% samples cover at most 16% of the suite, and fixed 10% samples can overlap. Read "covers every test" as the aim of varying the samples, not a guarantee.
+
 - **Specialists.** Some instances got standing roles: remove duplicate code, speed up the compiler, improve the generated code, critique the design as a Rust expert, and keep the docs.
 
 ![A loop: a fresh session, restarted by the shell loop, picks a failing test or feature, writes a lock file into current_tasks/ and pushes it. If the push is rejected because the task is already claimed, it picks another. If accepted, it works and runs a fast sample of the tests, pushes the fix with CI guarding the old tests, and the session ends; the shell loop starts the next one.](../diagrams/lock-file-claim.svg)
@@ -923,7 +926,7 @@ Week 8 asked when one agent loop should become several, and what the split costs
 1. a reducer for keys written in parallel (otherwise the last write wins), with a stable sort;
 2. a partial-failure policy: transactional, or partial with flags;
 3. a per-branch deadline that turns a late worker into "untested";
-4. conflict resolution in code over typed findings: provenance filter, group by scope, quorum, escalate contradictions.
+4. conflict resolution in code over typed findings: provenance filter, group by scope and hypothesis, escalate contradictions and leave them out, then the quorum.
 
 **[8.4](#84-shared-state-vs-message-passing) Shared state vs message passing.** Shared state buys visibility, and costs bloat, write conflicts and correlated errors. Message passing buys isolation and a clean contract, but it is lossy. The practical hybrid: private transcripts, typed messages, an append-only artifact store passed by reference, facts not reasoning, and one writer (or a reducer) per key.
 
@@ -972,7 +975,7 @@ One customer reported about a 2× speed-up. That is vendor-reported, from one en
 
 1. The task is sequential, so splitting adds no breadth. Each handoff passes a lossy summary forward (the game of telephone), errors compound along the chain, and every agent re-reads context. Sequential multi-agent variants lost 39–70% in 8.1. Fold it: one loop with four per-hypothesis skills plus the same tools. Split again only if an eval shows a loss from context bloat.
 2. (a) A code router: classify once, by rules. (b) A handoff, because control stays with the specialist for many turns. Send a typed payload plus the history with the tool results filtered out. (c) Agent-as-tool (a delegated sub-agent): there is context pressure, and a short result comes back.
-3. Four findings are lost with a hand-rolled merge, which keeps only the last write. LangGraph instead rejects several writes to a plain key in one step (`InvalidUpdateError`). Two decisions are still open after `operator.add`: the partial-failure and deadline policy (transactional, or partial with untested), and conflict resolution (provenance → quorum → stable sort).
+3. Four findings are lost with a hand-rolled merge, which keeps only the last write. LangGraph instead rejects several writes to a plain key in one step (`InvalidUpdateError`). Two decisions are still open after `operator.add`: the partial-failure and deadline policy (transactional, or partial with untested), and conflict resolution (provenance → group by scope and hypothesis → escalate and exclude conflicts → quorum → stable sort).
 4. Correlated error through copying (consensus inertia). `copy_rate` exposes it. Two fixes that keep part of the saving: read provenance plus a quorum on read (skip your own check only when at least 2 independent authors agree), or post facts to the board and leave verdicts to the orchestrator.
 5. (a) Coordination, caught by `duplicate_scope`. (b) Cascade and lineage, caught by `orphan_claim`. (c) Cost, caught by `child_cost_share`: the budget is not counting children.
 
@@ -982,10 +985,12 @@ Write `investigate_fleet(flags, deadline) -> FleetResult`, about 100 lines with 
 
 1. A code router ([8.2](#82-handoffs-routing-and-specialist-agents)) splits flagged sites into feed-suspect, site-suspect and unknown.
 2. An orchestrator ([8.1](#81-orchestratorworker-pattern)) sees the fleet view (station clusters) and calls `spawn_workers` with a specialist enum and a fan-out cap of 4. Workers are read-only and return a `SiteFinding` with a `parents` list.
-3. `fan_out` with a per-branch deadline, and `fan_in` in a fixed order: provenance → group by scope → 3-of-5 quorum → conflicts to escalation, with sorted output ([8.3](#83-parallel-agents-fan-out-and-fan-in)).
+3. `fan_out` with a per-branch deadline, and `fan_in` in a fixed order: provenance → group by scope and hypothesis → conflicts to escalation, left out of the vote → 3-of-5 quorum, with sorted output ([8.3](#83-parallel-agents-fan-out-and-fan-in)).
 4. An append-only artifact store passed by reference. The orchestrator is the single writer of verdicts, tickets and memory ([8.4](#84-shared-state-vs-message-passing)).
 5. A run budget that counts children, and the detectors `orphan_claim`, `duplicate_scope`, `copy_rate` and `child_cost_share` ([8.5](#85-failure-modes-of-multi-agent-systems)).
 6. A failure-signature lock, so two workers never chase the same root cause ([8.6](#86-case-study-a-coding-multi-agent-system-dissected)).
+
+*Note (2026-11-07, PR #30 review):* the recap, self-quiz answer 3 and step 3 above first put the quorum before conflict removal (or left conflicts out). That reverses the order in [8.3](#83-parallel-agents-fan-out-and-fan-in), where conflicts are found first and kept out of the vote. Counting first, two clean confirmations plus a site that reports both verdicts reach 3 and file a ticket; with 8.3's order they reach 2 and file none.
 
 Fixture: a W2 outage across PVA-01, -02, -04, -05 and -06; a PVA-03 meter fault; PVA-01's worker seeds "W2 nulls 2%" with no tool ancestor; PVA-06's worker times out; and two workers hit the same failure signature. Expected: one fleet feed ticket, one PVA-03 meter ticket, PVA-06 listed as untested, and the seed dropped as an orphan. Report total tokens (parent plus children), wall-clock time and the detector values.
 
@@ -1001,6 +1006,8 @@ The run, step by step:
 4. At fan-in, provenance drops PVA-01's seed (`orphan_claim` = 1). PVA-06 timed out, so the result is 3 confirmations out of 5, which only just meets the 3-of-5 quorum.
 
 Output: one fleet feed ticket, one PVA-03 meter ticket, and PVA-06 listed as untested. `copy_rate` = 0, because the workers use message passing only. `child_cost_share` lands around 0.7–0.8, which is why the budget must count children.
+
+*Note (2026-11-07, PR #30 review):* the fixture does not say which two workers share the signature, and the count of 3 depends on it. After the orphan and the timeout, the confirmations come from PVA-02, -04 and -05. If two of those collapse into one investigation and it counts once, only 2 independent confirmations remain: the 3-of-5 quorum fails and no fleet ticket is filed. The answer holds only if each of the three sites still returns its own tool-backed finding. Shared evidence must not count twice.
 
 **Fold or keep?** Fold the per-site checks into the orchestrator's loop as skills. Keep the parallel feed workers as separate contexts, because their contexts are breadth you can throw away. Decide it with the 12-task suite plus the fleet fixtures: 10 trials per task, with a paired comparison of pass^3 and cost per success.
 
