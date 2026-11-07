@@ -26,9 +26,9 @@ jobs:
       contents: write          # push the respond/ branch; archive the response record
       pull-requests: write     # open the fix PR
       issues: write            # comment on the reviewed PR, react to /respond
-    uses: joshxinjie/cross-model-review/.github/workflows/respond.yml@main
+    uses: joshxinjie/cross-model-review/.github/workflows/respond.yml@7c985f04d980b32e6b6c9fb5c54c0351ccbc6d1b   # pin: harness main at 7c985f0 (cross-model-review#11); same full SHA as harness-ref
     with:
-      harness-ref: main
+      harness-ref: 7c985f04d980b32e6b6c9fb5c54c0351ccbc6d1b   # keep identical to the SHA after @ above
       # The author may re-render diagrams: mermaid-cli, pointed at the runner's Chrome through PUPPETEER_CONFIG
       # (set in review/config.yaml agent_env).
       install: >-
