@@ -1,0 +1,35 @@
+{
+ "meta": {
+  "reviewer": "gpt",
+  "provider": "codex",
+  "model": "gpt-6.1-sol",
+  "scope": "pr",
+  "date": "2026-11-07",
+  "input_tokens": 199805,
+  "output_tokens": 598,
+  "attempts": 1,
+  "context_files": [
+   "PULL REQUEST",
+   "DIFF",
+   "reviews/decisions.md",
+   "STYLE.md",
+   "README.md",
+   "CHANGELOG.md",
+   "weeks/week-09-frameworks-and-protocols.md"
+  ],
+  "context_dropped": [],
+  "context_tokens_est": 26824,
+  "pr": 34,
+  "review_number": 1,
+  "closing_review": false,
+  "harness": "7c985f04d980b32e6b6c9fb5c54c0351ccbc6d1b",
+  "commit": "1e5fbca4c1a5d55b19eeebeaab64161ec3e40d2f"
+ },
+ "review": {
+  "schema_version": 1,
+  "scope": "pr",
+  "verdict": "approve",
+  "summary": "approve — No findings. The note accurately explains the selector's assumption and order-dependent failure, reproduced with stand-in parts. Validation: 27 tests passed; link checker reported bad 0; contents check passed.",
+  "findings": []
+ }
+}
