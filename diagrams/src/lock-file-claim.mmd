@@ -1,0 +1,9 @@
+flowchart TD
+    A(["Fresh session<br>(shell loop restarts it)"]) --> B["Pick a failing<br>test or feature"]
+    B --> C["Write lock file in<br>current_tasks/, push"]
+    C --> D{"Push<br>accepted?"}
+    D -->|"no: already claimed"| B
+    D -->|"yes"| E["Work; run tests<br>(--fast sample)"]
+    E --> F["Push the fix;<br>CI guards old tests"]
+    F --> G(["Session ends"])
+    G -.-> A

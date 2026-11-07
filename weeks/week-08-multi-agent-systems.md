@@ -13,6 +13,10 @@
   [Idea](#the-idea-3) · [In the harness](#where-it-lives-in-the-harness-1) · [Mistakes](#common-mistakes-3) · [Try it](#try-it-3) · [Answer](#worked-answer-3) · [Sources](#sources-3)
 - **[8.5 Failure modes of multi-agent systems](#85-failure-modes-of-multi-agent-systems)**  
   [Idea](#the-idea-4) · [Example](#an-example-2) · [Mistakes](#common-mistakes-4) · [Try it](#try-it-4) · [Answer](#worked-answer-4) · [Sources](#sources-4)
+- **[8.6 Case study: a coding multi-agent system dissected](#86-case-study-a-coding-multi-agent-system-dissected)**  
+  [Idea](#the-idea-5) · [In the harness](#where-it-lives-in-the-harness-2) · [Example](#an-example-3) · [Mistakes](#common-mistakes-5) · [Try it](#try-it-5) · [Answer](#worked-answer-5) · [Sources](#sources-5)
+- **[Week 8 review](#week-8-review)**  
+  [Recap](#recap) · [Fold before you split](#fold-before-you-split) · [Self-quiz](#self-quiz) · [Quiz answers](#self-quiz-answers) · [Exercise](#integrative-exercise) · [Exercise answer](#integrative-answer) · [Sources](#sources-6)
 
 <!-- /toc -->
 
@@ -22,7 +26,7 @@
 
 *Figure: the six harness layers from [1.4](week-01-what-an-agent-is.md#14-what-a-harness-is). A second agent adds no new layer: a worker is a tool (layer 2) whose executor is a whole loop (layer 3).*
 
-We start with the most common shape, an orchestrator that hands pieces of a task to workers (8.1). Then control moving from one agent to another (8.2), running workers at once and merging what they return (8.3), and how agents share information (8.4). The last lesson puts the week's failure modes into one map (8.5).
+We start with the most common shape, an orchestrator that hands pieces of a task to workers (8.1). Then control moving from one agent to another (8.2), running workers at once and merging what they return (8.3), and how agents share information (8.4). Then the week's failure modes go into one map (8.5), and a case study watches them in one real system (8.6).
 
 The running example is still the nightly investigator for a portfolio of solar sites. This week, six sites get flagged on the same morning.
 
@@ -747,7 +751,22 @@ Then answer in one paragraph: which single detector would you add to `monitor()`
 
 ### Worked answer
 
-*Answer coming in the next brief.*
+The seed: the PVA-01 worker reports "W2 nulls 2%", while the four honest W2 workers report 28–34%. Illustrative results over five runs:
+
+**A — independent workers, findings concatenated.** The seed is one of six verdicts, so the infection rate is about 17%. But nothing resolves the contradiction. Whoever reads the concatenated prose picks a side, and some runs end with no fleet ticket. Detectors: `duplicate_scope` = 5 (five W2 feed findings), `orphan_claim` = 1 if the 2% came from no tool result, `copy_rate` = 0. This is the most expensive of the three: five full feed checks.
+
+**B — orchestrator with provenance and a 3-of-5 quorum.** An orphan seed is dropped at fan-in. A genuine 2% from a faulty station survives the provenance check, but it loses the quorum 4–1 and is listed as a dissent. Infection 0%, and the run files one fleet ticket plus the PVA-03 meter ticket. `duplicate_scope` collapses to 1 at the merge. Tokens: about the same as A, plus a small merge.
+
+**C — blackboard with no read checks.** PVA-01 posts first, and 2–4 W2 workers read "OK" and stop. `copy_rate` is 0.4–0.8, infection reaches 50–80% of W2 verdicts, tokens fall by about 30–40%, and no fleet ticket is filed. Cheaper, and wrong.
+
+*Note (2026-11-07, second PR #30 review):* the 50–80% does not follow from these counts. There are five W2 verdicts, and the seed's own verdict counts as infected, as in A. Two to four copying workers plus the seed gives 3–5 of 5, so infection is 60–100% of W2 verdicts (copy rate 0.4, 0.6, 0.8 gives infection 60%, 80%, 100%).
+
+**The detector to add first: `orphan_claim`.** It should be zero by construction, so it gets two alerts:
+
+- any orphan that reaches a ticket: a count floor of 1, and it pages someone;
+- the nightly rate of orphans dropped at fan-in, alerting at z > 3 against the 7-night baseline for the same harness hash. A rising drop rate means hallucination or injection upstream.
+
+Typical slips: computing infection only on the final ticket instead of on every verdict's lineage, and reading C's lower token bill as an efficiency win.
 
 ### Sources
 
@@ -757,4 +776,247 @@ Then answer in one paragraph: which single detector would you add to `monitor()`
 
 ---
 
-*Week 8 review coming soon.*
+Lessons 8.1–8.5 gave the mechanisms (orchestrators, handoffs, fan-in, shared state) and the ways they fail. The last lesson of the week watches them in one real system that has no orchestrator at all, and sets it against the orchestrator-based research system from [8.1](#81-orchestratorworker-pattern).
+
+[↑ Contents](#contents)
+
+## 8.6 Case study: a coding multi-agent system dissected
+
+*Day 56 · 2026-11-02*
+
+> **In short**
+> - Anthropic's C compiler was built by 16 parallel Claude instances with no manager: a git repo as shared state, lock files to claim work, and test suites as the judge.
+> - Almost all of the system's intelligence lives in layers 3 (loop control), 4 (state) and 6 (feedback and evals): a shell loop, a git repo and a test suite, not prompts.
+> - When an outside oracle splits the work and checks each piece, peers plus locks are enough. When nothing does, you need an orchestrator and a checker.
+
+### The idea
+
+Anthropic ran sixteen Claude Opus instances in parallel, each in its own Docker container. Each container ran a bash `while true` loop that restarted Claude with a prompt file whenever a session ended.
+
+The numbers:
+
+- roughly 2,000 sessions over about two weeks;
+- 2B input tokens and 140M output tokens;
+- just under $20,000.
+
+The output is a C compiler of about 100,000 lines of Rust. It builds and boots the Linux kernel on x86, ARM and RISC-V, and passes 99% of most compiler test suites.
+
+**API details**
+
+| What | Value |
+|---|---|
+| Model | Claude Opus 4.6 |
+| Prompt file each session starts from | `AGENT_PROMPT.md` |
+| Kernel version built and booted | Linux 6.9 |
+
+### Where it lives in the harness
+
+Take the system apart layer by layer ([1.4](week-01-what-an-agent-is.md#14-what-a-harness-is)):
+
+- **Layer 3 (loop control).** The outer loop is a shell script. Each session is short and fresh, so no context ever needs compaction ([3.2](week-03-state-and-memory.md#32-context-management-summarisation-compaction-truncation)). A session ends when the agent decides its task is done. That is the only stop condition.
+- **Layer 4 (state): decomposition and shared state.** There is no manager. A bare git repo is the shared state. An agent claims work by writing a lock file into a task folder and pushing it. If two agents claim the same task, git rejects the second push, and that agent picks another task. This is **optimistic concurrency**: nobody asks permission first, and git detects the conflict. The lock file is the single-writer rule from [8.4](#84-shared-state-vs-message-passing). Agents have no other channel to each other.
+- **Layer 6 (feedback and evals): the verifier.** The test suites are the oracle, the judge of what counts as correct. The author's warning: if the verifier is unreliable, Claude "will solve the wrong problem". CI was added later, so that new commits could not break tests that already passed. That is a regression gate ([6.5](week-06-evaluation-1.md#65-regression-testing-a-harness-change-ab-on-prompts-and-tools)) on every push.
+- **Layer 2 (tools and the executor): the ACI** ([4.4](week-04-prompt-and-tool-design.md#44-agent-computer-interface-aci)). The test harness prints a few lines and logs the rest. Errors are tagged with a fixed word and the reason on the same line, so grep finds them. Summary statistics are computed in advance. A fast mode runs a 1% or 10% sample of the tests: the same sample every time for one agent, a different random one on each VM. No agent burns hours on the full suite, yet the fleet as a whole covers every test.
+
+  *Note (2026-11-07, PR #30 review):* different samples broaden what the fleet covers, but they do not guarantee every test runs. Sixteen fixed 1% samples cover at most 16% of the suite, and fixed 10% samples can overlap. Read "covers every test" as the aim of varying the samples, not a guarantee.
+
+- **Specialists.** Some instances got standing roles: remove duplicate code, speed up the compiler, improve the generated code, critique the design as a Rust expert, and keep the docs.
+
+![A loop: a fresh session, restarted by the shell loop, picks a failing test or feature, writes a lock file into current_tasks/ and pushes it. If the push is rejected because the task is already claimed, it picks another. If accepted, it works and runs a fast sample of the tests, pushes the fix with CI guarding the old tests, and the session ends; the shell loop starts the next one.](../diagrams/lock-file-claim.svg)
+
+*Figure: one peer's cycle. Git rejecting a second claim is the only coordination between the sixteen agents.*
+
+**API details**
+
+| What | Value |
+|---|---|
+| Lock-file folder | `current_tasks/` |
+| Error tag in test output | `ERROR` |
+| Sampled test run | `--fast` flag (1% or 10% sample) |
+
+### An example
+
+Independent failing tests parallelised well. Compiling the Linux kernel did not. It was one giant task: all 16 agents hit the same bug, fixed it, and overwrote each other's fixes. That is duplicated scope plus parallel writers, both coordination failures from [8.5](#85-failure-modes-of-multi-agent-systems).
+
+The fix was not a manager agent. The harness used GCC as a **known-good oracle**:
+
+1. Compile most kernel files with GCC, and a random subset with Claude's compiler.
+2. Each agent now sees a *different* failure, so the agents stop colliding.
+3. Delta debugging (narrowing a failing set down to the part that still fails) then found pairs of files that failed only when compiled together.
+
+The harness manufactured the decomposition from an oracle.
+
+**The contrast with 8.1.** Anthropic's research system has an orchestrator because a research question has no test suite. Someone must decide the split after reading the input, and the lead must check what comes back. The compiler has tests, so the work splits itself.
+
+The rule of thumb: when an external oracle splits the work and verifies each piece, peers plus locks are enough. When nothing does, you need an orchestrator and a checker. Almost all of this system's intelligence lives in a shell loop, a git repo and a test suite, not in prompts.
+
+### Common mistakes
+
+The leverage was in the verifier and the decomposition, not in the number of agents. The kernel phase got no faster from 16 agents until the oracle split it. The limits stayed real:
+
+- new features frequently broke old ones;
+- the 16-bit boot code still relies on GCC;
+- the compiler's output is slower than GCC's with optimisations turned off.
+
+Common mistakes:
+
+- copying the "16 agents" headline without the test suite that made it work;
+- adding a manager where an oracle would split the work better;
+- letting parallel agents share one failing task.
+
+### Try it
+
+*10–15 min.*
+
+1. Fill a two-column dissection table, Anthropic's research system vs the C compiler, with these rows: topology, who decomposes, shared state, communication channel, verifier, writer policy, budget and cost, and the failure that hurt plus its fix.
+2. Scenario: after a refactor of the feature pipeline, 120 backtest checks fail across 40 solar sites. Choose lock-file peers or an orchestrator, and name your "GCC oracle" (hint: the pipeline before the refactor). How would you route most sites through the old pipeline and a random subset through the new one, so parallel agents see different failures?
+3. Name the one failure that would make 8 parallel agents collide, and the lock you would add.
+
+### Worked answer
+
+**(1) The dissection.**
+
+| | Research system | C compiler |
+|---|---|---|
+| Topology | lead orchestrator + 3–5 parallel subagents | 16 equal peers, no manager |
+| Who decomposes | the lead, at runtime, per query | each agent picks the next failing test or feature from the repo |
+| Shared state | none between workers (the lead holds the plan and memory) | the git repo itself |
+| Channel | spec down, condensed findings up (message passing) | commits, lock files in `current_tasks/`, notes in the repo |
+| Verifier | lead synthesis, a citation agent, LLM-judge evals | test suites + CI, later GCC as a known-good oracle |
+| Writer policy | only the lead writes the report | optimistic: lock-file claims; git conflicts force a rebase |
+| Cost | ~15× chat tokens | ~$20k over ~2,000 sessions |
+| Failure → fix | vague specs (duplicate work, 50 subagents for simple queries) → a spec format and effort-scaling rules | the kernel as one giant task, all 16 fixing the same bug → GCC compiles most files, a random subset goes through the new compiler |
+
+**(2) Peers plus locks**, because an oracle exists: the pipeline as it was before the refactor.
+
+The trap is that 120 failures across 40 sites are not 40 tasks. A refactor breaks shared feature modules, so most sites share a handful of root causes. Split by site, and eight agents fix the same bug.
+
+Instead, build features with the old pipeline for every module except a random subset, which comes from the new one. A mixed run fails only if its subset contains a broken module, so different agents see different failures. Diffing against the old outputs (with a tolerance, not float equality) then localises the module. Agents claim `current_tasks/<module>.lock`.
+
+**(3) The collision:** one broken shared module (say, the irradiance transposition step) failing every site. That is the kernel problem again. Lock on the failure signature, not the site: `hash(module, exception type, first failing assertion)` → `locks/<sig>.lock`. An agent that hits a signature already claimed moves on.
+
+Typical slips: decomposing by site because that is how the backlog is listed, and having no lock at all because "agents will see each other's commits". They see them only after the duplicate work is done.
+
+### Sources
+
+- [Anthropic Engineering — Building a C compiler with a team of parallel Claudes (Feb 2026)](https://www.anthropic.com/engineering/building-c-compiler)
+- [Anthropic Engineering — How we built our multi-agent research system (Jun 2025)](https://www.anthropic.com/engineering/multi-agent-research-system)
+- [InfoQ — coverage of the C compiler project (Feb 2026)](https://www.infoq.com/news/2026/02/claude-built-c-compiler/)
+
+---
+
+[↑ Contents](#contents)
+
+## Week 8 review
+
+*Day 57 · 2026-11-03*
+
+Week 8 asked when one agent loop should become several, and what the split costs. The review sums up the six lessons, adds a timely counterweight (an argument for folding sub-agents back into one loop), and ends with a quiz and one exercise that combines the week. [Week 9](week-09-frameworks-and-protocols.md) moves on to what off-the-shelf frameworks and protocols give you.
+
+### Recap
+
+**[8.1](#81-orchestratorworker-pattern) Orchestrator–worker.** The orchestrator is the usual loop with a `spawn_workers` tool. Its executor runs bounded, read-only worker loops that return typed findings. It differs from a parallelisation workflow only in that the split is chosen after seeing the input. A second agent earns its keep on breadth (independent subtasks), context pressure (a worker reads far more than it returns) or separation of tools and owners. On sequential tasks every multi-agent variant lost 39–70% (Google). Independent agents amplified errors 17.2×, against 4.4× with a checking orchestrator.
+
+**[8.2](#82-handoffs-routing-and-specialist-agents) Handoffs and routing.** Ask who holds control afterwards.
+
+- Agent-as-tool returns control to the caller.
+- A router classifies once, before any agent runs. It is a workflow, and it needs an "unknown" class.
+- A handoff transfers the live run. It is a no-op tool that flips the active agent. It must be checkpointed, it may escalate privilege, and it forces a decision about history (best: a typed payload plus filtered history). Cap handoffs to stop ping-pong.
+
+**[8.3](#83-parallel-agents-fan-out-and-fan-in) Fan-out and fan-in.** Fan-out buys wall-clock time; correctness is decided at fan-in. Four decisions:
+
+1. a reducer for keys written in parallel (otherwise the last write wins), with a stable sort;
+2. a partial-failure policy: transactional, or partial with flags;
+3. a per-branch deadline that turns a late worker into "untested";
+4. conflict resolution in code over typed findings: provenance filter, group by scope and hypothesis, escalate contradictions and leave them out, then the quorum.
+
+**[8.4](#84-shared-state-vs-message-passing) Shared state vs message passing.** Shared state buys visibility, and costs bloat, write conflicts and correlated errors. Message passing buys isolation and a clean contract, but it is lossy. The practical hybrid: private transcripts, typed messages, an append-only artifact store passed by reference, facts not reasoning, and one writer (or a reducer) per key.
+
+**[8.5](#85-failure-modes-of-multi-agent-systems) Failure modes.** Four families, each with a home in the harness and a detector:
+
+- specification and communication: typed specs and findings;
+- coordination (duplicates, parallel writers, ping-pong, stalled barriers): single writers, caps, deadlines;
+- cost: a run budget that counts children;
+- error cascades, where one seed becomes a false consensus through consensus inertia: contained by lineage plus quorum. Provenance proves origin, not truth.
+
+**[8.6](#86-case-study-a-coding-multi-agent-system-dissected) The C compiler case.** Sixteen peers and no orchestrator: git as shared state, lock files as optimistic single-writer claims, tests plus CI as the oracle, and terse, grep-friendly output with a sampled fast mode as the ACI. Parallelism collapsed on one giant task, and a known-good oracle restored it by manufacturing the decomposition. The rule: an external oracle that splits and verifies the work lets peers plus locks suffice. Otherwise you need an orchestrator and a checker.
+
+### Fold before you split
+
+A counterweight landed while this week ran. Anthropic's *Building agents: When to fold subagents into your main agent loop* (22 Oct 2026) argues that many enterprise agents built from sub-agents would do better as a single loop with progressively disclosed skills and tools ([4.5](week-04-prompt-and-tool-design.md#45-skills-procedural-knowledge-loaded-on-demand)).
+
+Shared context avoids lossy handoffs, and "each new model lets you move more of the decision-making out of the harness and into the model itself". That is the assumption register from [7.6](week-07-evaluation-2-and-iteration.md#76-case-study-how-labs-iterate-on-coding-agent-harnesses), applied to topology.
+
+Keep sub-agents when:
+
+- a single loop shows a measurable quality loss from context bloat;
+- the work is parallel and the fresh contexts can be thrown away;
+- one agent struggles to choose tools (choice degrades past about 30–50 definitions) or carries conflicting instructions.
+
+Use full handoffs only when the specialist must talk to the user.
+
+The migration recipe:
+
+1. Eval first (about 10 golden examples to start).
+2. Merge tightly coupled specialists first.
+3. Fold one sub-agent at a time.
+4. Inspect the tasks whose result flipped.
+5. Run each task more than once: one regression appeared in only one of two runs.
+
+One customer reported about a 2× speed-up. That is vendor-reported, from one environment.
+
+### Self-quiz
+
+1. A team splits "why is PVA-03 off?" into four specialist agents chained by handoffs: metrics → weather → pipeline → ticket. Against the single-agent baseline, accuracy drops and cost triples. Using 8.1 and the fold article, explain why, and say what you would do instead.
+2. Pick agent-as-tool, router or handoff for each, and justify it in one line: (a) the morning digest sorting 40 sites into feed / site / none; (b) an on-call chat where, after diagnosis, the engineer needs several turns with the curtailment specialist; (c) the investigator needing a six-station weather pull. For (b), which history policy?
+3. Five W2 workers run as LangGraph parallel branches, and all write the key `findings`, which has no reducer. What does the merged state contain? Which two other fan-in decisions are still open after you add `operator.add`?
+4. A blackboard variant is 35% cheaper than message passing and files no fleet ticket. Name the mechanism, the detector value that exposes it, and two fixes that keep part of the saving.
+5. Classify each into an 8.5 family and name its detector: (a) five near-identical feed tickets for one outage; (b) a ticket whose deciding number has no tool-result ancestor; (c) a run that stayed under its token budget although its children used 4× the parent's tokens.
+
+### Self-quiz answers
+
+1. The task is sequential, so splitting adds no breadth. Each handoff passes a lossy summary forward (the game of telephone), errors compound along the chain, and every agent re-reads context. Sequential multi-agent variants lost 39–70% in 8.1. Fold it: one loop with four per-hypothesis skills plus the same tools. Split again only if an eval shows a loss from context bloat.
+2. (a) A code router: classify once, by rules. (b) A handoff, because control stays with the specialist for many turns. Send a typed payload plus the history with the tool results filtered out. (c) Agent-as-tool (a delegated sub-agent): there is context pressure, and a short result comes back.
+3. Four findings are lost with a hand-rolled merge, which keeps only the last write. LangGraph instead rejects several writes to a plain key in one step (`InvalidUpdateError`). Two decisions are still open after `operator.add`: the partial-failure and deadline policy (transactional, or partial with untested), and conflict resolution (provenance → group by scope and hypothesis → escalate and exclude conflicts → quorum → stable sort).
+4. Correlated error through copying (consensus inertia). `copy_rate` exposes it. Two fixes that keep part of the saving: read provenance plus a quorum on read (skip your own check only when at least 2 independent authors agree), or post facts to the board and leave verdicts to the orchestrator.
+5. (a) Coordination, caught by `duplicate_scope`. (b) Cascade and lineage, caught by `orphan_claim`. (c) Cost, caught by `child_cost_share`: the budget is not counting children.
+
+### Integrative exercise
+
+Write `investigate_fleet(flags, deadline) -> FleetResult`, about 100 lines with fake tools, combining the week:
+
+1. A code router ([8.2](#82-handoffs-routing-and-specialist-agents)) splits flagged sites into feed-suspect, site-suspect and unknown.
+2. An orchestrator ([8.1](#81-orchestratorworker-pattern)) sees the fleet view (station clusters) and calls `spawn_workers` with a specialist enum and a fan-out cap of 4. Workers are read-only and return a `SiteFinding` with a `parents` list.
+3. `fan_out` with a per-branch deadline, and `fan_in` in a fixed order: provenance → group by scope and hypothesis → conflicts to escalation, left out of the vote → 3-of-5 quorum, with sorted output ([8.3](#83-parallel-agents-fan-out-and-fan-in)).
+4. An append-only artifact store passed by reference. The orchestrator is the single writer of verdicts, tickets and memory ([8.4](#84-shared-state-vs-message-passing)).
+5. A run budget that counts children, and the detectors `orphan_claim`, `duplicate_scope`, `copy_rate` and `child_cost_share` ([8.5](#85-failure-modes-of-multi-agent-systems)).
+6. A failure-signature lock, so two workers never chase the same root cause ([8.6](#86-case-study-a-coding-multi-agent-system-dissected)).
+
+*Note (2026-11-07, PR #30 review):* the recap, self-quiz answer 3 and step 3 above first put the quorum before conflict removal (or left conflicts out). That reverses the order in [8.3](#83-parallel-agents-fan-out-and-fan-in), where conflicts are found first and kept out of the vote. Counting first, two clean confirmations plus a site that reports both verdicts reach 3 and file a ticket; with 8.3's order they reach 2 and file none.
+
+Fixture: a W2 outage across PVA-01, -02, -04, -05 and -06; a PVA-03 meter fault; PVA-01's worker seeds "W2 nulls 2%" with no tool ancestor; PVA-06's worker times out; and two workers hit the same failure signature. Expected: one fleet feed ticket, one PVA-03 meter ticket, PVA-06 listed as untested, and the seed dropped as an orphan. Report total tokens (parent plus children), wall-clock time and the detector values.
+
+Then write one paragraph with the fold article in mind: which of your workers would you fold back into a single loop as a skill plus tools, which must stay a separate context, and what eval (tasks, metric, runs per task) would decide it?
+
+### Integrative answer
+
+The run, step by step:
+
+1. The router sends the five W2 sites to feed-suspect and PVA-03 to site-suspect.
+2. The orchestrator spawns a feed specialist for each W2 site and a site specialist for PVA-03.
+3. The signature lock means the two workers that hit the same failure collapse into one investigation.
+4. At fan-in, provenance drops PVA-01's seed (`orphan_claim` = 1). PVA-06 timed out, so the result is 3 confirmations out of 5, which only just meets the 3-of-5 quorum.
+
+Output: one fleet feed ticket, one PVA-03 meter ticket, and PVA-06 listed as untested. `copy_rate` = 0, because the workers use message passing only. `child_cost_share` lands around 0.7–0.8, which is why the budget must count children.
+
+*Note (2026-11-07, PR #30 review):* the fixture does not say which two workers share the signature, and the count of 3 depends on it. After the orphan and the timeout, the confirmations come from PVA-02, -04 and -05. If two of those collapse into one investigation and it counts once, only 2 independent confirmations remain: the 3-of-5 quorum fails and no fleet ticket is filed. The answer holds only if each of the three sites still returns its own tool-backed finding. Shared evidence must not count twice.
+
+**Fold or keep?** Fold the per-site checks into the orchestrator's loop as skills. Keep the parallel feed workers as separate contexts, because their contexts are breadth you can throw away. Decide it with the 12-task suite plus the fleet fixtures: 10 trials per task, with a paired comparison of pass^3 and cost per success.
+
+Common slip: treating 3/5 as comfortable. One more timeout and there is no fleet ticket.
+
+### Sources
+
+- [Anthropic (Claude blog) — Building agents: When to fold subagents into your main agent loop (22 Oct 2026)](https://claude.com/blog/building-agents-when-to-fold-subagents-into-your-main-agent-loop)
+- [Anthropic Engineering — Building a C compiler with a team of parallel Claudes (Feb 2026)](https://www.anthropic.com/engineering/building-c-compiler)
+- [Anthropic Engineering — How we built our multi-agent research system (Jun 2025)](https://www.anthropic.com/engineering/multi-agent-research-system)
