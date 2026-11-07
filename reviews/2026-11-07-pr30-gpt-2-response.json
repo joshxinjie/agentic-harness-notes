@@ -1,0 +1,83 @@
+{
+ "review": "2026-11-07-pr30-gpt-2.json",
+ "author": "claude-opus-5-5",
+ "date": "2026-11-07",
+ "harness": "7c985f04d980b32e6b6c9fb5c54c0351ccbc6d1b",
+ "response": {
+  "schema_version": 1,
+  "summary": "Results: 3 accepted (F2, F3, F5) and 2 modified (F1, F4). The owner should check F1 first. The sketch still does not prevent a duplicate task when a crash comes between the send and store.save. The new note explains the gap and says closing it needs server-side deduplication agreed with the vendor; the sketch does not assume one. F2 and F3 rely on the reviewer's cited A2A v1.0 pages (TASK_STATE_*, ROLE_*, Part, returnImmediately default false); I could not open them here. Tests: 27 passed. Two extra commands were blocked by permission: a sed edit (done with Edit instead) and a combined awk / standalone link-checker run.",
+  "responses": [
+   {
+    "finding_id": "F1",
+    "decision": "modify",
+    "reason": "Real gap: the checkpoint only covers crashes after store.save. A full one-task guarantee would need a server dedup contract that the sources do not specify, so I did not code one. Instead I added a dated note: the sent-but-not-recorded case from 3.5, and the fix needs a stable request identity the server deduplicates on, or reconciliation, agreed with the vendor. I also qualified the Layer 4 bullet and added a Try-it step to kill the process between the send and the save.",
+    "changes": "weeks/week-09-frameworks-and-protocols.md (9.3 note, Layer 4 bullet, Try it); CHANGELOG.md",
+    "verification": {
+     "method": "ran",
+     "outcome": "passed",
+     "detail": "/tmp/check/run.py with fake server: crash after save resumes with 1 task; crash before save gives 2 tasks, which is the gap the note now describes"
+    }
+   },
+   {
+    "finding_id": "F2",
+    "decision": "accept",
+    "reason": "The table said v1.0.0 but used v0-style names. The table now lists ROLE_USER/ROLE_AGENT, the Part content type, task.status.state and the TASK_STATE_* values. The sketch now uses Part(data=...), task.status.state and the TASK_STATE_* strings. A dated note records the earlier names. The diagram keeps its short state labels.",
+    "changes": "weeks/week-09-frameworks-and-protocols.md (9.3 API table, sketch, note)",
+    "verification": {
+     "method": "ran",
+     "outcome": "passed",
+     "detail": "run.py with v1-shaped fakes: COMPLETED returns null_rate 0.31; INPUT_REQUIRED and AUTH_REQUIRED both return pending. Spec page not fetched here"
+    }
+   },
+   {
+    "finding_id": "F3",
+    "decision": "accept",
+    "reason": "With the default returnImmediately=false, the first send could wait out the whole remote run before the id is saved or the deadline is checked. The sketch now passes return_immediately=True and timeout=deadline-now. The prose says the client gets a task back. The table has a returnImmediately row with its default, and the note explains the fix.",
+    "changes": "weeks/week-09-frameworks-and-protocols.md (9.3 prose, sketch, table, note)",
+    "verification": {
+     "method": "ran",
+     "outcome": "passed",
+     "detail": "run.py: send returns a WORKING handle at once; a 12-min fake task is canceled at the 10-min cap and returns untested"
+    }
+   },
+   {
+    "finding_id": "F4",
+    "decision": "modify",
+    "reason": "The sentence is literally about a single request and response, so I kept it as the record. I added a dated note after it: MCP's input_required result and Tasks extension (9.2) cover asking for input and long-running work. What A2A adds are the agent-facing contracts: the Agent Card, messages and artifacts.",
+    "changes": "weeks/week-09-frameworks-and-protocols.md (9.3 The idea, note)",
+    "verification": {
+     "method": "read",
+     "outcome": "passed",
+     "detail": "Checked against 9.2 lines 245-256 (input_required result, Tasks move into an extension); the anchor #92-model-context-protocol-mcp passes the link check in pytest"
+    }
+   },
+   {
+    "finding_id": "F5",
+    "decision": "accept",
+    "reason": "There are five W2 verdicts, and the seed counts as infected (as in answer A). So 2-4 copying workers plus the seed is 3-5 of 5, which is 60-100%, not 50-80%. I kept the original figure and added a dated note with the counts.",
+    "changes": "weeks/week-08-multi-agent-systems.md (8.5 worked answer C, note)",
+    "verification": {
+     "method": "read",
+     "outcome": "passed",
+     "detail": "Recomputed by hand: copy 2,3,4 of 5 = 0.4,0.6,0.8; infected (copiers+seed) 3,4,5 of 5 = 60,80,100%"
+    }
+   }
+  ],
+  "tests": {
+   "ran": true,
+   "passed": true,
+   "detail": "python -m pytest -q: 27 passed. This includes the link check and the contents check. The standalone link-checker run was blocked by permission, so I have no separate 'bad 0' line."
+  }
+ },
+ "reverted": [],
+ "denials": [
+  {
+   "tool": "Bash",
+   "command": "sed … — 4 commands (&&); pipe; redirect"
+  },
+  {
+   "tool": "Bash",
+   "command": "awk … — 4 commands (;); pipe; redirect"
+  }
+ ]
+}
