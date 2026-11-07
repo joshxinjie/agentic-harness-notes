@@ -759,6 +759,8 @@ The seed: the PVA-01 worker reports "W2 nulls 2%", while the four honest W2 work
 
 **C — blackboard with no read checks.** PVA-01 posts first, and 2–4 W2 workers read "OK" and stop. `copy_rate` is 0.4–0.8, infection reaches 50–80% of W2 verdicts, tokens fall by about 30–40%, and no fleet ticket is filed. Cheaper, and wrong.
 
+*Note (2026-11-07, second PR #30 review):* the 50–80% does not follow from these counts. There are five W2 verdicts, and the seed's own verdict counts as infected, as in A. Two to four copying workers plus the seed gives 3–5 of 5, so infection is 60–100% of W2 verdicts (copy rate 0.4, 0.6, 0.8 gives infection 60%, 80%, 100%).
+
 **The detector to add first: `orphan_claim`.** It should be zero by construction, so it gets two alerts:
 
 - any orphan that reaches a ticket: a count floor of 1, and it pages someone;
