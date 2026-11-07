@@ -1,0 +1,105 @@
+{
+ "review": "2026-11-07-pr30-gpt.json",
+ "author": "claude-opus-5-5",
+ "date": "2026-11-07",
+ "harness": "7c985f04d980b32e6b6c9fb5c54c0351ccbc6d1b",
+ "response": {
+  "schema_version": 1,
+  "summary": "Accepted 5, modified 2 (F6, F7), rejected 0, deferred 0. Week 8: the conflict-before-quorum order now matches 8.3 in the recap, quiz answer 3 and integrative exercise, with dated notes for F1, F6 and F7. Week 9: the 9.1 provenance hooks are rebuilt once per run and record only data tools. The 9.3 A2A sketch now resumes the saved task, pauses on AUTH_REQUIRED, parses only COMPLETED tasks and reads data from artifact parts. Look first at the F2 allow-list: it names metrics_get_site and weather_get_history but no curtailment tool, because no curtailment tool name appears in the notes. 27 tests passed; link checker bad 0.",
+  "responses": [
+   {
+    "finding_id": "F1",
+    "decision": "accept",
+    "reason": "8.3's merge (week-08 lines 456-468) escalates conflicted (scope, hypothesis) groups and leaves them out of the w2 vote set. Three places in the Week 8 review had quorum first, or no conflict step: recap line 926, quiz answer 3 and integrative step 3. All three now use 8.3's order. Because the emails are the record, a dated note keeps the old wording and gives the two-clean-plus-one-conflicted counterexample.",
+    "changes": "weeks/week-08-multi-agent-systems.md (recap item 4, quiz answer 3, integrative step 3, dated note)",
+    "verification": {
+     "method": "read",
+     "outcome": "passed",
+     "detail": "Read 8.3 code lines 456-468 against the new order: a conflicted site is excluded, so 2 clean confirmations stay below 3 and no ticket is filed."
+    }
+   },
+   {
+    "finding_id": "F2",
+    "decision": "accept",
+    "reason": "The Week 5 review note (2026-10-27) says provenance must use data tools only, never archive_read_doc or the extractor. The old sketch matched every mcp__ops__ tool and used one module-level set. Now make_hooks() creates a fresh set for each run, and record() only stores numbers from a DATA_TOOLS allow-list. A dated note explains the change and keeps the bare-number caveat.",
+    "changes": "weeks/week-09-frameworks-and-protocols.md (9.1 worked-answer sketch, intro sentence, dated note)",
+    "verification": {
+     "method": "ran",
+     "outcome": "passed",
+     "detail": "/tmp/check/run.py stub: archive_read_doc 38 is denied; current-run metrics 38.2 is allowed; a fresh run's hooks deny 38."
+    }
+   },
+   {
+    "finding_id": "F3",
+    "decision": "accept",
+    "reason": "Line 383 says that on resume you get the stored task instead of sending again, but the sketch always sent a new message. It now checks st.remote[block.id] first and calls get_task when a task is already saved. It sends and checkpoints only when nothing is saved.",
+    "changes": "weeks/week-09-frameworks-and-protocols.md (9.3 example sketch, lead-in, dated note)",
+    "verification": {
+     "method": "ran",
+     "outcome": "passed",
+     "detail": "Stub: crash raised in the first get_task, then a restart with the same checkpoint. Result: sends == 1, st.remote stays {'tu_1': '1'}, and null_rate 0.31 is returned."
+    }
+   },
+   {
+    "finding_id": "F4",
+    "decision": "accept",
+    "reason": "Line 339 says an artifact is made of parts. The sketch now takes the first part that has data and validates that. Text parts never reach QAFacts.",
+    "changes": "weeks/week-09-frameworks-and-protocols.md (9.3 sketch)",
+    "verification": {
+     "method": "ran",
+     "outcome": "passed",
+     "detail": "Stub artifact with a data part {null_rate: 0.31} and the injection text part: returns ('ok', 0.31), and the text is excluded."
+    }
+   },
+   {
+    "finding_id": "F5",
+    "decision": "accept",
+    "reason": "The diagram and line 347 treat both 'required' states as waits on you. Both now return pending(task). After the loop, any state other than COMPLETED returns failed(state) before the artifact is parsed.",
+    "changes": "weeks/week-09-frameworks-and-protocols.md (9.3 sketch, dated note)",
+    "verification": {
+     "method": "ran",
+     "outcome": "passed",
+     "detail": "Stub: AUTH_REQUIRED returns pending. FAILED, CANCELED and REJECTED (all with a partial artifact) return failed(state), never ok."
+    }
+   },
+   {
+    "finding_id": "F6",
+    "decision": "modify",
+    "reason": "The fixture does not say which workers collide. I could not name the colliding workers without inventing fixture facts. So I kept the email's answer and added a dated note. It shows the arithmetic: if two of PVA-02/-04/-05 collapse and count once, only 2 confirmations remain and there is no fleet ticket. The count of 3 holds only if each site still returns its own tool-backed finding. Shared evidence must not count twice.",
+    "changes": "weeks/week-08-multi-agent-systems.md (dated note after the integrative answer output)",
+    "verification": {
+     "method": "read",
+     "outcome": "passed",
+     "detail": "Read the fixture (line ~990) and answer steps 3-4; the arithmetic in the note matches them."
+    }
+   },
+   {
+    "finding_id": "F7",
+    "decision": "modify",
+    "reason": "The wording comes from the source, so it stays. I added a dated mathematical caveat as an indented note inside the bullet. Sixteen fixed 1% samples cover at most 16%, and 10% samples can overlap. So 'covers every test' is the aim of varying the samples, not a guarantee. I added no new source facts.",
+    "changes": "weeks/week-08-multi-agent-systems.md (8.6 Layer 2 bullet, dated note)",
+    "verification": {
+     "method": "read",
+     "outcome": "passed",
+     "detail": "Read the 8.6 bullet and checked the list renders as one list with the note indented (lines 815-821)."
+    }
+   }
+  ],
+  "tests": {
+   "ran": true,
+   "passed": true,
+   "detail": "python -m pytest -q: 27 passed. python tools/check_links.py .: bad 0. The sketches were also checked with stubs in /tmp/check/run.py (F2-F5 asserts pass). No headings changed, so make_toc was not needed."
+  }
+ },
+ "reverted": [],
+ "denials": [
+  {
+   "tool": "Bash",
+   "command": "awk … — 6 commands (;); pipe"
+  },
+  {
+   "tool": "Bash",
+   "command": "printf … — 4 commands (&&); pipe; redirect"
+  }
+ ]
+}
