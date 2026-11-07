@@ -27,8 +27,8 @@ Most examples use one running scenario: an agent that investigates forecast erro
 | 5 | [Control, safety and reliability](weeks/week-05-control-safety-reliability.md) | Done |
 | 6 | [Evaluation I](weeks/week-06-evaluation-1.md) | Done |
 | 7 | [Evaluation II and iteration](weeks/week-07-evaluation-2-and-iteration.md) | Done |
-| 8 | [Multi-agent systems](weeks/week-08-multi-agent-systems.md) | In progress |
-| 9 | Frameworks and protocols | Coming |
+| 8 | [Multi-agent systems](weeks/week-08-multi-agent-systems.md) | Done |
+| 9 | [Frameworks and protocols](weeks/week-09-frameworks-and-protocols.md) | In progress |
 | 10 | Advanced capabilities | Coming |
 | 11 | Safety, alignment and governance | Coming |
 | 12 | Capstone | Coming |

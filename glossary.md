@@ -27,8 +27,14 @@ An attack tuned against one specific defence. *The Attacker Moves Second* (Oct 2
 **Agent**  
 A system where the LLM directs its own process and decides which tools to use. Willison's short version: "an LLM agent runs tools in a loop to achieve a goal". It breaks down as *model(s) + harness*. See [1.1](weeks/week-01-what-an-agent-is.md#11-llm-call-vs-workflow-vs-agent).
 
+**Agent2Agent (A2A)**  
+An open protocol for one agent to delegate work to another agent that someone else built and runs. Google started it; the Linux Foundation now governs it, and it joined the Agentic AI Foundation alongside MCP in August 2026. "MCP gives each agent depth, and A2A gives your system reach." See [9.3](weeks/week-09-frameworks-and-protocols.md#93-agent-to-agent-protocols-and-interoperability).
+
 **Agent as tool**  
 Bringing in a specialist by calling it like a tool: the parent calls the child, the child returns, and the parent carries on, so control comes back. Compare **handoff** and **routing**. See [8.2](weeks/week-08-multi-agent-systems.md#82-handoffs-routing-and-specialist-agents).
+
+**Agent Card (A2A)**  
+A JSON file served at `/.well-known/agent-card.json` that describes a remote agent: identity, skills, endpoints, capabilities and security schemes. Treat it as the remote agent's tool description, and its claims as unverified. See [9.3](weeks/week-09-frameworks-and-protocols.md#93-agent-to-agent-protocols-and-interoperability).
 
 **Agent loop**  
 The harness cycle: call the model with tools, run any tools it asks for, append the results, and call again. It repeats until the model stops asking for tools. See [1.2](weeks/week-01-what-an-agent-is.md#12-the-agent-loop).
@@ -165,6 +171,9 @@ The plug-in storage layer (`InMemorySaver`, `SqliteSaver`, `PostgresSaver`, `Mon
 **Clarification tool**  
 A question tool the model triggers (Claude `AskUserQuestion`: 1–4 questions, 2–4 options each; answers come back as the tool result). Remove it, or answer it automatically, in unattended runs. See [5.2](weeks/week-05-control-safety-reliability.md#52-human-in-the-loop-approval-gates-interrupts-escalation).
 
+**Claude Agent SDK**  
+"Claude Code as a library": the same agent loop with built-in file, bash and web tools, context management, permissions, hooks, sub-agents, sessions, MCP and skills. You configure it rather than build it; layers 2–5 arrive pre-built. See [9.1](weeks/week-09-frameworks-and-protocols.md#91-framework-landscape).
+
 **Claude Code subagent**  
 An agent defined in Markdown (`.claude/agents/*.md`; frontmatter `name`, `description` used to decide when to delegate, a `tools` allow-list that inherits by default, `model`, a turn cap, a `memory` folder, worktree isolation, background mode). It runs in its own context window and returns a summary. Built-ins: Explore (Haiku, read-only), Plan (read-only) and general-purpose. Subagents cannot start subagents, and auto memory is not inherited. See [3.6](weeks/week-03-state-and-memory.md#36-sub-agents-and-context-isolation).
 
@@ -182,6 +191,9 @@ The strategy for clearing tool results. When input goes over `trigger` (default 
 
 **Clustered standard error**  
 An SE computed with the task (not the trial) as the independent unit. Naive per-trial SEs understate the uncertainty. See [6.5](weeks/week-06-evaluation-1.md#65-regression-testing-a-harness-change-ab-on-prompts-and-tools).
+
+**CodeAgent (smolagents)**  
+A smolagents agent that writes each action as Python code instead of a JSON tool call, so loops and nesting come free. That makes a sandbox mandatory. See [9.1](weeks/week-09-frameworks-and-protocols.md#91-framework-landscape).
 
 **Code-based grader**  
 A fixed, rule-based check: string match (exact / regex / fuzzy), pass/fail tests, static analysis, checking the outcome (query the end state), checking tool calls, transcript analysis (turns, tokens). Fast, cheap and repeatable, but brittle when there are valid variations. See [6.3](weeks/week-06-evaluation-1.md#63-graders-exact-match-rubric-llm-as-judge-outcome-checks).
@@ -255,6 +267,9 @@ Total cost of all trials ÷ number of successful trials. The efficiency number t
 **Credentials outside the box**  
 Secrets never enter the environment where model-directed code runs. A proxy or the executor process adds scoped credentials after checking the operation (Claude Code on the web's git proxy). Goes with least-privilege service accounts (a read-only DB role) — 11.3. See [5.1](weeks/week-05-control-safety-reliability.md#51-permissions-and-sandboxing).
 
+**CrewAI**  
+A framework that abstracts the decomposition: agents are personas (role, goal, backstory) grouped into crews that run tasks. Quick to demo, but specification failures (8.5) live in those persona texts. See [9.1](weeks/week-09-frameworks-and-protocols.md#91-framework-landscape).
+
 **Critique**  
 The written reason attached to a pass/fail label. Detailed enough to serve as a few-shot example for a judge. See [6.3](weeks/week-06-evaluation-1.md#63-graders-exact-match-rubric-llm-as-judge-outcome-checks).
 
@@ -281,6 +296,9 @@ The tool on the parent's side (`delegate(name, task)`, Claude Code's Agent/Task 
 
 **Delivery path**  
 How a search result reaches the model: inline in the transcript (shaped, 2.1) or written to a file the agent must open (restorable offload, 3.2). Sen et al. show it changes accuracy as much as the choice of searcher. A search tool that returns full text inline "to save a turn" gets the worst of both. See [3.3](weeks/week-03-state-and-memory.md#33-retrieval-for-agents-rag-vs-agentic-search).
+
+**Delta debugging**  
+Narrowing a failing set down to the part that still fails. In the C compiler case it found pairs of kernel files that failed only when compiled together. See [8.6](weeks/week-08-multi-agent-systems.md#86-case-study-a-coding-multi-agent-system-dissected).
 
 **Detector (failure category)**  
 A code check or calibrated judge that finds more cases of one failure category in traces automatically. Every category in your own taxonomy should have one. See [7.2](weeks/week-07-evaluation-2-and-iteration.md#72-error-taxonomies-and-common-failure-modes).
@@ -372,6 +390,9 @@ Wait `base * 2**attempt` between retries. Used alone, it lines up competing clie
 
 ## F
 
+**Failure-signature lock**  
+A lock keyed on the failure, not the site or task: for example `hash(module, exception type, first failing assertion)`. An agent that hits a signature already claimed moves on, so parallel agents never chase the same root cause. See [8.6](weeks/week-08-multi-agent-systems.md#86-case-study-a-coding-multi-agent-system-dissected).
+
 **Fan-out and fan-in**  
 Fan-out creates N independent branches from one state; fan-in is a barrier that waits for the branches and merges their outputs into one state. Parallelism buys wall-clock time, not accuracy: accuracy is decided at fan-in. See [8.3](weeks/week-08-multi-agent-systems.md#83-parallel-agents-fan-out-and-fan-in).
 
@@ -392,6 +413,9 @@ Five questions to answer before writing any prompt or tool: Can I draw the full 
 
 **Fixture**  
 The frozen environment for a task (database snapshot, recorded tool responses / cassette, seeded memory). Built cheaply from the failing run's trajectory log, never from live vendor calls. See [6.2](weeks/week-06-evaluation-1.md#62-building-an-eval-set-from-real-failures-the-taskgraderenvironment-triad).
+
+**Fold (sub-agents into the main loop)**  
+Replacing sub-agents with a single loop that has progressively disclosed skills and tools. Anthropic (Oct 2026) argues many multi-agent systems would do better folded; keep sub-agents when a single loop shows a measurable loss from context bloat, when the work is parallel and its contexts can be thrown away, or when one agent struggles to choose tools or carries conflicting instructions. See the [Week 8 review](weeks/week-08-multi-agent-systems.md#fold-before-you-split).
 
 **Fork replay**  
 Load the transcript up to turn k, change one thing (a prompt section, a tool description, a tool result), and let the live model carry on, with tools answered from a recorded cassette keyed by (name, sorted input). It tests whether a harness change fixes the behaviour. See [5.5](weeks/week-05-control-safety-reliability.md#55-observability-tracing-logging-trajectories-replaying-runs).
@@ -543,6 +567,9 @@ Give the model light pointers (file paths, site codes, saved queries, links) and
 **Keep the wrong stuff in**  
 Manus's warning against cleaning up transcripts: "leave failed actions in the context" because "without evidence, the model can't adapt". Compaction instructions should keep errors and rejected hypotheses, not only successes. See [3.2](weeks/week-03-state-and-memory.md#32-context-management-summarisation-compaction-truncation).
 
+**Known-good oracle**  
+A trusted reference implementation used to split and check work. In the C compiler case, GCC compiled most kernel files and Claude's compiler a random subset, so each agent saw a different failure. See [8.6](weeks/week-08-multi-agent-systems.md#86-case-study-a-coding-multi-agent-system-dissected).
+
 
 ## L
 
@@ -585,6 +612,12 @@ Cemri et al.'s taxonomy from 200+ traces across 7 multi-agent frameworks: 14 fai
 **max_retries**  
 An SDK client setting. The official SDKs retry short-lived failures twice by default with a short exponential backoff (Python: connection errors, 408, 409, 429, ≥500). Set it on the client or per request with `with_options`. See [2.6](weeks/week-02-core-mechanics.md#26-error-handling-retries-backoff-and-feeding-tool-errors-back-to-the-model).
 
+**MCP (Model Context Protocol)**  
+A standard wire format for tools: each provider writes one server, each app (the host) runs one client per server, so M×N integrations become M+N. It uses JSON-RPC 2.0 over stdio or Streamable HTTP. It changes where tool definitions come from, not the loop, and it enforces none of your guards. See [9.2](weeks/week-09-frameworks-and-protocols.md#92-model-context-protocol-mcp).
+
+**MCP primitives**  
+The three things an MCP server can offer, split by who controls them: tools (the model decides when to call them), resources (the host decides what to attach) and prompts (the user picks them). See [9.2](weeks/week-09-frameworks-and-protocols.md#92-model-context-protocol-mcp).
+
 **Memory as documents**  
 Long-term memory (3.1) kept as plain text files that the model reads and edits with normal file tools. People can audit them (diff and edit), they are addressed by path (a small index in context, bodies on demand), and they are injected at session start rather than searched. Claude Code's CLAUDE.md and auto memory, the Claude memory tool, Letta's memory blocks and this course's five docs are all examples. See [3.4](weeks/week-03-state-and-memory.md#34-persistent-memory-files-and-memory-as-documents).
 
@@ -611,6 +644,9 @@ Asynchronous bulk requests at 50% of the standard price. Most finish within an h
 
 **Message passing**  
 Agents keep private state and share information only in explicit, addressed messages (AutoGen Core: "messages are the only means through which agents can communicate with each other"). It gives isolation and a typed contract, but it is lossy: the sender has to predict what the receiver needs. Compare **shared state**. See [8.4](weeks/week-08-multi-agent-systems.md#84-shared-state-vs-message-passing).
+
+**Microsoft Agent Framework**  
+The successor to AutoGen (in maintenance mode since October 2025), merging it with Semantic Kernel; it reached general availability in April 2026. See [9.1](weeks/week-09-frameworks-and-protocols.md#91-framework-landscape).
 
 **Minimal coding agent**  
 A loop plus three or four file and shell tools (`read_file`, `list_files`, `edit_file`, `bash`). It fits in about 40–200 lines and is the skeleton inside every production coding agent. See [1.5](weeks/week-01-what-an-agent-is.md#15-anatomy-of-a-real-agent).
@@ -657,8 +693,14 @@ Sanity-check agents for an eval suite: one does nothing and claims success; the 
 **Offline vs online eval**  
 An offline eval scores a frozen task with a known answer. An online eval scores live runs, where nobody knows the answer yet, using reference-free signals, late labels and rates over many runs. See [7.4](weeks/week-07-evaluation-2-and-iteration.md#74-online-evaluation-and-monitoring).
 
+**Opaque execution (A2A)**  
+A2A's design principle: agents share capabilities and results, never their prompts, memory or tools. So you see a remote agent's wall-clock time, not its turns or tokens. See [9.3](weeks/week-09-frameworks-and-protocols.md#93-agent-to-agent-protocols-and-interoperability).
+
 **Open code**  
 A one-line diagnosis of a failed run, naming the first thing that went wrong, e.g. "T3: hourly pull → memory cleared → weather blamed". Open codes are later grouped into a taxonomy. See [7.1](weeks/week-07-evaluation-2-and-iteration.md#71-reading-a-transcript).
+
+**Optimistic concurrency**  
+Agents act without asking first, and a conflict is detected afterwards. In the C compiler case, an agent claims a task by pushing a lock file; if two claim the same task, git rejects the second push and that agent picks another. See [8.6](weeks/week-08-multi-agent-systems.md#86-case-study-a-coding-multi-agent-system-dissected).
 
 **Oracle check (simulator)**  
 A scripted agent that asks exactly the right question must pass against the simulator, and a null agent must fail. If the oracle fails, the bug is in the simulator. See [7.3](weeks/week-07-evaluation-2-and-iteration.md#73-simulated-users-and-environments).
@@ -989,6 +1031,9 @@ Anthropic's name for stacking several imperfect evaluation layers, because no si
 
 
 ## T
+
+**Task (A2A)**  
+The unit of work in A2A. The server assigns its id and groups related tasks under a context id. States: working, input required, auth required, and the terminal completed, failed, canceled and rejected. Its output is an artifact made of parts. See [9.3](weeks/week-09-frameworks-and-protocols.md#93-agent-to-agent-protocols-and-interoperability).
 
 **Task (eval)**  
 One test with defined inputs and success criteria (also called a problem or test case). For the investigator: a fixture incident plus the expected root cause. See [6.1](weeks/week-06-evaluation-1.md#61-why-agent-evals-differ-from-llm-evals).

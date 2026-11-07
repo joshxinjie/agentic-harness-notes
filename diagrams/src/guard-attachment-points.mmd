@@ -1,0 +1,4 @@
+flowchart TD
+    G["One provenance check"] --> C["Claude Agent SDK:<br>PreToolUse hook,<br>deny + reason"]
+    G --> O["OpenAI Agents SDK:<br>inside the<br>function tool"]
+    G --> L["LangGraph:<br>guard node before<br>the tools"]

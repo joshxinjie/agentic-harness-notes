@@ -1,0 +1,5 @@
+flowchart TD
+    S(["SendMessage"]) --> W["WORKING"]
+    W -->|"remote side<br>needs something"| P["INPUT_REQUIRED or<br>AUTH_REQUIRED"]
+    P -->|"you reply"| W
+    W --> T["Terminal: COMPLETED,<br>FAILED, CANCELED,<br>REJECTED"]
