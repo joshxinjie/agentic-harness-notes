@@ -1,0 +1,6 @@
+flowchart TD
+    A["1. Raw API,<br>manual loop<br>(you own everything)"] --> B["2. SDK loop helper<br>(tool runner)"]
+    B --> C["3. Runtime<br>(LangGraph:<br>durable state)"]
+    C --> D["4. Full harness<br>(Claude Agent SDK:<br>layers 2–5)"]
+    T(["Own more"]) -.-> A
+    D -.-> U(["Hand over more"])

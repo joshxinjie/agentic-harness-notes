@@ -1,0 +1,7 @@
+flowchart TD
+    A{"Real API<br>or tool?"} -->|"yes"| A1["Use it"]
+    A -->|"no"| B{"Static page<br>is enough?"}
+    B -->|"yes"| B1["Web fetch"]
+    B -->|"no"| C{"Usable<br>accessibility tree?"}
+    C -->|"yes"| C1["Browser use:<br>click by reference"]
+    C -->|"no"| D1["Computer use:<br>screenshots, pixels"]

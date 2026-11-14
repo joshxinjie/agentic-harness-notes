@@ -15,6 +15,9 @@ If the knowledge base is under about 200,000 tokens (about 500 pages), skip retr
 **A/A test**  
 Running the baseline against itself. The difference you see is the noise floor. See [6.5](weeks/week-06-evaluation-1.md#65-regression-testing-a-harness-change-ab-on-prompts-and-tools).
 
+**Accessibility tree (browser use)**  
+The browser's text outline of a page's elements. Claude's browser use returns it with each element tagged by a reference, such as `link "Reports" [ref_7]`, and the model clicks by that reference, which survives layout shifts. A tree read often costs fewer tokens than a screenshot. See [10.1](weeks/week-10-advanced-capabilities.md#101-computer-use-and-browser-agents).
+
 **ACI principles (SWE-agent)**  
 Simple actions (understandable without demonstrations); efficient actions (navigation and editing combined into a few actions); feedback that is informative but short; guardrails that stop errors spreading and speed up recovery. See [4.4](weeks/week-04-prompt-and-tool-design.md#44-agent-computer-interface-aci).
 
@@ -26,6 +29,9 @@ An attack tuned against one specific defence. *The Attacker Moves Second* (Oct 2
 
 **Agent**  
 A system where the LLM directs its own process and decides which tools to use. Willison's short version: "an LLM agent runs tools in a loop to achieve a goal". It breaks down as *model(s) + harness*. See [1.1](weeks/week-01-what-an-agent-is.md#11-llm-call-vs-workflow-vs-agent).
+
+**Agent Server (LangGraph)**  
+LangGraph's deployment architecture: stateless API servers behind a load balancer, queue workers that run several runs each (10 by default), Postgres for durable state and exactly-once per run attempt, and Redis for short-lived signals. A sweeper requeues stalled runs every 2 minutes, so side-effect tools still need the done set. See [9.6](weeks/week-09-frameworks-and-protocols.md#96-deploying-an-agent).
 
 **Agent2Agent (A2A)**  
 An open protocol for one agent to delegate work to another agent that someone else built and runs. Google started it; the Linux Foundation now governs it, and it joined the Agentic AI Foundation alongside MCP in August 2026. "MCP gives each agent depth, and A2A gives your system reach." See [9.3](weeks/week-09-frameworks-and-protocols.md#93-agent-to-agent-protocols-and-interoperability).
@@ -47,6 +53,9 @@ The stable start of the assembled document the model reads on every turn, next t
 
 **Agent-computer interface (ACI)**  
 "an abstraction layer between the LM agent and computer" (SWE-agent): the whole channel of observations and actions — which actions exist and how much each does, what each observation looks like, which state is visible, and which guardrails sit on actions. Tool design (4.2) is about one tool; the ACI is the interface as a whole. Anthropic: put as much effort into ACI as into HCI. See [4.4](weeks/week-04-prompt-and-tool-design.md#44-agent-computer-interface-aci).
+
+**AgentCore Runtime (AWS Bedrock)**  
+A hosted runtime: your agent code, in any framework, runs in a dedicated microVM per session. A session ends after 15 minutes idle (a configurable default) or 8 hours in total, and its state is ephemeral, so durability has to live somewhere else. See [9.5](weeks/week-09-frameworks-and-protocols.md#95-hosted-agent-platforms-and-sandboxes).
 
 **AgentErrorTaxonomy / AgentDebug**  
 A taxonomy built from 500+ failed single-agent trajectories, grouping errors by module: memory, reflection, planning, action and system. Its AgentDebug method finds the earliest decisive error in 45% of cases (baselines 28%), and re-running from that step improved ALFWorld success by up to 26% relative. See [7.2](weeks/week-07-evaluation-2-and-iteration.md#72-error-taxonomies-and-common-failure-modes).
@@ -126,6 +135,12 @@ Ways to combine graders: all must pass; a weighted sum must clear a threshold; o
 **Blackboard**  
 A shared-state design where a main agent posts requests to a common board without naming who should answer, and helper agents volunteer. Google's 2025 version keeps helpers' answers on a separate board that only the main agent reads, so helpers do not influence each other. See [8.4](weeks/week-08-multi-agent-systems.md#84-shared-state-vs-message-passing).
 
+**Brain, hands and session**  
+The three questions behind every hosting decision: where the loop runs (the brain), where tool calls execute (the hands), and where the run's state lives (the session). See [9.5](weeks/week-09-frameworks-and-protocols.md#95-hosted-agent-platforms-and-sandboxes).
+
+**Browser use**  
+Claude's structured tool for driving a browser (31 members). The model reads the page's accessibility tree and acts on element references; pixel coordinates are a fallback for canvas, video and cross-origin iframes. See [10.1](weeks/week-10-advanced-capabilities.md#101-computer-use-and-browser-agents).
+
 **Budget-terminated run**  
 A run that ended because a budget ran out, not because it finished. It gets its own status (`error_max_turns`, `error_max_budget_usd`, `budget`) plus cost and turn count, and either no result or a clearly labelled partial one. The graceful version: "Budget reached — answer now, say what is unverified" plus one last `tool_choice="none"` call. See [2.5](weeks/week-02-core-mechanics.md#25-stopping-conditions-step-budgets-and-loop-detection).
 
@@ -177,6 +192,9 @@ A question tool the model triggers (Claude `AskUserQuestion`: 1–4 questions, 2
 **Claude Code subagent**  
 An agent defined in Markdown (`.claude/agents/*.md`; frontmatter `name`, `description` used to decide when to delegate, a `tools` allow-list that inherits by default, `model`, a turn cap, a `memory` folder, worktree isolation, background mode). It runs in its own context window and returns a summary. Built-ins: Explore (Haiku, read-only), Plan (read-only) and general-purpose. Subagents cannot start subagents, and auto memory is not inherited. See [3.6](weeks/week-03-state-and-memory.md#36-sub-agents-and-context-isolation).
 
+**Claude Managed Agents**  
+Anthropic's hosted harness, in beta. You configure an Agent, an Environment (Anthropic's container or your own self-hosted sandbox) and a Session; the loop, prompt caching, compaction and the session event log run on Anthropic's side. Your guards live in custom tools that run in your application. Tool inputs and outputs still reach Anthropic, and it is not eligible for zero data retention (ZDR) or HIPAA. See [9.5](weeks/week-09-frameworks-and-protocols.md#95-hosted-agent-platforms-and-sandboxes).
+
 **CLAUDE.md**  
 Claude Code's instruction file written by people: rules and conventions, scoped to the project (`./CLAUDE.md`, `.claude/CLAUDE.md`), the user (`~/.claude/CLAUDE.md`) or the organisation (managed policy path). Loaded every session; aim for under 200 lines (a file over 4 MiB is skipped). Files above the working directory load at launch; files in subfolders load when needed. `/init` creates one, `/memory` lists and opens them, `/context` shows what loaded. Claude also reads a repository's `AGENTS.md` directly. See [3.4](weeks/week-03-state-and-memory.md#34-persistent-memory-files-and-memory-as-documents).
 
@@ -215,6 +233,9 @@ Images, documents, `container_upload` blocks and fetched URLs inside the summari
 
 **Compounding error**  
 If each turn succeeds with probability p, a task of n dependent turns naively succeeds about p^n of the time. Recovering by looking at results does better than that, but long tasks still fail sharply past a certain depth (HORIZON benchmark). This is the built-in cost of autonomy. See [1.6](weeks/week-01-what-an-agent-is.md#16-when-not-to-build-an-agent).
+
+**Computer use**  
+Tool calling where the tool is a graphical screen: the model receives screenshots and replies with actions at pixel coordinates. The harness runs the environment, stops a batch at the first failed action, scales screenshots and the model's coordinates, and keeps screenshots from filling the context. See [10.1](weeks/week-10-advanced-capabilities.md#101-computer-use-and-browser-agents).
 
 **Concurrent tool execution**  
 The harness runs the several `tool_use` blocks of one assistant message at the same time (`asyncio.gather`). The API sets no order, so the harness runs read-only calls together and side-effect calls one at a time in message order. See [5.6](weeks/week-05-control-safety-reliability.md#56-latency-and-cost-budgets-parallel-tool-calls-streaming).
@@ -260,6 +281,9 @@ Anthropic's preparation step (Sep 2024): a model writes 50–100 tokens of conte
 
 **Cost / wall-clock budget**  
 The same idea in dollars or seconds: Agent SDK `max_budget_usd` (covers subagents); mini-swe-agent `cost_limit` / `wall_time_limit_seconds` (raising `LimitsExceeded` / `TimeExceeded`, which the run loop turns into an exit message). See [2.5](weeks/week-02-core-mechanics.md#25-stopping-conditions-step-budgets-and-loop-detection).
+
+**Cost ladder**  
+Spending caps at several levels instead of one knob: a per-run cap (turns, cost, wall-clock), a per-batch cap in the driver, a workspace spend limit, and alerts. The workspace limit is a backstop against a runaway, not the budget. See [9.6](weeks/week-09-frameworks-and-protocols.md#96-deploying-an-agent).
 
 **Cost per success**  
 Total cost of all trials ÷ number of successful trials. The efficiency number that penalises cheap failures. See [6.4](weeks/week-06-evaluation-1.md#64-trajectory-level-metrics-passk-steps-cost-tool-call-accuracy).
@@ -338,6 +362,9 @@ The standard edit tool for coding agents: `old_str` must match exactly once and 
 
 **Effort scaling (sub-agents)**  
 Anthropic's rule of thumb for how many to start: simple fact-finding, 1 agent and 3–10 tool calls; direct comparisons, 2–4 sub-agents with 10–15 calls each; complex research, more than 10. An early failure was fifty sub-agents for a simple query. See [3.6](weeks/week-03-state-and-memory.md#36-sub-agents-and-context-isolation).
+
+**Egress proxy**  
+A proxy that every outbound call from the agent's container passes through. It adds API keys and credentials after the request leaves the container and allow-lists the hosts the agent may reach, so generated code never sees a key. See [9.6](weeks/week-09-frameworks-and-protocols.md#96-deploying-an-agent).
 
 **Empty-output confirmation**  
 Replying "Your command ran successfully and did not produce any output." instead of an empty observation. Silence is ambiguous to a model (findings vs errors, 4.3). See [4.4](weeks/week-04-prompt-and-tool-design.md#44-agent-computer-interface-aci).
@@ -485,6 +512,9 @@ A hash of the system prompt + tool definitions (+ skill listing) recorded on eve
 
 **Held-out split**  
 Eval tasks kept aside while you tune a fix, used only to check it. A fix that wins on dev but drops on held-out is overfit to the examples that inspired it. See [7.5](weeks/week-07-evaluation-2-and-iteration.md#75-the-improvement-loop).
+
+**Hosted sandbox, runtime and harness**  
+Three levels of hosting. A hosted sandbox runs your code in their container while the loop stays yours; a hosted runtime runs your whole agent per session (AgentCore); a hosted harness runs the loop and keeps the session for you (Managed Agents). See [9.5](weeks/week-09-frameworks-and-protocols.md#95-hosted-agent-platforms-and-sandboxes).
 
 **Hot-path vs background memory writes**  
 Writing memory during the run (available at once; each write costs a tool turn and latency) versus in a separate pass afterwards (no latency during the run; you must decide when it fires; the run cannot use what it learned). This course's daily task is a background writer. See [3.1](weeks/week-03-state-and-memory.md#31-short-term-vs-long-term-memory-scratchpads-conversation-state).
@@ -708,6 +738,9 @@ A scripted agent that asks exactly the right question must pass against the simu
 **Orchestrator–worker (lead agent + sub-agents)**  
 Anthropic's Research architecture: a lead agent plans, starts sub-agents that "operate in parallel with their own context windows", and combines their short results. About 4× a chat's tokens for a single agent and about 15× for multi-agent; token usage explained 80% of the difference in performance; an Opus 4 lead with Sonnet 4 sub-agents beat a single Opus 4 by 90.2% on an internal breadth-first research eval. 8.1 covers the general pattern: a central LLM breaks a task down dynamically, after seeing the input, delegates the pieces to workers and synthesises their results. See [3.6](weeks/week-03-state-and-memory.md#36-sub-agents-and-context-isolation) and [8.1](weeks/week-08-multi-agent-systems.md#81-orchestratorworker-pattern).
 
+**OSWorld**  
+A benchmark of 369 real-desktop tasks, each checked by running a script on the result. It started at 12.24% for the best model against 72.36% for humans; 2026 trackers report top agents near or above the human mark. See [10.1](weeks/week-10-advanced-capabilities.md#101-computer-use-and-browser-agents).
+
 **OTel GenAI semantic conventions**  
 Vendor-neutral span names and attributes for LLM and agent telemetry: `create_agent`, `invoke_agent`, `execute_tool`, `gen_ai.agent.name`, `gen_ai.conversation.id`, `gen_ai.usage.input_tokens`, `gen_ai.tool.call.id`. Message content is opt-in. Status: Development. See [5.5](weeks/week-05-control-safety-reliability.md#55-observability-tracing-logging-trajectories-replaying-runs).
 
@@ -758,6 +791,9 @@ A true/false setting (default false). When true, the API returns `stop_reason: "
 
 **pause_turn**  
 The stop reason returned when server-side tools (web search and so on) reach their per-request iteration limit (default 10). The harness carries on by sending the response back as it is. See [2.5](weeks/week-02-core-mechanics.md#25-stopping-conditions-step-budgets-and-loop-detection).
+
+**Peak RSS**  
+The most memory one agent session uses at once. Agents per host = (host RAM − overhead) / per-session peak RSS; measure it on a representative long run. See [9.6](weeks/week-09-frameworks-and-protocols.md#96-deploying-an-agent).
 
 **Pending side-effect group**  
 When a gated call pauses the run, every later side-effect call in the same assistant message is held with it and settled together on resume. Each one still needs its tool_result before the next model call. See [5.2](weeks/week-05-control-safety-reliability.md#52-human-in-the-loop-approval-gates-interrupts-escalation).
@@ -930,6 +966,9 @@ Scores near the ceiling, where the remaining gap is mostly broken tasks and nois
 **Scratchpad / structured note-taking (agentic memory)**  
 Working memory the model writes on purpose outside the transcript during a run (NOTES.md, a plan file, a progress file): "the agent regularly writes notes persisted to memory outside of the context window" (Anthropic). It is curated, does not add to the growing token bill or to context rot, and can be re-injected; it belongs to one task. A note must hold the deciding number, not just the verdict, or a resumed run has to work it out again. See [3.1](weeks/week-03-state-and-memory.md#31-short-term-vs-long-term-memory-scratchpads-conversation-state).
 
+**Seam (framework adapter)**  
+The line that keeps framework code out of your own: tools, guards and evals have no framework imports, and one `adapter/` module is the only code that imports a framework. A migration then becomes an ordinary harness change, judged by a paired comparison. See [9.4](weeks/week-09-frameworks-and-protocols.md#94-build-vs-framework).
+
 **Search–harness–delivery as one system**  
 Sen et al. (May 2026): the same documents and model scored 93.1% under one harness and 76.7% under another. Retrieval, harness and delivery path must be "a single jointly evaluated system rather than independent design choices". See [3.3](weeks/week-03-state-and-memory.md#33-retrieval-for-agents-rag-vs-agentic-search).
 
@@ -941,6 +980,12 @@ LangChain's three kinds of long-term memory: facts ("PVA-03 recabled 2026-08-12"
 
 **Session (Claude Agent SDK)**  
 The saved conversation history of a run, written automatically as `~/.claude/projects/<encoded-cwd>/<session-id>.jsonl`. `session_id` is on every result message; `resume=<id>` continues it (for example after `error_max_turns`, with a higher limit), `continue_conversation` picks the most recent one in the folder, and `fork_session=True` branches a copy with its own id. It saves the conversation, not the filesystem — pair it with file checkpointing or a `SessionStore` for other hosts. See [3.5](weeks/week-03-state-and-memory.md#35-checkpointing-and-resumability).
+
+**Session pattern**  
+How containers map to agent sessions: ephemeral (one container per task), long-running (persistent containers serving many sessions), hybrid (ephemeral containers that load from and write back to a session store) or multi-agent (several subprocesses in one container). See [9.6](weeks/week-09-frameworks-and-protocols.md#96-deploying-an-agent).
+
+**Shadow night and canary**  
+Rollout steps for a new harness. On a shadow night it runs beside the old one on the same sites with filing stubbed out, compared paired per site; in a canary a few sites file for real for several nights; then full rollout. See [9.6](weeks/week-09-frameworks-and-protocols.md#96-deploying-an-agent).
 
 **Shape vs truth**  
 Constrained decoding guarantees types, required keys and valid enum values. It says nothing about whether a value is *correct* (a site code that exists, a real date, an id that is in the plan). Syntax checks move to the API; meaning checks stay in the executor (allow-lists, ranges, existence checks → `is_error` with the fix). See [2.4](weeks/week-02-core-mechanics.md#24-structured-outputs-and-schemas).
@@ -1092,6 +1137,9 @@ Prefixing names by service or resource (`weather_get_history`, `archive_search_i
 **Tool registry / executor**  
 Harness code that maps tool names to functions, checks inputs against the schema, runs the function, and formats the result for the model. See [1.3](weeks/week-01-what-an-agent-is.md#13-tool--function-calling).
 
+**Tool runner (Anthropic SDK)**  
+A loop helper in Anthropic's SDK, in beta. It runs your tools, turns exceptions into error results and manages the history. Its docs say to use a manual loop when you need human approval, custom logging or conditional execution. See [9.4](weeks/week-09-frameworks-and-protocols.md#94-build-vs-framework).
+
 **Tool-argument matching**  
 A per-tool rule for when two calls count as the same: exact, ignore, chosen fields, or a custom comparison. See [6.4](weeks/week-06-evaluation-1.md#64-trajectory-level-metrics-passk-steps-cost-tool-call-accuracy).
 
@@ -1199,3 +1247,6 @@ A system where LLMs and tools run along code paths written in advance. The graph
 
 **Workflow-shaped tool**  
 A tool that fits how the agent actually works instead of copying one API endpoint: `schedule_event` instead of `list_users` + `list_events` + `create_event`, with the joining done inside the tool. Each call removed takes one factor out of the compounding-error product (1.6). Keep these next to the basic tools, not in place of them (the `get_site_metrics` tool from 1.3). See [4.2](weeks/week-04-prompt-and-tool-design.md#42-tool-design-naming-descriptions-parameters).
+
+**Workspace (Claude API)**  
+A unit with its own API key, rate limits and monthly spend limit. Workspace limits can be set lower than the organisation's, never higher. Separate dev, staging and production workspaces keep an eval sweep from eating the production batch's rate limit only if the non-production ones are capped below the organisation's limit, which all workspaces share. See [9.6](weeks/week-09-frameworks-and-protocols.md#96-deploying-an-agent).
