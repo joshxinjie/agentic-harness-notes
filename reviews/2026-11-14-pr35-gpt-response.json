@@ -1,0 +1,105 @@
+{
+ "review": "2026-11-14-pr35-gpt.json",
+ "author": "claude-opus-5-5",
+ "date": "2026-11-14",
+ "harness": "7c985f04d980b32e6b6c9fb5c54c0351ccbc6d1b",
+ "response": {
+  "schema_version": 1,
+  "summary": "I accepted 7 of 7 findings and made no changes to the review machinery. Fixes that change what the lesson says carry dated notes, and the original wording is kept: F1 and F2 (Managed Agents handler: it now keeps reading after a tool pause, and it reads event history when it restarts), F3 (\"Not submitted yet\" now works inside the tool runner), F4 (workspaces need caps) and F5 (the AgentCore idle timeout is a default). Look first at the F5 note: its numbers (60–28,800 s, default 900) come from an AWS page that is not in the lesson's sources, and I could not fetch it. F7 marks the answers as partial; there is no source text to fill them from. 29 tests passed; link checker bad 0.",
+  "responses": [
+   {
+    "finding_id": "F1",
+    "decision": "accept",
+    "reason": "Confirmed by running the sketch. With the stream 'custom call c1, requires_action, custom call c2, end_turn', the old break sent only c1. The fixed sketch continues on stop_reason.type == 'requires_action' and sends both. A dated note explains the fix and says that confirmations and budget_reached need their own handling. The original comment listed requires_action as a reason to break, which was the bug.",
+    "changes": "weeks/week-09-frameworks-and-protocols.md (9.5 example lead-in, sketch, dated note)",
+    "verification": {
+     "method": "ran",
+     "outcome": "passed",
+     "detail": "/tmp/check/f1.py runs the sketch logic on a stubbed stream: old -> ['c1'], new -> ['c1','c2'] (assert passes)"
+    }
+   },
+   {
+    "finding_id": "F2",
+    "decision": "accept",
+    "reason": "The worked answer said the handler 'finds the row and sends the stored result again' after a restart. That is true only if the call is delivered again. Per the reviewer's source, a stream delivers only new events. A dated note now says what to do on start: open the stream, read the history for unanswered ticket_submit calls, send the stored row or run the guard, then tail the stream and skip duplicate ids. It also gives the crash test to run. The original sentence is kept.",
+    "changes": "weeks/week-09-frameworks-and-protocols.md (9.5 worked answer (2), dated note)",
+    "verification": {
+     "method": "read",
+     "outcome": "passed",
+     "detail": "Read 9.5 worked answer; the note sits after the restart claim. Could not fetch the events-and-streaming page (no network); relied on the reviewer's citation."
+    }
+   },
+   {
+    "finding_id": "F3",
+    "decision": "accept",
+    "reason": "This matches the tool runner's documented advanced usage: it yields each response before checking for tool use, and calling append_messages inside that iteration makes it continue with the supplied history. The original 'works awkwardly / outer loop' rating comes from the email, so I kept it. A dated note under it says this case works inside the iteration under max_iterations=12 and cites the Tool Runner docs, which are already a source of 9.4.",
+    "changes": "weeks/week-09-frameworks-and-protocols.md (9.4 worked answer (1), dated note)",
+    "verification": {
+     "method": "read",
+     "outcome": "blocked",
+     "detail": "anthropic SDK is not installed (ModuleNotFoundError), so the stubbed-continuation test could not run; checked against the Tool Runner docs as cited."
+    }
+   },
+   {
+    "finding_id": "F4",
+    "decision": "accept",
+    "reason": "Line 803 already says the organisation's limits always apply, which contradicts the claim on line 806 that separate workspaces alone protect production. A dated note now says an uncapped workspace gets the organisation's limit, and that dev and staging must be capped below it. The glossary's Workspace entry is qualified the same way.",
+    "changes": "weeks/week-09-frameworks-and-protocols.md (9.6 dated note); glossary.md (Workspace)",
+    "verification": {
+     "method": "read",
+     "outcome": "passed",
+     "detail": "Read 9.6 lines 799-808 and glossary Workspace entry after edit; consistent with the existing 'organisation's limits always apply' line."
+    }
+   },
+   {
+    "finding_id": "F5",
+    "decision": "accept",
+    "reason": "15 minutes idle is AgentCore's default; idleRuntimeSessionTimeout is configurable (900 s default, 60–28,800 s). I added a dated note to The idea and a row to the API table, and qualified the common-mistakes line and the glossary entry. The warning about ephemeral state stays. This adds an AWS source that is not in the lesson's list, under the dated-note rule.",
+    "changes": "weeks/week-09-frameworks-and-protocols.md (9.5 idea note, API table, common mistakes); glossary.md (AgentCore Runtime)",
+    "verification": {
+     "method": "read",
+     "outcome": "unknown",
+     "detail": "Read the edited lines. Could not fetch the AWS lifecycle-settings page (no network), so the numbers rest on the reviewer's citation and my own recall."
+    }
+   },
+   {
+    "finding_id": "F6",
+    "decision": "accept",
+    "reason": "Running the old command on directories exits with code 2 and prints 'Is a directory'. I changed it to grep -rl and kept the same pattern. In a fixture it finds imports in nested files.",
+    "changes": "weeks/week-09-frameworks-and-protocols.md (9.4 Try it step 2)",
+    "verification": {
+     "method": "ran",
+     "outcome": "passed",
+     "detail": "/tmp/check/f6.py: grep -l -> exit 2, 'Is a directory'; grep -rl -> exit 0, finds tools/sub/w.py and evals/e.py"
+    }
+   },
+   {
+    "finding_id": "F7",
+    "decision": "accept",
+    "reason": "The worked answers in the notes contain no design, code or manifest for integrative steps 1–6, and no code for 9.5 (2). There is nothing in the source text to fill them from, so I took the reviewer's fallback. Dated notes label both answers as partial and name the missing parts. I did not write new model code, because that would invent content.",
+    "changes": "weeks/week-09-frameworks-and-protocols.md (integrative answer note; 9.5 worked answer (2) note)",
+    "verification": {
+     "method": "read",
+     "outcome": "passed",
+     "detail": "Read integrative exercise lines 942-957 against the answer and 9.5 Try it step 2 against answer (2); the notes name exactly the uncovered parts."
+    }
+   }
+  ],
+  "tests": {
+   "ran": true,
+   "passed": true,
+   "detail": "python -m pytest -q: 29 passed. python tools/check_links.py .: bad 0. No headings changed, so the contents list was not regenerated."
+  }
+ },
+ "reverted": [],
+ "denials": [
+  {
+   "tool": "Bash",
+   "command": "sed … — 5 commands (;); pipe"
+  },
+  {
+   "tool": "Bash",
+   "command": "printf … — 3 commands (&&); pipe; redirect"
+  }
+ ]
+}
