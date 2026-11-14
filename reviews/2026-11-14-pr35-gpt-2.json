@@ -1,0 +1,69 @@
+{
+ "meta": {
+  "reviewer": "gpt",
+  "provider": "codex",
+  "model": "gpt-6.1-sol",
+  "scope": "pr",
+  "date": "2026-11-14",
+  "input_tokens": 852119,
+  "output_tokens": 3314,
+  "attempts": 1,
+  "context_files": [
+   "PULL REQUEST",
+   "DIFF",
+   "reviews/decisions.md",
+   "STYLE.md",
+   "README.md",
+   "CHANGELOG.md",
+   "glossary.md",
+   "reading-list.md",
+   "weeks/week-09-frameworks-and-protocols.md",
+   "weeks/week-10-advanced-capabilities.md"
+  ],
+  "context_dropped": [],
+  "context_tokens_est": 110314,
+  "pr": 35,
+  "review_number": 2,
+  "closing_review": false,
+  "harness": "7c985f04d980b32e6b6c9fb5c54c0351ccbc6d1b",
+  "commit": "795a8b75e06799369af0b82d04ff277caa8b6a69"
+ },
+ "review": {
+  "schema_version": 1,
+  "scope": "pr",
+  "verdict": "approve_with_nits",
+  "summary": "approve_with_nits\nClarify whether queue workers create a fresh container for each site.\nAdd three newly cited sources to the reading list.\nChecks: 29 tests passed; links bad 0; contents current. Vendor claims were not independently verified offline.",
+  "findings": [
+   {
+    "id": "F1",
+    "severity": "minor",
+    "area": "clarity",
+    "checklist_item": "Plain language: explain how something works without contradictory descriptions.",
+    "title": "Clarify the container lifetime in the deployment example",
+    "file": "weeks/week-09-frameworks-and-protocols.md",
+    "line_start": 839,
+    "line_end": 840,
+    "claim": "The session-pattern discussion specifies one ephemeral container per site, but the example describes eight queue workers consuming site ids without explaining when site containers are created or destroyed. Readers cannot tell whether containers are reused across sites.",
+    "evidence": "Line 784 says 'ephemeral, one container per site'. Lines 839–840 instead describe a Job with eight workers, each pulling site ids and running run_site in its own working directory.",
+    "proposed_change": "State whether each queue worker launches and destroys a fresh container for every dequeued site. If workers reuse their containers, qualify the earlier session-pattern description accordingly. Check that the diagram caption describes the same lifecycle.",
+    "verified_by": "read_docs",
+    "confidence": 0.94
+   },
+   {
+    "id": "F2",
+    "severity": "minor",
+    "area": "sources",
+    "checklist_item": "Links, sources and diagrams: the reading list includes each source once.",
+    "title": "Include the sources introduced by the correction notes",
+    "file": "reading-list.md",
+    "line_start": 178,
+    "line_end": 184,
+    "claim": "Three sources cited by the new correction notes are absent from the reading list.",
+    "evidence": "Week 9 cites runtime-lifecycle-settings.html at line 618, managed-agents/events-and-streaming at lines 670 and 728, and api/rate-limits at line 821. Searching reading-list.md finds none of these URLs.",
+    "proposed_change": "Add one entry each for AWS lifecycle settings, Managed Agents events and streaming, and Claude API rate limits under Week 9, naming their use in 9.5 or 9.6. Verify that each URL appears exactly once in the reading list.",
+    "verified_by": "read_docs",
+    "confidence": 1
+   }
+  ]
+ }
+}
