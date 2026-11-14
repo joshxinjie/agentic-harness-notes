@@ -179,9 +179,12 @@ Every source the notes use, grouped by the week that relies on it. Each source a
 - [Claude Managed Agents — Self-hosted sandboxes](https://platform.claude.com/docs/en/managed-agents/self-hosted-sandboxes) — Running the sandbox on your own worker, and why tool inputs and outputs still reach Anthropic. Used in 9.5.
 - [Anthropic Engineering — Scaling Managed Agents: decoupling the brain from the hands (Apr 2026)](https://www.anthropic.com/engineering/managed-agents) — The brain, hands and session split, credentials kept out of the sandbox, and containers created on demand. Used in 9.5 and the Week 9 review.
 - [AWS — Bedrock AgentCore Runtime: how it works](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-how-it-works.html) — A hosted runtime with one microVM per session and its session limits. Used in 9.5.
+- [AWS — Bedrock AgentCore Runtime: lifecycle settings](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-lifecycle-settings.html) — The configurable idle timeout and the maximum lifetime of a session's microVM. Used in a 9.5 note.
+- [Claude Managed Agents — Events and streaming](https://platform.claude.com/docs/en/managed-agents/events-and-streaming) — Session events, idle stop reasons such as `requires_action`, and why a reopened stream delivers only new events. Used in 9.5 notes.
 - [Claude Agent SDK — Hosting the Agent SDK](https://code.claude.com/docs/en/agent-sdk/hosting) — Packaging, session patterns, secrets, sizing and cost when an agent runs as a service. Used in 9.6 and the Week 9 review.
 - [LangChain — Agent Server scalability and resilience](https://docs.langchain.com/langgraph-platform/scalability-and-resilience) — Stateless API servers, queue workers, Postgres, heartbeats and requeue. Used in 9.6.
 - [Claude docs — Workspaces (spend and rate limits)](https://platform.claude.com/docs/en/manage-claude/workspaces) — Per-workspace keys, rate limits and spend limits under the organisation's limits. Used in 9.6.
+- [Claude docs — Rate limits](https://platform.claude.com/docs/en/api/rate-limits) — Organisation and workspace limits, and how workspaces share the organisation's limit. Used in a 9.6 note.
 
 ## Week 10 — Advanced capabilities
 

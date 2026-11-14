@@ -55,7 +55,7 @@ The stable start of the assembled document the model reads on every turn, next t
 "an abstraction layer between the LM agent and computer" (SWE-agent): the whole channel of observations and actions — which actions exist and how much each does, what each observation looks like, which state is visible, and which guardrails sit on actions. Tool design (4.2) is about one tool; the ACI is the interface as a whole. Anthropic: put as much effort into ACI as into HCI. See [4.4](weeks/week-04-prompt-and-tool-design.md#44-agent-computer-interface-aci).
 
 **AgentCore Runtime (AWS Bedrock)**  
-A hosted runtime: your agent code, in any framework, runs in a dedicated microVM per session. A session ends after 15 minutes idle (a configurable default) or 8 hours in total, and its state is ephemeral, so durability has to live somewhere else. See [9.5](weeks/week-09-frameworks-and-protocols.md#95-hosted-agent-platforms-and-sandboxes).
+A hosted runtime: your agent code, in any framework, runs in a dedicated microVM per session. A session's microVM stops after 15 minutes idle (a configurable default) or at most 8 hours, and its state is ephemeral, so durability has to live somewhere else. See [9.5](weeks/week-09-frameworks-and-protocols.md#95-hosted-agent-platforms-and-sandboxes).
 
 **AgentErrorTaxonomy / AgentDebug**  
 A taxonomy built from 500+ failed single-agent trajectories, grouping errors by module: memory, reflection, planning, action and system. Its AgentDebug method finds the earliest decisive error in 45% of cases (baselines 28%), and re-running from that step improved ALFWorld success by up to 26% relative. See [7.2](weeks/week-07-evaluation-2-and-iteration.md#72-error-taxonomies-and-common-failure-modes).

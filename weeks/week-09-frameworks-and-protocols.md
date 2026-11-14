@@ -616,6 +616,8 @@ Products sit at different points on that grid:
 - **Hosted runtime** (AWS Bedrock AgentCore Runtime). Your agent code, in any framework, runs in a dedicated microVM (a small virtual machine) per session. A session ends after 15 minutes idle or 8 hours in total, and its memory is then sanitized. Session state is ephemeral, so durability has to live somewhere else.
 
   *Note (2026-11-14, PR #35 review):* the 15 minutes is a default, not a fixed limit. AWS's [lifecycle settings](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-lifecycle-settings.html) let you set the idle timeout anywhere from 1 minute to 8 hours. The 8 hours in total is the session's lifetime ceiling. Either way, the state is lost when the session ends.
+
+  *Note (2026-11-14, after the PR #35 merge):* the 8 hours limits the microVM, not the session. In the same settings, `maxLifetime` (also 1 minute to 8 hours; the idle timeout cannot exceed it) caps how long one microVM runs, and a later request to the same session can be served by a newly provisioned microVM. So anything kept only inside the microVM, such as memory or local files, is lost when it ends, and durable state still has to live outside it.
 - **Hosted harness** (Claude Managed Agents, in beta). You configure four things, and the loop, prompt caching and compaction all run on Anthropic's side:
   - an **Agent**: the model, prompt, tools, MCP servers and skills;
   - an **Environment**: a fresh Anthropic cloud container per session, or a self-hosted sandbox served by your own "worker";
@@ -641,7 +643,7 @@ Anthropic's engineering post on Managed Agents describes exactly this split:
 | Claude Managed Agents objects | Agent, Environment, Session, Events (over SSE) |
 | Hands interface (Anthropic engineering post) | `execute(name, input) → string` |
 | Resume a session (Anthropic engineering post) | `wake(sessionId)` |
-| AWS Bedrock AgentCore Runtime session limits | 15 minutes idle (default), 8 hours in total; one microVM per session |
+| AWS Bedrock AgentCore Runtime session limits | 15 minutes idle (default), 8 hours per microVM (`maxLifetime`); one microVM per session at a time |
 | AWS Bedrock AgentCore Runtime idle timeout setting | `idleRuntimeSessionTimeout`, default 900 seconds, range 60–28,800 seconds (microVM runtimes) |
 
 ### An example
@@ -782,6 +784,8 @@ This lesson turns frameworks and protocols into something that runs at 02:00 loc
 - **Multi-agent:** several subprocesses in one container.
 
 The nightly batch is ephemeral, one container per site. Your checkpoint from [3.5](week-03-state-and-memory.md#35-checkpointing-and-resumability), saved under a run id outside the container, is what makes it restartable.
+
+*Note (2026-11-14, PR #35 second review):* the example below does not say how this fits its 8 workers. Each worker pulls one site id after another and runs `run_site` in its own working directory, and nothing says it gets a fresh container for each site. If a worker keeps its container across sites, only the working directory is per site, which is closer to the long-running pattern. To keep one container per site, the worker starts a fresh container for each site it takes and destroys it when the site finishes. Either way, the checkpoint lives outside the container, so a killed worker is safe to replace.
 
 **3. Secrets.** Three boundaries apply:
 
