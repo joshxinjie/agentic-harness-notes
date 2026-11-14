@@ -555,7 +555,7 @@ Vasco's lesson applies in both directions: revisit the decision when models chan
    - the done check on `ticket_submit`;
    - a pending approval that survives the process exiting;
    - a forced rewrite of an `is_error` text.
-2. Run `grep -l "anthropic\|langgraph" tools/ guards/ evals/`. Every hit is a seam violation; list them.
+2. Run `grep -rl "anthropic\|langgraph" tools/ guards/ evals/`. Every hit is a seam violation; list them.
 3. In one paragraph, write the two observable triggers (from your traces or requirements) that would move the nightly batch from your own loop to LangGraph, and the one trigger that would move a forecasting-ops chat assistant to the Claude Agent SDK.
 
 ### Worked answer
@@ -563,6 +563,8 @@ Vasco's lesson applies in both directions: revisit the decision when models chan
 **(1) Porting to the tool runner.** The runner stops when a response has no tool use, so a text-only `end_turn` leaves the runner before you can reply.
 
 - **"Not submitted yet": works awkwardly.** You catch the exit, call `append_messages()` and iterate again. That is an outer loop around the runner.
+
+  *Note (2026-11-14, PR #35 review):* this rating is too harsh. The [Tool Runner docs](https://platform.claude.com/docs/en/agents-and-tools/tool-use/tool-runner) say the runner yields each response before it checks for tool use. If, inside that same iteration, you call `append_messages()` with the assistant's response and a "Not submitted yet" user message, the runner continues with your history instead of stopping. No outer loop is needed, and `max_iterations=12` still applies. So this case works.
 - **Stuck detector: works awkwardly.** A decorator on each tool function can keep the deque (the record of recent calls). But the nudge has to be a message added between turns, and the hard stop means breaking out of the iteration.
 - **Done check: works awkwardly.** Tool functions receive the arguments but not the `tool_use_id`, so you have to read the id from the response, for example through `generate_tool_call_response()`.
 - **A pending approval that survives exit: impossible** inside the runner, because its state lives only in the process. You have to leave the runner, save the messages and the pending block, and resume with a manual loop. That is where the runner's own docs send human-in-the-loop cases.
@@ -612,6 +614,8 @@ Products sit at different points on that grid:
 
 - **Hosted sandbox only** (E2B, Modal, Daytona, Cloudflare and others). The loop is yours, and code runs in their isolated container. This replaces your own Docker box from [5.1](week-05-control-safety-reliability.md#51-permissions-and-sandboxing).
 - **Hosted runtime** (AWS Bedrock AgentCore Runtime). Your agent code, in any framework, runs in a dedicated microVM (a small virtual machine) per session. A session ends after 15 minutes idle or 8 hours in total, and its memory is then sanitized. Session state is ephemeral, so durability has to live somewhere else.
+
+  *Note (2026-11-14, PR #35 review):* the 15 minutes is a default, not a fixed limit. AWS's [lifecycle settings](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-lifecycle-settings.html) let you set the idle timeout anywhere from 1 minute to 8 hours. The 8 hours in total is the session's lifetime ceiling. Either way, the state is lost when the session ends.
 - **Hosted harness** (Claude Managed Agents, in beta). You configure four things, and the loop, prompt caching and compaction all run on Anthropic's side:
   - an **Agent**: the model, prompt, tools, MCP servers and skills;
   - an **Environment**: a fresh Anthropic cloud container per session, or a self-hosted sandbox served by your own "worker";
@@ -637,11 +641,12 @@ Anthropic's engineering post on Managed Agents describes exactly this split:
 | Claude Managed Agents objects | Agent, Environment, Session, Events (over SSE) |
 | Hands interface (Anthropic engineering post) | `execute(name, input) → string` |
 | Resume a session (Anthropic engineering post) | `wake(sessionId)` |
-| AWS Bedrock AgentCore Runtime session limits | 15 minutes idle, 8 hours in total; one microVM per session |
+| AWS Bedrock AgentCore Runtime session limits | 15 minutes idle (default), 8 hours in total; one microVM per session |
+| AWS Bedrock AgentCore Runtime idle timeout setting | `idleRuntimeSessionTimeout`, default 900 seconds, range 60–28,800 seconds (microVM runtimes) |
 
 ### An example
 
-The investigator's `ticket_submit` as a Managed Agents custom tool. Custom tools run in *your application*, so your guards still have an attachment point. Your app reads the session's event stream. When the agent calls `ticket_submit`, the app replays a stored result if it has already handled that call. Otherwise it collects provenance from the session's events, runs the guard, drafts the ticket, stores the result and sends it back. The loop ends when the session goes idle:
+The investigator's `ticket_submit` as a Managed Agents custom tool. Custom tools run in *your application*, so your guards still have an attachment point. Your app reads the session's event stream. When the agent calls `ticket_submit`, the app replays a stored result if it has already handled that call. Otherwise it collects provenance from the session's events, runs the guard, drafts the ticket, stores the result and sends it back. The loop ends when the session goes idle for any reason other than waiting on a tool:
 
 ```python
 for ev in client.beta.sessions.events.stream(sid):
@@ -657,8 +662,12 @@ for ev in client.beta.sessions.events.stream(sid):
             "custom_tool_use_id": ev.id,
             "content": [{"type": "text", "text": text}]}])
     elif ev.type == "session.status_idle":
-        break                                            # end_turn / requires_action / budget_reached
+        if ev.stop_reason.type == "requires_action":
+            continue                                     # waiting on a tool result or a confirmation
+        break                                            # end_turn / budget_reached
 ```
+
+*Note (2026-11-14, PR #35 review):* the first version stopped on every idle event, including `requires_action`. That idle event still arrives after the handler has sent its result ([events and streaming](https://platform.claude.com/docs/en/managed-agents/events-and-streaming)), so the handler disconnected after the first custom tool call while the agent carried on. Now a `requires_action` pause keeps the loop reading. A pause for an "ask" permission (below) needs its own branch that sends the confirmation. A `budget_reached` stop should be recorded as a budget end, not a normal finish.
 
 ### Where it lives in the harness
 
@@ -680,7 +689,7 @@ for ev in client.beta.sessions.events.stream(sid):
 
 - **Thinking a self-hosted sandbox keeps the data at home.** It moves execution, not data. In Anthropic's words, tool inputs and outputs "still flow to Managed Agents on Anthropic's side". Managed Agents is also not eligible for zero data retention (ZDR) or HIPAA, and transcripts persist until you delete them. For a solar fleet's metering data, that is the deciding question, not convenience.
 - **Assuming network limits limit credentials.** Limiting the hosts a sandbox can reach does not stop a credential being used on a host you allowed. Scope keys at the service that issued them. "Model behavior is not a security control."
-- **Treating a session as durable storage.** An AgentCore session loses its state at the 8-hour or 15-minute boundary.
+- **Treating a session as durable storage.** An AgentCore session loses its state at the 8-hour or 15-minute boundary (15 minutes idle is the default; you can configure it).
 - **Keeping provenance in memory.** Your handler can restart while the session lives on, so read provenance from the session's event log instead of an in-process set.
 
 ### Try it
@@ -716,7 +725,11 @@ for ev in client.beta.sessions.events.stream(sid):
 
 `done_store` is a SQLite table, `done(event_id PRIMARY KEY, result)`. The handler checks the event id. If it is new, it runs the guard, drafts the ticket, inserts the result, and only then sends it. After a restart the session is still waiting on that call, so the handler finds the row and sends the stored result again.
 
+*Note (2026-11-14, PR #35 review):* reopening the stream alone does not do this. A stream delivers only new events ([events and streaming](https://platform.claude.com/docs/en/managed-agents/events-and-streaming)), so the old `ticket_submit` call never arrives again. On start, the handler must open the stream, then read the session's event history and find `ticket_submit` calls with no matching result. For each one it sends the stored row, or runs the guard if there is no row. Only then does it handle live events, skipping any event id it has already handled, since history and stream can overlap. Test it by killing the handler between "insert" and "send".
+
 If the crash lands between "draft" and "insert", the draft is made twice. The fix is to pass the event id to the ticket system as an idempotency key.
+
+*Note (2026-11-14, PR #35 review):* this answer describes the two functions in prose. It does not give the roughly 20 lines of code the exercise asks for.
 
 **(3) Data that blocks cloud hosting:** SCADA and performance data, curtailment orders, and grid-operator or contract data. A self-hosted sandbox does not fix this, because tool inputs and outputs still reach Anthropic and the service is not ZDR-eligible. Choose your own loop calling the model API under your organisation's data agreement (or through Bedrock or Vertex in-region), with your own sandbox or a hosted one.
 
@@ -804,6 +817,8 @@ That requeue is why your side-effect tools still need the done set: a requeued r
 4. **Alerts** from `monitor()`.
 
 Use separate dev, staging and production workspaces, so an eval sweep cannot eat the production batch's rate limit.
+
+*Note (2026-11-14, PR #35 review):* separate workspaces alone do not do this. A workspace with no limit of its own gets the organisation's limit, and all workspaces share the organisation's limit ([rate limits](https://platform.claude.com/docs/en/api/rate-limits)). An uncapped eval sweep can still use up the shared limit and starve production. So also set the dev and staging workspaces' limits well below the organisation's, leaving room for production.
 
 **API details**
 
@@ -957,6 +972,8 @@ Plant three faults:
 For each fault, say which component catches it, when, and what the morning review card shows. Then write one paragraph: which of this week's choices would be the most expensive to reverse in a year, and why?
 
 ### Integrative answer
+
+*Note (2026-11-14, PR #35 review):* this answer is partial. It covers the three planted faults and the reversal paragraph. It gives no model design page, code or manifest for steps 1–6.
 
 The three planted faults:
 
