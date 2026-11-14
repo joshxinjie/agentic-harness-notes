@@ -4,7 +4,7 @@ Every source the notes use, grouped by the week that relies on it. Each source a
 
 ## Week 1 — What an agent is
 
-- [Anthropic — Building effective agents (Dec 2024)](https://www.anthropic.com/engineering/building-effective-agents) — The standard map of workflows versus agents, with the "simplest solution possible" rule and when an agent is worth it. Its Appendix 2, "Prompt engineering your tools", is the source for the agent-computer interface in 4.4 (ACI as much effort as HCI, poka-yoke, absolute file paths).
+- [Anthropic — Building effective agents (Dec 2024)](https://www.anthropic.com/engineering/building-effective-agents) — The standard map of workflows versus agents, with the "simplest solution possible" rule and when an agent is worth it. Its Appendix 2, "Prompt engineering your tools", is the source for the agent-computer interface in 4.4 (ACI as much effort as HCI, poka-yoke, absolute file paths). Also the advice in 9.4 to start with the API directly and understand the code under any framework.
 - [OpenAI — A practical guide to building agents (2025, PDF)](https://cdn.openai.com/business-guides-and-resources/a-practical-guide-to-building-agents.pdf) — Three tests for when to build an agent; check the idea before committing; one agent before many.
 - [Wang et al. — The Long-Horizon Task Mirage? Diagnosing Where and Why Agentic Systems Break (Apr 2026)](https://arxiv.org/html/2604.11978v1) — The HORIZON benchmark: success falls off a cliff as tasks get deeper, and planning and memory failures dominate long tasks. Evidence for the cost of autonomy, and background for Weeks 3 and 7.
 - [Simon Willison — "An LLM agent runs tools in a loop to achieve a goal" (Sep 2025)](https://simonwillison.net/2025/Sep/18/agents/) — The one-line definition of an agent used throughout these notes.
@@ -173,3 +173,18 @@ Every source the notes use, grouped by the week that relies on it. Each source a
 - [A2A docs — A2A and MCP](https://a2a-protocol.org/latest/topics/a2a-and-mcp/) — How the two protocols divide the work: tools versus peer agents. Used in 9.3.
 - [A2A docs — Agent discovery](https://a2a-protocol.org/latest/topics/agent-discovery) — How a client finds a remote agent and reads its Agent Card. Used in 9.3.
 - [A2A blog — A new chapter for A2A: joining the Agentic AI Foundation (27 Aug 2026)](https://a2a-protocol.org/latest/blog/2026/08/27/a-new-chapter-for-a2a-joining-the-agentic-ai-foundation/) — A2A joining the foundation that also holds MCP. Used in 9.3.
+- [Claude docs — Tool Runner (SDK)](https://platform.claude.com/docs/en/agents-and-tools/tool-use/tool-runner) — The SDK loop helper that runs tools and manages history, and when its own docs send you back to a manual loop. Used in 9.4.
+- [Vasco Engineering — Four agent frameworks (Jul 2026)](https://engineering.vasco.app/articles/four-agent-frameworks/) — Four frameworks in 16 months, ending on the Claude Agent SDK, and the price it accepted. The opposite case in 9.4.
+- [Claude Managed Agents — overview](https://platform.claude.com/docs/en/managed-agents/overview) — Agents, environments, sessions and events in Anthropic's hosted harness. Used in 9.5.
+- [Claude Managed Agents — Self-hosted sandboxes](https://platform.claude.com/docs/en/managed-agents/self-hosted-sandboxes) — Running the sandbox on your own worker, and why tool inputs and outputs still reach Anthropic. Used in 9.5.
+- [Anthropic Engineering — Scaling Managed Agents: decoupling the brain from the hands (Apr 2026)](https://www.anthropic.com/engineering/managed-agents) — The brain, hands and session split, credentials kept out of the sandbox, and containers created on demand. Used in 9.5 and the Week 9 review.
+- [AWS — Bedrock AgentCore Runtime: how it works](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-how-it-works.html) — A hosted runtime with one microVM per session and its session limits. Used in 9.5.
+- [Claude Agent SDK — Hosting the Agent SDK](https://code.claude.com/docs/en/agent-sdk/hosting) — Packaging, session patterns, secrets, sizing and cost when an agent runs as a service. Used in 9.6 and the Week 9 review.
+- [LangChain — Agent Server scalability and resilience](https://docs.langchain.com/langgraph-platform/scalability-and-resilience) — Stateless API servers, queue workers, Postgres, heartbeats and requeue. Used in 9.6.
+- [Claude docs — Workspaces (spend and rate limits)](https://platform.claude.com/docs/en/manage-claude/workspaces) — Per-workspace keys, rate limits and spend limits under the organisation's limits. Used in 9.6.
+
+## Week 10 — Advanced capabilities
+
+- [Claude docs — Computer use tool](https://platform.claude.com/docs/en/agents-and-tools/tool-use/computer-use-tool) — The computer use toolset, screenshot limits and the executor's job. Used in 10.1.
+- [Claude docs — Browser use tool](https://platform.claude.com/docs/en/agents-and-tools/tool-use/browser-use-tool) — Acting on a page through its accessibility tree and element references. Used in 10.1.
+- [OSWorld benchmark (xlang)](https://osworld-v1.xlang.ai/) — 369 real-desktop tasks with execution-based checks, and how far agents have come against humans. Used in 10.1.

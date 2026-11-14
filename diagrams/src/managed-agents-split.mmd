@@ -1,0 +1,17 @@
+flowchart TD
+    subgraph V["Anthropic side"]
+        L["Loop and<br>compaction"]
+        S["Session<br>event log"]
+    end
+    subgraph A["Your app"]
+        T["Custom tools:<br>ticket_submit +<br>provenance guard"]
+        D["Done store"]
+    end
+    subgraph W["Your worker"]
+        X["Self-hosted<br>sandbox"]
+    end
+    L -->|"custom tool call"| T
+    T -->|"tool result"| L
+    T --- D
+    L -->|"run code"| X
+    X -->|"inputs and outputs<br>still flow back"| L

@@ -1,0 +1,7 @@
+flowchart TD
+    C(["Cron, 02:00<br>local time"]) --> J["Job: 8 workers<br>(image investigator:c41a)"]
+    Q[("Postgres: site queue,<br>checkpoints, done set")] <--> J
+    J --> P["Egress proxy<br>adds API key"]
+    P --> M["Model API"]
+    P --> T["Weather and<br>metrics hosts"]
+    J -.-> B["Driver: nightly cap<br>stops and pages"]
