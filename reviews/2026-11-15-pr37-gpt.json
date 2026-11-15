@@ -1,0 +1,53 @@
+{
+ "meta": {
+  "reviewer": "gpt",
+  "provider": "codex",
+  "model": "gpt-6.1-sol",
+  "scope": "pr",
+  "date": "2026-11-15",
+  "input_tokens": 481128,
+  "output_tokens": 1559,
+  "attempts": 1,
+  "context_files": [
+   "PULL REQUEST",
+   "DIFF",
+   "reviews/decisions.md",
+   "STYLE.md",
+   "README.md",
+   "CHANGELOG.md",
+   "glossary.md",
+   "reading-list.md",
+   "weeks/week-09-frameworks-and-protocols.md"
+  ],
+  "context_dropped": [],
+  "context_tokens_est": 89143,
+  "pr": 37,
+  "review_number": 1,
+  "closing_review": false,
+  "harness": "7c985f04d980b32e6b6c9fb5c54c0351ccbc6d1b",
+  "commit": "56b1a9ad613484fc66be960bb33e737ef48a8dbc"
+ },
+ "review": {
+  "schema_version": 1,
+  "scope": "pr",
+  "verdict": "approve_with_nits",
+  "summary": "approve_with_nits\nMove the new lifecycle parameter details into the API table.\nAWS's lifecycle documentation supports the microVM/session correction.\nChecks: 29 tests passed; links bad 0; contents current.",
+  "findings": [
+   {
+    "id": "F1",
+    "severity": "minor",
+    "area": "clarity",
+    "checklist_item": "Keep the main text about ideas: parameter names and configuration ranges belong in an API details table.",
+    "title": "Move lifecycle configuration details into the API table",
+    "file": "weeks/week-09-frameworks-and-protocols.md",
+    "line_start": 620,
+    "line_end": 620,
+    "claim": "The new correction embeds the parameter name and its configuration range in the explanatory prose, despite the existing API table immediately below.",
+    "evidence": "The note introduces `maxLifetime` with the parenthetical 'also 1 minute to 8 hours; the idle timeout cannot exceed it'. The table at lines 646–647 includes the identifier but omits its configurable range and the relationship between the settings.",
+    "proposed_change": "Describe the configurable maximum microVM lifetime in plain words in the note. Add an AWS-labelled table row containing `maxLifetime`, its 60–28,800-second range for microVMs, and the constraint that the idle timeout cannot exceed it. Preserve the session-resumption and ephemeral-state explanation.",
+    "verified_by": "read_docs",
+    "confidence": 0.99
+   }
+  ]
+ }
+}
