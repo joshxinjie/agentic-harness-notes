@@ -1,0 +1,35 @@
+{
+ "meta": {
+  "reviewer": "gpt",
+  "provider": "codex",
+  "model": "gpt-6.1-sol",
+  "scope": "pr",
+  "date": "2026-11-15",
+  "input_tokens": 192158,
+  "output_tokens": 613,
+  "attempts": 1,
+  "context_files": [
+   "PULL REQUEST",
+   "DIFF",
+   "reviews/decisions.md",
+   "STYLE.md",
+   "README.md",
+   "CHANGELOG.md",
+   "weeks/week-09-frameworks-and-protocols.md"
+  ],
+  "context_dropped": [],
+  "context_tokens_est": 40925,
+  "pr": 38,
+  "review_number": 1,
+  "closing_review": false,
+  "harness": "7c985f04d980b32e6b6c9fb5c54c0351ccbc6d1b",
+  "commit": "ed23fe6d5138ba73fc3cdf135314c1b55db77ff7"
+ },
+ "review": {
+  "schema_version": 1,
+  "scope": "pr",
+  "verdict": "approve",
+  "summary": "approve\nThe move preserves the parameter, range and idle-timeout constraint.\nPR37-F1 is resolved; no new findings.\nChecks: 29 tests passed; links bad 0; contents current. External sources were not rechecked offline.",
+  "findings": []
+ }
+}
