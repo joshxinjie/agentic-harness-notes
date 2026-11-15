@@ -617,7 +617,7 @@ Products sit at different points on that grid:
 
   *Note (2026-11-14, PR #35 review):* the 15 minutes is a default, not a fixed limit. AWS's [lifecycle settings](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-lifecycle-settings.html) let you set the idle timeout anywhere from 1 minute to 8 hours. The 8 hours in total is the session's lifetime ceiling. Either way, the state is lost when the session ends.
 
-  *Note (2026-11-14, after the PR #35 merge):* the 8 hours limits the microVM, not the session. In the same settings, `maxLifetime` (also 1 minute to 8 hours; the idle timeout cannot exceed it) caps how long one microVM runs, and a later request to the same session can be served by a newly provisioned microVM. So anything kept only inside the microVM, such as memory or local files, is lost when it ends, and durable state still has to live outside it.
+  *Note (2026-11-14, after the PR #35 merge):* the 8 hours limits the microVM, not the session. The same lifecycle settings cap how long one microVM can run (see the API details below), and a later request to the same session can be served by a newly provisioned microVM. So anything kept only inside the microVM, such as memory or local files, is lost when it ends, and durable state still has to live outside it.
 - **Hosted harness** (Claude Managed Agents, in beta). You configure four things, and the loop, prompt caching and compaction all run on Anthropic's side:
   - an **Agent**: the model, prompt, tools, MCP servers and skills;
   - an **Environment**: a fresh Anthropic cloud container per session, or a self-hosted sandbox served by your own "worker";
@@ -645,6 +645,7 @@ Anthropic's engineering post on Managed Agents describes exactly this split:
 | Resume a session (Anthropic engineering post) | `wake(sessionId)` |
 | AWS Bedrock AgentCore Runtime session limits | 15 minutes idle (default), 8 hours per microVM (`maxLifetime`); one microVM per session at a time |
 | AWS Bedrock AgentCore Runtime idle timeout setting | `idleRuntimeSessionTimeout`, default 900 seconds, range 60–28,800 seconds (microVM runtimes) |
+| AWS Bedrock AgentCore Runtime maximum lifetime setting | `maxLifetime`, range 60–28,800 seconds (microVM runtimes); the idle timeout cannot exceed it |
 
 ### An example
 
