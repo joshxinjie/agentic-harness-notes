@@ -1,0 +1,37 @@
+{
+ "meta": {
+  "reviewer": "gpt",
+  "provider": "codex",
+  "model": "gpt-6.1-sol",
+  "scope": "pr",
+  "date": "2026-11-17",
+  "input_tokens": 348422,
+  "output_tokens": 1191,
+  "attempts": 1,
+  "context_files": [
+   "PULL REQUEST",
+   "DIFF",
+   "reviews/decisions.md",
+   "STYLE.md",
+   "README.md",
+   ".github/workflows/respond.yml",
+   ".github/workflows/review.yml",
+   "CHANGELOG.md",
+   "review/config.yaml"
+  ],
+  "context_dropped": [],
+  "context_tokens_est": 24640,
+  "pr": 39,
+  "review_number": 1,
+  "closing_review": false,
+  "harness": "7a839e4d9f60006517fe6fd755f2c2f6756c011b",
+  "commit": "44b7205583860bb40162712ed043461383b53578"
+ },
+ "review": {
+  "schema_version": 1,
+  "scope": "pr",
+  "verdict": "approve",
+  "summary": "Approve. No actionable findings.\nVerified reviewer selection and same-family refusal using the pinned harness.\n29 tests passed; link checker: bad 0; contents check passed.\nLive project-review execution remains untested.",
+  "findings": []
+ }
+}
