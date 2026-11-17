@@ -50,8 +50,8 @@ A scheduled task runs every Saturday morning. It reads that week's brief emails,
 A model from a different family checks the notes against [REVIEW.md](REVIEW.md): technical accuracy, nothing lost or invented in the rewrite, the style guide, links, sources and diagrams. It only comments; it never approves or pushes.
 
 - **Every PR:** GPT (through Codex) reviews each pull request when it opens, so the Saturday update PR is reviewed as soon as it appears. `/respond` fix PRs are the exception: they aren't reviewed on their own, and the reviewed PR is reviewed again after the fix merges.
-- **Monthly:** on the 1st, Fable reviews the whole repo and opens a `reviewer/` PR with its findings.
-- **On request:** comment `/review` on any PR (`/review fable` for Fable, `/review force` to re-review the same commit), or add the `review` label.
+- **Monthly:** on the 1st, GPT reviews the whole repo and opens a `reviewer/` PR with its findings.
+- **On request:** comment `/review` on any PR (`/review force` to re-review the same commit), or add the `review` label.
 - **Answering:** comment `/respond` on the reviewed PR. Claude Opus, which wrote the notes, decides on each finding (accept, modify, reject, defer), applies the fixes, runs the tests and opens a pull request into the reviewed branch. Merging it accepts the decisions; closing it rejects them.
 - **Rounds:** a PR gets 2 full reviews. From the 3rd on, a review is a *closing review*: it checks the earlier fixes and every open finding, and what is still open comes to me to decide instead of another round ([REVIEW.md](REVIEW.md#after-the-review)).
 

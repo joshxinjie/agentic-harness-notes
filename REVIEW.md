@@ -17,7 +17,7 @@ decisions on past findings are in [reviews/decisions.md](reviews/decisions.md).
 |---|---|---|
 | Owner | The repo owner | Decides on every finding and merges. Settles disagreements between reviewer and author. |
 | Author | The model that writes the notes (Claude Opus, through the Saturday update task) | Responds to each finding: accept, modify, reject or defer, with reasons. Opens fix PRs for accepted findings. |
-| Reviewer | A different model family: GPT (through Codex) on PRs; Fable for the monthly project review or on request (`/review fable`) | Reads the work and returns findings in the schema. Never edits `main`. |
+| Reviewer | A different model family from the author: GPT (through Codex) on PRs and for the monthly project review; Claude Opus or Fable for work built with Codex | Reads the work and returns findings in the schema. Never edits `main`. |
 
 ## Independence rules
 
