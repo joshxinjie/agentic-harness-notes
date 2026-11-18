@@ -1,0 +1,36 @@
+{
+ "meta": {
+  "reviewer": "opus",
+  "provider": "claude-code",
+  "model": "claude-opus-5-5",
+  "scope": "pr",
+  "date": "2026-11-18",
+  "input_tokens": 178926,
+  "output_tokens": 1362,
+  "attempts": 1,
+  "context_files": [
+   "PULL REQUEST",
+   "DIFF",
+   "reviews/decisions.md",
+   "STYLE.md",
+   "README.md",
+   "BACKLOG.md",
+   "CHANGELOG.md",
+   "review/SMOKE_TEST.md"
+  ],
+  "context_dropped": [],
+  "context_tokens_est": 24777,
+  "pr": 40,
+  "review_number": 4,
+  "closing_review": true,
+  "harness": "7a839e4d9f60006517fe6fd755f2c2f6756c011b",
+  "commit": "bd18ccb4a89e8f2e29b298492d064d26d3e264dc"
+ },
+ "review": {
+  "schema_version": 1,
+  "scope": "pr",
+  "verdict": "approve",
+  "summary": "Approve (closing review 4). All earlier findings are resolved in the files: PR40-F1, where the CHANGELOG now says Astra is an unconfigured GPT model; PR40-2-F2, where the Astra context number is withdrawn; PR40-2-F1, where review/config.yaml is unchanged from main (gpt-6.1-sol) and the upgrade is deferred with a BACKLOG item and SMOKE_TEST.md; and PR40-3-F1, where the provisional rows now use the log's marker and link local review copies that exist in reviews/. The fix since d5f332a touches only the decision log, the CHANGELOG and the archived review copies, and causes no regressions. pytest: 29 passed.",
+  "findings": []
+ }
+}
