@@ -62,7 +62,7 @@ reviewers:
   # invalidate each other's refresh token.
   gpt:
     provider: codex
-    model: gpt-6.2-sol
+    model: gpt-6.1-sol
     reasoning_effort: high
     cli_version: 0.164.0          # keep in step with the workflows' codex-version input
     secret: CODEX_AUTH_JSON

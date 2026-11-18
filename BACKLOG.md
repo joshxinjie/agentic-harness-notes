@@ -3,6 +3,7 @@
 Valid improvements that were deferred, usually from a cross-model review ([REVIEW.md](REVIEW.md)). Newest first.
 Each item: date, what to do, where it came from (a decision ID from [reviews/decisions.md](reviews/decisions.md)).
 
+- 2026-11-18 — Before upgrading the GPT reviewer to `gpt-6.2-sol`, run the bounded smoke test in [review/SMOKE_TEST.md](review/SMOKE_TEST.md) using CLI 0.164.0 and this repository's intended existing ChatGPT subscription login. Verify the exact target model, high reasoning effort and structured output without paid API, fallback or credential changes; keep `gpt-6.1-sol` until it passes. From PR #40 review 2, PR40-2-F1.
 - 2026-10-24 — `diagrams/src/online-eval-layers.mmd` and `diagrams/src/world-stand-ins.mmd`: draw the ordering
   edges between sibling options (L1→L2→L3→L4, W1→W2→W3→W4) dotted (`-.->`), keep the layer → queue arrows solid, then
   re-render both with `python3 tools/render_diagrams.py` and check at phone width. Not done in the response because
