@@ -1,0 +1,65 @@
+{
+ "meta": {
+  "reviewer": "opus",
+  "provider": "claude-code",
+  "model": "claude-opus-5-5",
+  "scope": "pr",
+  "date": "2026-11-18",
+  "input_tokens": 218258,
+  "output_tokens": 2908,
+  "attempts": 1,
+  "context_files": [
+   "PULL REQUEST",
+   "DIFF",
+   "reviews/decisions.md",
+   "STYLE.md",
+   "README.md",
+   "CHANGELOG.md",
+   "review/config.yaml"
+  ],
+  "context_dropped": [],
+  "context_tokens_est": 22405,
+  "verdict_adjusted_from": "approve_with_nits",
+  "pr": 40,
+  "review_number": 2,
+  "closing_review": false,
+  "harness": "7a839e4d9f60006517fe6fd755f2c2f6756c011b",
+  "commit": "d3f09a45c99a56652f2e957aca692b7bff77acdc"
+ },
+ "review": {
+  "schema_version": 1,
+  "scope": "pr",
+  "verdict": "approve",
+  "summary": "approve_with_nits. The config change is a single line and is consistent with the rest of the repo. pytest: 29 passed, and the link check is included. The decision row and CHANGELOG lines match the earlier PR40-F1 fix.\n1. Question: is `gpt-6.2-sol` a valid model ID for Codex CLI 0.164.0 on a ChatGPT login? Public sources only document 6/6.1 Sol. If it isn't valid, every GPT review fails.\n2. Question: the CHANGELOG says Astra's default context is under 400k, but public sources give 1.05M. Name the source, or say 'Codex default'.",
+  "findings": [
+   {
+    "id": "F1",
+    "severity": "question",
+    "area": "accuracy",
+    "title": "Is gpt-6.2-sol available through Codex CLI 0.164.0 on a ChatGPT login?",
+    "file": "review/config.yaml",
+    "line_start": 65,
+    "line_end": 65,
+    "claim": "The GPT reviewer is now pinned to `gpt-6.2-sol`. The PR says live compatibility with CLI 0.164.0 is unverified. Public documentation I could find lists GPT-6 Sol and GPT-6.1 Sol but no official GPT-6.2 Sol release or Codex listing. If the ID is rejected, every automatic review and the monthly project review on this repo fails (they all default to `gpt`). There is also no reviewer fallback, because Claude-family reviewers are refused on Claude-built work.",
+    "evidence": "Search results: only third-party pages mention GPT-6.2 Sol (https://overchat.ai/models/gpt-6-2-sol, https://www.cometapi.com/gpt-6-2-sol-prediction/). Official docs list GPT-6 Sol (https://developers.openai.com/api/docs/models/gpt-6-sol.md). Secondary reports say 6.1 Sol is the Codex default (https://techenclave.com/news/items/openai-releases-gpt-6-1-sol-for-codex-chatgpt-work-and-the-api). The PR description says: 'GPT-6.2 Sol's live compatibility with CLI 0.164.0 remains unverified.'",
+    "proposed_change": "Before marking the PR ready, confirm the ID with a single `/review force` run on a throwaway PR, or check `codex /model` output under the pinned CLI. Add the rollback to the CHANGELOG line ('Rollback: restore `gpt-6.1-sol`'), as the 17 Nov line does for the harness pin.",
+    "verified_by": "external_source",
+    "confidence": 0.5
+   },
+   {
+    "id": "F2",
+    "severity": "question",
+    "area": "accuracy",
+    "title": "Source for Astra's 'default context smaller than 400,000 tokens'",
+    "file": "CHANGELOG.md",
+    "line_start": 38,
+    "line_end": 38,
+    "claim": "The CHANGELOG gives the reason Astra is not configured: its default context is smaller than the 400,000-token project pack cap. Public sources consistently give GPT-6 Astra a 1.05M-token context window. The claim may be about a Codex CLI default context setting rather than the model's window, but the line doesn't say so. Read as written, the reason looks wrong.",
+    "evidence": "https://codex.danielvaughan.com/2026/09/04/gpt-6-astra-codex-cli-integration-guide-critical-cyber-threshold/ ('1.05M Context'); https://docs.apiyi.com/en/api-capabilities/gpt-6-astra/overview.md. None of the sources I found states a smaller Codex default.",
+    "proposed_change": "If the limit is a Codex CLI default, say so: 'Codex CLI's default context for Astra is below the 400,000-token project pack cap'. Otherwise give the source or drop the context reason and keep 'live compatibility with the pinned CLI is unverified'.",
+    "verified_by": "external_source",
+    "confidence": 0.45
+   }
+  ]
+ }
+}
