@@ -1,0 +1,34 @@
+{
+ "meta": {
+  "reviewer": "gpt",
+  "provider": "codex",
+  "model": "gpt-6.1-sol",
+  "scope": "pr",
+  "date": "2026-11-18",
+  "input_tokens": 299421,
+  "output_tokens": 1219,
+  "attempts": 1,
+  "context_files": [
+   "PULL REQUEST",
+   "DIFF",
+   "reviews/decisions.md",
+   "STYLE.md",
+   "README.md",
+   "CHANGELOG.md"
+  ],
+  "context_dropped": [],
+  "context_tokens_est": 21920,
+  "pr": 42,
+  "review_number": 1,
+  "closing_review": false,
+  "harness": "7a839e4d9f60006517fe6fd755f2c2f6756c011b",
+  "commit": "3723649785244848a2b3aa0e260f101e1d730e23"
+ },
+ "review": {
+  "schema_version": 1,
+  "scope": "pr",
+  "verdict": "approve",
+  "summary": "approve. No actionable findings.\nThe provisional markers and local review links are corrected; both review copies match reviewer/archive.\nThe confirmation rows remain subject to owner acceptance by merging, as the log specifies.\nValidation: pytest 29 passed; link checker bad 0; git diff --check clean.",
+  "findings": []
+ }
+}
