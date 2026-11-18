@@ -1,0 +1,51 @@
+{
+ "meta": {
+  "reviewer": "opus",
+  "provider": "claude-code",
+  "model": "claude-opus-5-5",
+  "scope": "pr",
+  "date": "2026-11-18",
+  "input_tokens": 205437,
+  "output_tokens": 1476,
+  "attempts": 1,
+  "context_files": [
+   "PULL REQUEST",
+   "DIFF",
+   "reviews/decisions.md",
+   "STYLE.md",
+   "README.md",
+   "CHANGELOG.md",
+   "review/config.yaml"
+  ],
+  "context_dropped": [],
+  "context_tokens_est": 21634,
+  "pr": 40,
+  "review_number": 1,
+  "closing_review": false,
+  "harness": "7a839e4d9f60006517fe6fd755f2c2f6756c011b",
+  "commit": "d8a372e6845e09fbe6a5c32ba0c344f842b2b01d"
+ },
+ "review": {
+  "schema_version": 1,
+  "scope": "pr",
+  "verdict": "approve",
+  "summary": "Approve. The PR changes one setting, reviewers.gpt.model (gpt-6.1-sol → gpt-6.2-sol), and adds a matching CHANGELOG line. The Codex author stays on gpt-6.1-sol, so model families stay separate. Tests: 29 passed. One nit: the CHANGELOG line says Astra is not enabled but never says what Astra is.",
+  "findings": [
+   {
+    "id": "F1",
+    "severity": "nit",
+    "area": "clarity",
+    "checklist_item": "Plain language: explain each term the first time it appears",
+    "title": "CHANGELOG mentions 'Astra' without saying what it is",
+    "file": "CHANGELOG.md",
+    "line_start": 38,
+    "line_end": 38,
+    "claim": "The new line says 'Astra is not enabled', but Astra is not named in review/config.yaml, README or anywhere else in the repo. A reader of the changelog cannot tell whether it is a model, a reviewer entry or a provider.",
+    "evidence": "Searching the repo for 'Astra' finds only CHANGELOG.md:38. review/config.yaml has no astra reviewer entry.",
+    "proposed_change": "Name what Astra is in a few words, e.g. 'The GPT Astra model (not configured as a reviewer) is not enabled: ...'. Or drop the sentence and keep the reasoning in the PR description only.",
+    "verified_by": "read_code",
+    "confidence": 0.8
+   }
+  ]
+ }
+}
