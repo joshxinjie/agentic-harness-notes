@@ -1,0 +1,101 @@
+{
+ "review": "2026-11-21-pr43-gpt.json",
+ "author": "claude-opus-5-5",
+ "date": "2026-11-21",
+ "harness": "7a839e4d9f60006517fe6fd755f2c2f6756c011b",
+ "response": {
+  "schema_version": 1,
+  "summary": "7 findings: 3 accept (F1, F6, F7), 4 modify (F2, F3, F4, F5), 0 reject, 0 defer. All fixes are in week 10. Six are dated notes and F7 is one added sentence in the exercise. The email text stays as the record, as RESPOND.md rule 2 requires. Look first at F5: pandas isn't installed here, so the new masked as-of line (`df.where(...)`) was checked by reading only. Also check that the F4 example key (the failed job's id) is an acceptable small addition. The exercises themselves were not changed. 29 tests passed and the link checker reports bad 0.",
+  "responses": [
+   {
+    "finding_id": "F1",
+    "decision": "accept",
+    "reason": "Right: step 5 changes Plan.md after the session's commit, so step 1 of the next iteration resets the passed statuses. I added a dated note after the five steps: the harness commits its plan update (or keeps statuses outside the worktree), so a dirty tree means only a crashed session. The note also asks the reader to check that a passed milestone stays passed. The original steps are kept.",
+    "changes": "weeks/week-10-advanced-capabilities.md (dated note after driver step 5); CHANGELOG.md",
+    "verification": {
+     "method": "ran",
+     "outcome": "passed",
+     "detail": "/tmp/check/run.py: temp git repo; session commits, harness writes 'M1 passed' and commits, next-iteration reset runs; Plan.md still reads 'M1 passed'."
+    }
+   },
+   {
+    "finding_id": "F2",
+    "decision": "modify",
+    "reason": "The gap is real. I added a dated note under the scheduled-run figure that links the existing 3.5 worked answer: stable request ids saved before execution, plus an idempotent write or a single transaction for the effect and its record. It also says to test that crash point and require exactly one ticket. I kept the caption and left the exercise as set, because the email is the record. That is how this differs from the proposal.",
+    "changes": "weeks/week-10-advanced-capabilities.md (dated note after 10.5 figure, second bullet); CHANGELOG.md",
+    "verification": {
+     "method": "ran",
+     "outcome": "passed",
+     "detail": "/tmp/check/run.py stub: crash after executing, before finish, then retry with saved request id and idempotent filer -> 1 ticket."
+    }
+   },
+   {
+    "finding_id": "F3",
+    "decision": "modify",
+    "reason": "Right: recomputing a formula the model supplies only shows the number can be reproduced. I added a dated note after answer (4) with the reviewer's counterexample (2.7 + 0 * mae_3d). It says the harness owns the computation: an approved ratio over typed fields from cited data-tool results, and any other formula or free-form logged code is rejected. The original answer is kept, so this is a note rather than a rewrite.",
+    "changes": "weeks/week-10-advanced-capabilities.md (dated note after 10.2 worked answer 4); CHANGELOG.md",
+    "verification": {
+     "method": "ran",
+     "outcome": "passed",
+     "detail": "/tmp/check/run.py: guard rejects op '2.7 + 0 * mae_3d'; approved ratio rejects claimed 2.7 and accepts 1.0 when mae_3d = mae_30d = 1."
+    }
+   },
+   {
+    "finding_id": "F4",
+    "decision": "modify",
+    "reason": "Right: the sketch uses the date key for every trigger, although point 2 of the lesson already names other keys (site + alert window). The dated note says the date key fits once-daily schedules only. Other triggers use their own key from point 2, with a per-event key (for example the failed job's id) for pipeline events. The code is not changed.",
+    "changes": "weeks/week-10-advanced-capabilities.md (dated note after 10.5 figure, first bullet); CHANGELOG.md",
+    "verification": {
+     "method": "ran",
+     "outcome": "passed",
+     "detail": "/tmp/check/run.py: per-event keys job.failed:A, job.failed:B both run; repeat of A -> 'already ran'."
+    }
+   },
+   {
+    "finding_id": "F5",
+    "decision": "modify",
+    "reason": "Right: dropping rows removes the target-hour labels, so .loc raises. I added a dated note with a one-line fix instead of a separate target grid: keep every row and blank the values that had not arrived (df.where(df.available_at <= issue_time)). The target hours then exist in both results, and a value missing at the issue time shows up as a difference. The original sketch is kept.",
+    "changes": "weeks/week-10-advanced-capabilities.md (dated note and code line after 10.6 figure); CHANGELOG.md",
+    "verification": {
+     "method": "read",
+     "outcome": "unknown",
+     "detail": "pandas is not installed here (ModuleNotFoundError), so the masked line could not be run. Checked by reading DataFrame.where semantics only."
+    }
+   },
+   {
+    "finding_id": "F6",
+    "decision": "accept",
+    "reason": "Right: is_error is a boolean. The week 2 API table (week-02 line 825) and the week 4 code (is_error=True) use the boolean form. I added a dated note after the block: the block is shorthand, and the real tool_result carries the paused call's tool_use_id, is_error: true, and the sentence as content, linking 2.6. The original text is kept.",
+    "changes": "weeks/week-10-advanced-capabilities.md (dated note after 10.2 answer 1 block); CHANGELOG.md",
+    "verification": {
+     "method": "read",
+     "outcome": "passed",
+     "detail": "Read week-02 lines 825 and 849-857 and week-04 line 424 for the envelope; the link checker reports bad 0 for the new 2.6 anchor."
+    }
+   },
+   {
+    "finding_id": "F7",
+    "decision": "accept",
+    "reason": "Right: you can't compare a UTC NWP schedule with local time unless the fixture gives an offset. I used the reviewer's second option and added one sentence: the site is fictional, so pick a UTC offset and state it. This invents no number and names no place, which fits STYLE.md 'Keep it anonymous'.",
+    "changes": "weeks/week-10-advanced-capabilities.md (10.6 Try it, one sentence); CHANGELOG.md",
+    "verification": {
+     "method": "read",
+     "outcome": "passed",
+     "detail": "Read the edited 10.6 Try it paragraph against the STYLE.md 'Keep it anonymous' time-zone rule."
+    }
+   }
+  ],
+  "tests": {
+   "ran": true,
+   "passed": true,
+   "detail": "python -m pytest -q: 29 passed. python tools/check_links.py . : bad 0."
+  }
+ },
+ "reverted": [],
+ "denials": [
+  {
+   "tool": "Bash",
+   "command": "printf … — 3 commands (&&); pipe; redirect"
+  }
+ ]
+}
