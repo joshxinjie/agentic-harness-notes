@@ -1,0 +1,35 @@
+{
+ "review": "2026-11-21-pr43-gpt-2.json",
+ "author": "claude-opus-5-5",
+ "date": "2026-11-21",
+ "harness": "7a839e4d9f60006517fe6fd755f2c2f6756c011b",
+ "response": {
+  "schema_version": 1,
+  "summary": "1 accept. F1: the PR #43 fix used df.where(...), which also blanked timestamp, so target-hour lookup could still fail. The 10.6 note now gives an as_of() helper. It keeps timestamp and available_at and blanks only the measurement columns of late rows. A 24-h lag example states what to check: the target-hour lookup succeeds, values that had arrived are kept, the rest are missing. Owner should check: pandas isn't installed here, so the new sketch was checked by reading, not run. pytest: 29 passed.",
+  "responses": [
+   {
+    "finding_id": "F1",
+    "decision": "accept",
+    "reason": "Correct. df.where(df.available_at <= issue_time) masks every column, including timestamp. A feature built with set_index('timestamp') then gets NaT labels for late rows, and .loc[target_hours] fails. The note now treats timestamp as a fixed grid of target hours. A new as_of() blanks only the measurement columns (everything except timestamp and available_at) of late rows. A shift(24) example states the expected result: lookup succeeds, values that had arrived are kept, the rest are missing.",
+    "changes": "weeks/week-10-advanced-capabilities.md (10.6 dated note: as_of() sketch and lag regression check); CHANGELOG.md",
+    "verification": {
+     "method": "read",
+     "outcome": "passed",
+     "detail": "Read the new sketch: timestamp and available_at stay intact, so .loc[target_hours] finds the labels. Not run because pandas isn't installed; pytest passed (29)."
+    }
+   }
+  ],
+  "tests": {
+   "ran": true,
+   "passed": true,
+   "detail": "python -m pytest -q: 29 passed (includes the link checker and the contents check)."
+  }
+ },
+ "reverted": [],
+ "denials": [
+  {
+   "tool": "Bash",
+   "command": "echo … — 4 commands (&&); pipe; redirect"
+  }
+ ]
+}
