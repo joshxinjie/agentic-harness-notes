@@ -1,0 +1,54 @@
+{
+ "meta": {
+  "reviewer": "gpt",
+  "provider": "codex",
+  "model": "gpt-6.1-sol",
+  "scope": "pr",
+  "date": "2026-11-21",
+  "input_tokens": 654758,
+  "output_tokens": 1532,
+  "attempts": 1,
+  "context_files": [
+   "PULL REQUEST",
+   "DIFF",
+   "reviews/decisions.md",
+   "STYLE.md",
+   "README.md",
+   "CHANGELOG.md",
+   "glossary.md",
+   "reading-list.md",
+   "weeks/week-10-advanced-capabilities.md"
+  ],
+  "context_dropped": [],
+  "context_tokens_est": 105752,
+  "pr": 43,
+  "review_number": 2,
+  "closing_review": false,
+  "harness": "7a839e4d9f60006517fe6fd755f2c2f6756c011b",
+  "commit": "474bc1cba598247d573658c599afdcaa8a747d59"
+ },
+ "review": {
+  "schema_version": 1,
+  "scope": "pr",
+  "verdict": "changes_needed",
+  "summary": "changes_needed\nThe revised leakage check also masks timestamps, so target-hour lookup can still fail.\nChecks: 29 tests passed; link checker reports bad 0. External sources were not checked offline.",
+  "findings": [
+   {
+    "id": "F1",
+    "severity": "major",
+    "area": "accuracy",
+    "checklist_item": "Accuracy: code sketches must do what the text says",
+    "title": "Preserve timestamp labels when masking unavailable measurements",
+    "file": "weeks/week-10-advanced-capabilities.md",
+    "line_start": 708,
+    "line_end": 711,
+    "claim": "The correction masks every column in an unavailable row, including timestamp. Keeping rows therefore does not guarantee that target-hour labels survive. A feature that builds its time index from the exercise's timestamp column still loses those labels and raises at .loc[target_hours].",
+    "evidence": "Line 711 passes df.where(df.available_at <= issue_time) to feature_fn. The exercise supplies timestamp as a column. For a feature implemented as frame.set_index('timestamp')['actual_mw'].shift(24), unavailable target timestamps become NaT before indexing, so the requested target hours are absent. This is a new problem in the replacement proposed for PR43-F5. Checked by reading; pandas is unavailable here, so this example was not executed.",
+    "proposed_change": "Clarify that timestamps form a fixed target grid. Preserve that grid and availability metadata, and mask only measurement columns such as actual_mw. Add a regression example using a timestamp column and a 24-hour lag: target lookup must succeed, with available lag values retained and unavailable values marked missing.",
+    "verified_by": "read_code",
+    "confidence": 0.98,
+    "related_decision": "PR43-F5"
+   }
+  ]
+ }
+}
