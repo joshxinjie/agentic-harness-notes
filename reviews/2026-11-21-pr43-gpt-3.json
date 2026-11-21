@@ -1,0 +1,37 @@
+{
+ "meta": {
+  "reviewer": "gpt",
+  "provider": "codex",
+  "model": "gpt-6.1-sol",
+  "scope": "pr",
+  "date": "2026-11-21",
+  "input_tokens": 542569,
+  "output_tokens": 1163,
+  "attempts": 1,
+  "context_files": [
+   "PULL REQUEST",
+   "DIFF",
+   "reviews/decisions.md",
+   "STYLE.md",
+   "README.md",
+   "CHANGELOG.md",
+   "glossary.md",
+   "reading-list.md",
+   "weeks/week-10-advanced-capabilities.md"
+  ],
+  "context_dropped": [],
+  "context_tokens_est": 106462,
+  "pr": 43,
+  "review_number": 3,
+  "closing_review": true,
+  "harness": "7a839e4d9f60006517fe6fd755f2c2f6756c011b",
+  "commit": "a754592b95a7257c5c4b9c180bffdff9f402366d"
+ },
+ "review": {
+  "schema_version": 1,
+  "scope": "pr",
+  "verdict": "approve",
+  "summary": "approve\nAll eight earlier findings are addressed by the current correction notes; no new findings within closing-review scope.\npython -m pytest -q: 29 passed; link checker: bad 0.\nPandas examples checked by reading only because pandas is unavailable. External sources were not rechecked offline.",
+  "findings": []
+ }
+}
