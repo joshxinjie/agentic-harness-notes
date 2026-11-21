@@ -1,0 +1,10 @@
+flowchart TD
+    T["Trigger fires:<br>schedule, API, event"] --> K{"Run key already<br>in ledger?"}
+    K -->|"yes"| SK["Skip or merge"]
+    K -->|"no"| L["Take lease; wrap<br>payload as untrusted"]
+    L --> R["Agent runs,<br>emits requests"]
+    R --> V["Validate requests<br>against caps"]
+    V --> X["Separate privileged<br>step executes them"]
+    X --> O{"Not success,<br>or an alert?"}
+    O -->|"yes"| N["Notify the owner"]
+    O -->|"no"| Q["Stay silent"]

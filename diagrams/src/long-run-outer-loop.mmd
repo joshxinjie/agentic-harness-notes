@@ -1,0 +1,10 @@
+flowchart TD
+    A["Session reads<br>STATUS.md first"] --> B["Works on first<br>failing milestone"]
+    B --> C["Commits when<br>its check passes"]
+    C --> D["Harness runs every<br>validation command"]
+    D --> E{"All pass?"}
+    E -->|"yes"| S["Success"]
+    E -->|"no"| F{"Sessions<br>left?"}
+    F -->|"no"| G["Stop: budget"]
+    F -->|"yes"| H["If session said done,<br>inject the failing check"]
+    H --> A

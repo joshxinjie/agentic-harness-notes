@@ -1,0 +1,8 @@
+flowchart TD
+    D["All data"] --> FULL["Feature on<br>all the data"]
+    D --> CUT["Keep rows with<br>available_at ≤ issue time"]
+    CUT --> ASOF["Feature on<br>truncated data"]
+    FULL --> CMP{"Same values for<br>target hours?"}
+    ASOF --> CMP
+    CMP -->|"yes"| OK["No leak found"]
+    CMP -->|"no"| BAD["Leaks: used<br>future data"]
