@@ -242,6 +242,8 @@ is_error: "ticket_submit cannot be called from code — it needs the approval ga
 provenance check per call. Call it directly with deciding_value and the tool_use_id it came from."
 ```
 
+*Note (2026-11-21, PR #43 review):* the block above is shorthand. In the actual message, `is_error` is the boolean `true` and the sentence goes in `content`, as in the error results from [2.6](week-02-core-mechanics.md#26-error-handling-retries-backoff-and-feeding-tool-errors-back-to-the-model): a `tool_result` with the paused call's `tool_use_id`, `is_error: true`, and the text above as its `content`.
+
 Otherwise validate and run the call as usual. Reply with a user message that holds **only** `tool_result` blocks, and pass the container id on the next request.
 
 **(2) Tokens.**
@@ -258,6 +260,8 @@ Caching lowers the price of the direct version, but the model still has to read 
 - **Direct only:** `memory_write` and `ticket_submit`, because side effects need one gate per call.
 
 **(4) Provenance for computed numbers.** Accept a number only if the harness can reproduce it. The ticket cites its input `tool_use_id`s plus the formula (or the logged code). The guard then recomputes the value from the recorded tool results, for example `mae_3d / mae_30d` = 2.7 within tolerance.
+
+*Note (2026-11-21, PR #43 review):* recomputing a formula the model supplied shows only that the number is reproducible, not that it follows from the evidence. With real results `mae_3d = 1` and `mae_30d = 1`, the formula `2.7 + 0 * mae_3d` still gives 2.7. So the harness, not the model, must own the computation: the ticket names an approved operation (here, the ratio of two typed fields from cited data-tool results), and the guard rejects any other formula or free-form logged code.
 
 Common slips: trusting anything printed to stdout (the model writes stdout), and treating `allowed_callers` as the only enforcement.
 
@@ -376,6 +380,8 @@ Then write one paragraph: for porting a solar forecasting team's day-ahead featu
 3. It calls `run_session`.
 4. It runs every milestone's validation command itself.
 5. It writes the milestone statuses into the plan. The model never sets them.
+
+*Note (2026-11-21, PR #43 review):* as written, step 5 leaves `Plan.md` modified after the session's last commit, so step 1 of the next iteration treats it as crash residue and resets the passed statuses. The harness must commit its plan update after step 5 (or keep statuses outside the worktree). Then a dirty tree at step 1 means only a crashed session. Check that a milestone passed in one iteration is still passed in the next.
 
 The three faults:
 
@@ -596,6 +602,11 @@ It skips a key that already ran, holds a lease while it works, wraps the payload
 
 *Figure: the ledger stops repeats, and the agent never performs side effects itself.*
 
+*Note (2026-11-21, PR #43 review):* two limits of this sketch.
+
+- **The key.** A date key fits a once-daily schedule only. For other triggers it suppresses distinct events: a second `job.failed` for a different job on the same day would return "already ran". Use the trigger's own key from point 2 above, such as site + alert window for an alert, and a key per event (for example the failed job's id) for pipeline events.
+- **A crash after `execute_privileged` but before `ledger.finish`.** The key is still unfinished, so the retry executes the requests again. As in the [3.5 worked answer](week-03-state-and-memory.md#worked-answer-4), give each request a stable id saved before it runs, and make the write idempotent on that id or save the effect and its record in one transaction. Test that crash point: it must leave exactly one ticket.
+
 ### Common mistakes
 
 An unattended agent's failures are silent by default: no one sees the stall, the duplicate tickets or the empty run. Common mistakes:
@@ -694,6 +705,12 @@ Note that it filters on `available_at` (when the data arrived), not on `timestam
 
 *Figure: filter on when the data arrived, not on the time it describes.*
 
+*Note (2026-11-21, PR #43 review):* dropping rows can break this sketch. The truncated frame no longer holds the target day's rows, so a lag or rolling feature computed on it has no `target_hours` labels, and `.loc[target_hours]` raises instead of answering. Keep every row and blank out the values that had not arrived yet. Then the target hours exist in both results, and a value that is missing at the issue time shows up as a difference:
+
+```python
+asof = feature_fn(df.where(df.available_at <= issue_time)).loc[target_hours]
+```
+
 ### Where it lives in the harness
 
 The leakage check is a layer-5 guardrail that runs in the executor before any backtest. It is the same idea as provenance ([5.4](week-05-control-safety-reliability.md#54-prompt-injection-and-untrusted-content)): the number has to come from data the agent was allowed to have.
@@ -711,7 +728,7 @@ Benchmarks look strong: MLE-STAR wins medals on 63.6% of MLE-bench Lite competit
 
 *10–15 min.*
 
-Write `leaks()` over a fake PVA-01 hourly frame with the columns `timestamp`, `available_at` and `actual_mw`. Actuals arrive 2 h late. NWP runs are issued at 00, 06, 12 and 18 UTC and arrive 4 h after each run. The issue time is D−1 10:00 local time (convert with the site's time zone). Test three features for target day D:
+Write `leaks()` over a fake PVA-01 hourly frame with the columns `timestamp`, `available_at` and `actual_mw`. Actuals arrive 2 h late. NWP runs are issued at 00, 06, 12 and 18 UTC and arrive 4 h after each run. The issue time is D−1 10:00 local time (convert with the site's time zone). The site is fictional, so pick a UTC offset for it and state it in your answer. Test three features for target day D:
 
 1. the actual at the same hour, 24 h earlier;
 2. a centred 3-h rolling mean of actuals;
