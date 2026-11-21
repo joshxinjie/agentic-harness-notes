@@ -1,0 +1,11 @@
+sequenceDiagram
+    participant M as Model
+    participant C as Code in container
+    participant E as Your executor
+    M->>C: writes a program
+    loop each tool call in the code
+        C->>E: API pauses: tool_use, caller = code
+        E->>E: validate and run
+        E->>C: tool_result blocks only
+    end
+    C->>M: printed lines only

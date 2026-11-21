@@ -39,3 +39,4 @@
 - 2026-11-18 — Review response to the PR #40 review (Opus): F1 (CHANGELOG: the 18 Nov line now says Astra is a GPT model that isn't configured as a reviewer).
 - 2026-11-18 — PR #40 round-2 response: PR40-2-F1 (restore the GPT reviewer to Sol 6.1 until the intended subscription smoke test can run; document rollback), PR40-2-F2 (withdraw the unsupported Astra context comparison). Separate dispositions are in reviews/decisions.md; the earlier PR40-F1 clarity fix is retained.
 - 2026-11-18 — Review response to the PR #40 closing review (Opus): F1 (the PR40-2 decision rows use the log's provisional marker and link the local review copy); owner confirmations of PR40-2-F1 and PR40-2-F2.
+- 2026-11-21 — Added Days 66–70 (items 10.2–10.6: 10.2, 10.3, 10.4, 10.5, 10.6). Filled answers for 10.1, 10.2, 10.3, 10.4 and 10.5. 10.6 answer and Week 10 review pending. Diagrams: programmatic-tool-calling, long-run-outer-loop, promotion-gate, scheduled-run, as-of-leakage-check.

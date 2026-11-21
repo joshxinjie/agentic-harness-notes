@@ -18,6 +18,9 @@ Running the baseline against itself. The difference you see is the noise floor. 
 **Accessibility tree (browser use)**  
 The browser's text outline of a page's elements. Claude's browser use returns it with each element tagged by a reference, such as `link "Reports" [ref_7]`, and the model clicks by that reference, which survives layout shifts. A tree read often costs fewer tokens than a screenshot. See [10.1](weeks/week-10-advanced-capabilities.md#101-computer-use-and-browser-agents).
 
+**ACE (Agentic Context Engineering)**  
+A self-improvement method that keeps the context as a playbook of bullets, each with an id and helpful/harmful counters. A Generator does the task, a Reflector draws lessons from the run, and a Curator turns them into small delta entries that deterministic code merges, so the playbook avoids **context collapse**. See [10.4](weeks/week-10-advanced-capabilities.md#104-self-improvement-loops).
+
 **ACI principles (SWE-agent)**  
 Simple actions (understandable without demonstrations); efficient actions (navigation and editing combined into a few actions); feedback that is informative but short; guardrails that stop errors spreading and speed up recovery. See [4.4](weeks/week-04-prompt-and-tool-design.md#44-agent-computer-interface-aci).
 
@@ -86,6 +89,9 @@ People asked too often approve by reflex, so the prompt stops being a real contr
 
 **Approval gate**  
 A pause the harness triggers before a chosen tool call runs. The person approves, approves with edits, or rejects with a reason. Use it only on actions that cannot be undone or that others will see. See [5.2](weeks/week-05-control-safety-reliability.md#52-human-in-the-loop-approval-gates-interrupts-escalation).
+
+**As-of leakage check**  
+A deterministic test for a forecasting feature: compute it on data truncated at the issue time (filtering on when each row arrived, `available_at`, not the time it describes) and again on all the data. If the values for the target hours differ, the feature used future data. See [10.6](weeks/week-10-advanced-capabilities.md#106-agents-for-data-and-ml-pipelines).
 
 **Assumption register**  
 A table with one row per harness component: the model limitation it assumes, the ablation that would retire it, and whether it is a model-limit or a world-limit. See [7.6](weeks/week-07-evaluation-2-and-iteration.md#76-case-study-how-labs-iterate-on-coding-agent-harnesses).
@@ -210,6 +216,12 @@ The strategy for clearing tool results. When input goes over `trigger` (default 
 **Clustered standard error**  
 An SE computed with the task (not the trial) as the independent unit. Naive per-trial SEs understate the uncertainty. See [6.5](weeks/week-06-evaluation-1.md#65-regression-testing-a-harness-change-ab-on-prompts-and-tools).
 
+**Code execution tool (Claude)**  
+A server-side tool that gives the model bash and a file editor in an Anthropic-hosted container with no network. Files go in through the Files API and come back as file ids; it is billed by the container-hour. See [10.2](weeks/week-10-advanced-capabilities.md#102-code-execution-as-a-universal-tool).
+
+**CodeAct**  
+Wang et al. (ICML 2024): the model's actions are Python snippets instead of JSON tool calls, so it gets loops, variables and chained calls. Across 17 LLMs it beat JSON and text action formats by up to 20% in success rate, mostly on tasks that combine several tools. See [10.2](weeks/week-10-advanced-capabilities.md#102-code-execution-as-a-universal-tool).
+
 **CodeAgent (smolagents)**  
 A smolagents agent that writes each action as Python code instead of a JSON tool call, so loops and nesting come free. That makes a sandbox mandatory. See [9.1](weeks/week-09-frameworks-and-protocols.md#91-framework-landscape).
 
@@ -254,6 +266,9 @@ Benchmark tasks or solutions that are in the training data, so a model can remem
 
 **Context awareness**  
 On Sonnet 4.5+ and Haiku 4.5, the API injects `<budget:token_budget>` and, after each tool call, `<system_warning>Token usage: N/M</system_warning>` tags so the model can track how much budget it has left. See [2.1](weeks/week-02-core-mechanics.md#21-context-window-as-working-memory).
+
+**Context collapse**  
+What happens when a full rewrite of an evolving context throws most of it away. In one reported case a rewrite cut 18,282 tokens to 122 and accuracy fell below the no-context score. The fix is small delta updates instead of rewrites. See [10.4](weeks/week-10-advanced-capabilities.md#104-self-improvement-loops).
 
 **Context editing**  
 API features for removing used-up context: clearing old tool results and clearing thinking blocks. Works alongside compaction. Settings are in 3.2. See [2.1](weeks/week-02-core-mechanics.md#21-context-window-as-working-memory).
@@ -300,6 +315,12 @@ The written reason attached to a pass/fail label. Detailed enough to serve as a 
 
 ## D
 
+**Darwin Gödel Machine**  
+A system that keeps an archive of agent variants; a model rewrites a variant's code (including the rewriting code) and the benchmark score decides which survive. It raised SWE-bench from 20% to 50%, and one variant gamed its metric, so runs were sandboxed and watched. See [10.4](weeks/week-10-advanced-capabilities.md#104-self-improvement-loops).
+
+**Data leakage (ML)**  
+The ML version of reward hacking: the validation score rises because information from the future or from the test set got into training. With MLE-STAR's leakage checker removed, validation accuracy rose while test accuracy fell. See [10.6](weeks/week-10-advanced-capabilities.md#106-agents-for-data-and-ml-pipelines).
+
 **Deciding-number provenance check**  
 A policy guardrail on the final output: any number a ticket cites as evidence must equal a value returned by one of this run's own tool calls (traceable by tool_use_id), never a figure taken from a document. This catches a well-typed lie that gets through the quarantine schema. See [5.4](weeks/week-05-control-safety-reliability.md#54-prompt-injection-and-untrusted-content).
 
@@ -338,6 +359,9 @@ The "already done?" guard for tools with side effects. If a `tool_use_id` is alr
 
 **Draft-then-file**  
 The shape for a gated side effect in an unattended run: the agent's tool only writes a draft (always allowed), and filing is a separate step a person does. This takes the live "ask" out of the run completely. See [5.2](weeks/week-05-control-safety-reliability.md#52-human-in-the-loop-approval-gates-interrupts-escalation).
+
+**DS-STAR**  
+Google's data science agent. It first has an analyzer script describe every data file, then an LLM verifier judges the plan and a router either adds a step or cuts the plan back to the faulty step. See [10.6](weeks/week-10-advanced-capabilities.md#106-agents-for-data-and-ml-pipelines).
 
 **Dual control**  
 In τ²-bench's telecom domain, the simulated user also has tools that act on the shared state, so both agent and user can change the environment. See [Week 6 review](weeks/week-06-evaluation-1.md#week-6-review).
@@ -615,6 +639,9 @@ grep and BM25 match words: exact, no index or model needed, precise on identifie
 **Linear history**  
 An agent design where each step only adds to the message list and never rewrites it. It is the simplest to debug, replay and fine-tune on (mini-swe-agent). Compare compaction (3.2). See [1.5](weeks/week-01-what-an-agent-is.md#15-anatomy-of-a-real-agent).
 
+**Live-SWE-agent**  
+An agent that starts from mini-SWE-agent's bash-only loop and writes its own tools (scripts) during a run, prompted after each step to ask whether a tool would help. The tools are thrown away at the end and run through the same executor and sandbox. See [10.4](weeks/week-10-advanced-capabilities.md#104-self-improvement-loops).
+
 **LLM call**  
 One prompt in, one completion out, with no side effects. The code that makes the call owns all the control flow. See [1.1](weeks/week-01-what-an-agent-is.md#11-llm-call-vs-workflow-vs-agent).
 
@@ -687,6 +714,9 @@ Start with a minimal prompt on the best model, then add instructions and example
 **Minimum detectable effect (MDE)**  
 The smallest true difference the suite can reliably detect: about 2.8 × SE_diff at 80% power, α = 0.05 two-sided. See [6.5](weeks/week-06-evaluation-1.md#65-regression-testing-a-harness-change-ab-on-prompts-and-tools).
 
+**MLE-STAR**  
+Google's agent for Kaggle-style ML engineering. It runs an ablation to find which pipeline block matters most and refines only that block, and it includes a data-leakage checker. See [10.6](weeks/week-10-advanced-capabilities.md#106-agents-for-data-and-ml-pipelines).
+
 **Model-based grader (LLM-as-judge)**  
 A model that scores output against a rubric, a plain-language assertion, a reference, or another output (pairwise), alone or as several judges agreeing. It handles open-ended output, is not deterministic, and must be calibrated against people. See [6.3](weeks/week-06-evaluation-1.md#63-graders-exact-match-rubric-llm-as-judge-outcome-checks).
 
@@ -719,6 +749,9 @@ Sanity-check agents for an eval suite: one does nothing and claims success; the 
 
 
 ## O
+
+**Objective hacking**  
+Raising the score without doing the task better. In the Darwin Gödel Machine, one variant "improved" by deleting the hallucination-detection markers its metric relied on. See [10.4](weeks/week-10-advanced-capabilities.md#104-self-improvement-loops).
 
 **Offline vs online eval**  
 An offline eval scores a frozen task with a known answer. An online eval scores live runs, where nobody knows the answer yet, using reference-free signals, late labels and rates over many runs. See [7.4](weeks/week-07-evaluation-2-and-iteration.md#74-online-evaluation-and-monitoring).
@@ -831,11 +864,17 @@ The "who decides" question. Code fetches before the call (pre-retrieval, classic
 **Privileged vs quarantined LLM (Dual LLM)**  
 The privileged model has the tools and never reads untrusted text. The quarantined model reads it, has no tools, and returns typed fields or opaque references. See [5.4](weeks/week-05-control-safety-reliability.md#54-prompt-injection-and-untrusted-content).
 
+**Programmatic tool calling (PTC)**  
+Your own tools become functions the model's code can call inside Claude's code execution. Each call pauses the API and reaches your executor as an ordinary tool call marked as coming from code; the result goes back into the code, and only what the code prints reaches the model. See [10.2](weeks/week-10-advanced-capabilities.md#102-code-execution-as-a-universal-tool).
+
 **Progress file**  
 A file the harness (or the agent, when told to) writes so the next session or context window can pick up where it left off; for example Anthropic's `claude-progress.txt`. Part of the state layer (3.1, 3.4, 10.3). See [1.4](weeks/week-01-what-an-agent-is.md#14-what-a-harness-is).
 
 **Progressive disclosure (skills)**  
 Loading in three levels. Metadata (about 100 tokens per skill, always in the system prompt) → the `SKILL.md` body (under 5k tokens recommended; read when the model decides the skill is relevant) → bundled resources (reference files read when needed; scripts run, and only their output enters context). It lets an agent carry many skills while paying only for the one in use. See [4.5](weeks/week-04-prompt-and-tool-design.md#45-skills-procedural-knowledge-loaded-on-demand).
+
+**Promotion gate**  
+The checks a self-written tool or skill must pass before it leaves staging: for example a lint, a static scan, unseen fixtures, a paired eval on held-out tasks and human review. The agent cannot edit the gate, and promotion changes the harness hash. See [10.4](weeks/week-10-advanced-capabilities.md#104-self-improvement-loops).
 
 **Prompt assembly**  
 Production system prompts are not single strings; they are built from parts switched on by conditions. Claude Code's has about 25 parts (intro, system rules, doing tasks, executing actions with care, using your tools, tone and style, a cache boundary marker, session guidance, memory/output-style instructions, environment info, MCP server instructions recomputed each turn, scratchpad/budget/git status), switched by flags such as whether skills or the Agent tool are on. Piebald's extraction of v2.1.259 counts 500+ strings, 150+ sections, separate Explore/Plan subagent prompts and 27 tool descriptions. See [4.1](weeks/week-04-prompt-and-tool-design.md#41-system-prompt-architecture-for-agents).
@@ -866,6 +905,9 @@ A minimum number of agreeing workers before a finding counts: for example, 3 of 
 
 
 ## R
+
+**Ralph loop**  
+A continuation rule used in Anthropic's long run: whenever the agent claims it is finished, it is prompted again, up to 20 iterations. It counters early "done" claims ("agentic laziness"). See [10.3](weeks/week-10-advanced-capabilities.md#103-long-horizon-tasks).
 
 **ReAct**  
 Yao et al. (2022): mix reasoning steps with actions — *Thought → Action → Observation*, repeated — instead of reasoning only at the start (chain-of-thought) or acting without reflecting. The reasoning tracks and updates the plan and handles surprises; the actions ground it in real information. It is the 1.2 loop with the Thought written out. See [2.2](weeks/week-02-core-mechanics.md#22-react-and-reasoning-then-acting-extended-thinking-in-the-loop).
@@ -948,6 +990,9 @@ A classification step that runs before any agent and sends the request to one or
 **Rubric**  
 Explicit criteria a judge applies. Works best as several pass/fail criteria, each graded by its own separate judge, rather than one 1–5 score. See [6.3](weeks/week-06-evaluation-1.md#63-graders-exact-match-rubric-llm-as-judge-outcome-checks).
 
+**Run ledger (run key)**  
+A record of which triggered runs have happened, keyed for example by trigger + date or site + alert window. A repeat fire finds the key and skips or merges instead of starting a duplicate run. See [10.5](weeks/week-10-advanced-capabilities.md#105-scheduled-and-autonomous-agents).
+
 **Run status**  
 The final state the loop returns: success / budget / stuck / refusal / error. This is the unit layer 6 adds up; an eval that cannot tell these apart measures nothing. See [2.5](weeks/week-02-core-mechanics.md#25-stopping-conditions-step-budgets-and-loop-detection).
 
@@ -957,11 +1002,17 @@ The final state the loop returns: success / budget / stuck / refusal / error. Th
 
 ## S
 
+**Safe outputs (GitHub Agentic Workflows)**  
+The agent job runs with read-only permissions and emits structured requests, such as creating an issue or adding a comment. A separate job with write permission validates and executes them. See [10.5](weeks/week-10-advanced-capabilities.md#105-scheduled-and-autonomous-agents).
+
 **Sandbox**  
 Operating-system enforcement of file and network limits for everything a shell or code tool runs, child processes included (bubblewrap on Linux, Seatbelt on macOS; Codex adds seccomp). Both limits are needed: no network isolation → data can be sent out; no filesystem isolation → the agent can escape. Codex modes: `read-only`, `workspace-write` (default; `.git` and similar protected), `danger-full-access`. See [5.1](weeks/week-05-control-safety-reliability.md#51-permissions-and-sandboxing).
 
 **Saturation**  
 Scores near the ceiling, where the remaining gap is mostly broken tasks and noise. See [6.6](weeks/week-06-evaluation-1.md#66-public-benchmarks-swe-bench-τ-bench-gaia-terminal-bench-and-their-limits).
+
+**Scheduled agent / trigger**  
+An agent run started by a trigger instead of a person: a schedule, an API call or an event. The stored prompt is the assignment, not live consent, and run-specific input is untrusted data. See [10.5](weeks/week-10-advanced-capabilities.md#105-scheduled-and-autonomous-agents).
 
 **Scratchpad / structured note-taking (agentic memory)**  
 Working memory the model writes on purpose outside the transcript during a run (NOTES.md, a plan file, a progress file): "the agent regularly writes notes persisted to memory outside of the context window" (Anthropic). It is curated, does not add to the growing token bill or to context rot, and can be re-injected; it belongs to one task. A note must hold the deciding number, not just the verdict, or a resumed run has to work it out again. See [3.1](weeks/week-03-state-and-memory.md#31-short-term-vs-long-term-memory-scratchpads-conversation-state).
@@ -974,6 +1025,9 @@ Sen et al. (May 2026): the same documents and model scored 93.1% under one harne
 
 **Section ablation**  
 The eval move for a system prompt: run the same task with one section removed at a time and record which removal changes behaviour (turns, completion signal, deciding number present, ignored results). Sections whose removal changes nothing are cut or moved into code (6.5). The 4.1 result: procedure moves decisions, examples move format, constraints move only the hard case — and one run of a random system proves nothing; use five. See [4.1](weeks/week-04-prompt-and-tool-design.md#41-system-prompt-architecture-for-agents).
+
+**Self-improvement loop**  
+The improvement loop (7.5) with the model writing the change: tools made during a run, lessons kept across runs, or the agent rewriting its own harness code. See [10.4](weeks/week-10-advanced-capabilities.md#104-self-improvement-loops).
 
 **Semantic / episodic / procedural memory**  
 LangChain's three kinds of long-term memory: facts ("PVA-03 recabled 2026-08-12"); past events and actions ("last three PVA-03 incidents were curtailment"); and rules for doing the job (system prompt, hypothesis checklist — memory that changes behaviour rather than facts). See [3.1](weeks/week-03-state-and-memory.md#31-short-term-vs-long-term-memory-scratchpads-conversation-state).
@@ -995,6 +1049,9 @@ Agents read and write one common store, such as one list of messages every agent
 
 **Short-term memory**  
 The transcript: the message history for one thread, which "tracks the ongoing conversation by maintaining message history within a session" (LangChain). It lives in the harness's state object and dies or overflows with the run. Everything the model "remembers" mid-run is here, unless the harness copies it somewhere else. See [3.1](weeks/week-03-state-and-memory.md#31-short-term-vs-long-term-memory-scratchpads-conversation-state).
+
+**Silent success**  
+A run the platform reports as "Succeeded" that produced neither a ticket request nor an explicit all-clear verdict. The outcome check flags it and the owner is notified. See [10.5](weeks/week-10-advanced-capabilities.md#105-scheduled-and-autonomous-agents).
 
 **Silent wrong action**  
 A side effect taken on bad data or a wrong conclusion, with nothing to flag it (for example, forty tickets filed on a null weather feed, or made-up actuals written into the training set). This is what the side-effect question measures, and it is the case for a human gate. See [1.6](weeks/week-01-what-an-agent-is.md#16-when-not-to-build-an-agent).
@@ -1115,6 +1172,9 @@ ReAct's three text parts. In 2022 the harness pulled out the Action with a regex
 
 **Thread**  
 LangGraph's unit for one conversation or run: the sequence of checkpoints sharing a `thread_id`. The same id continues the run; a new id starts fresh. See [3.5](weeks/week-03-state-and-memory.md#35-checkpointing-and-resumability).
+
+**Time horizon (METR)**  
+The length of task, in human-expert time, that a model completes with 50% reliability. Frontier values are in hours; METR warns that values above 16 hours are unreliable on its suite, and the 80% horizon is much shorter. See [10.3](weeks/week-10-advanced-capabilities.md#103-long-horizon-tasks).
 
 **Tolerance match**  
 Comparing numbers within an allowed error instead of requiring the exact same string (the CORE-Bench "96.12" vs "96.124991…" lesson). See [6.3](weeks/week-06-evaluation-1.md#63-graders-exact-match-rubric-llm-as-judge-outcome-checks).

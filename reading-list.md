@@ -191,3 +191,20 @@ Every source the notes use, grouped by the week that relies on it. Each source a
 - [Claude docs — Computer use tool](https://platform.claude.com/docs/en/agents-and-tools/tool-use/computer-use-tool) — The computer use toolset, screenshot limits and the executor's job. Used in 10.1.
 - [Claude docs — Browser use tool](https://platform.claude.com/docs/en/agents-and-tools/tool-use/browser-use-tool) — Acting on a page through its accessibility tree and element references. Used in 10.1.
 - [OSWorld benchmark (xlang)](https://osworld-v1.xlang.ai/) — 369 real-desktop tasks with execution-based checks, and how far agents have come against humans. Used in 10.1.
+- [Claude docs — Programmatic tool calling](https://platform.claude.com/docs/en/agents-and-tools/tool-use/programmatic-tool-calling) — How your tools become functions the model's code calls, and why only printed output reaches the model. Used in 10.2.
+- [Claude docs — Code execution tool](https://platform.claude.com/docs/en/agents-and-tools/tool-use/code-execution-tool) — The hosted container: its limits, files in and out, billing and retention. Used in 10.2.
+- [Wang et al., Executable Code Actions Elicit Better LLM Agents (CodeAct, ICML 2024)](https://arxiv.org/abs/2402.01030) — The paper that showed code actions beating JSON and text actions across 17 LLMs. Used in 10.2.
+- [Anthropic — Long-running Claude for scientific research (Feb 2026)](https://www.anthropic.com/research/long-running-tasks) — A multi-day run with a progress file, failed-approaches log, oracle and the Ralph loop. Used in 10.3.
+- [OpenAI — Run long horizon tasks with Codex (Feb 2026)](https://developers.openai.com/blog/run-long-horizon-tasks-with-codex) — A roughly 25-hour Codex run built on a spec, milestones with validation commands and a progress file. Used in 10.3.
+- [METR — Task-completion time horizons of frontier AI models](https://metr.org/time-horizons/) — How the time horizon is measured, and its caveats. Used in 10.3.
+- [Xia et al., Live-SWE-agent: Can Software Engineering Agents Self-Evolve on the Fly? (Nov 2025)](https://arxiv.org/abs/2511.13646) — An agent that writes its own tools during a run, and the model for which it backfired. Used in 10.4.
+- [Zhang et al., Agentic Context Engineering (ACE) (Oct 2025)](https://arxiv.org/abs/2510.04618) — Playbook contexts updated by small deltas, and the context-collapse result. Used in 10.4.
+- [Zhang et al., Darwin Gödel Machine (Sakana AI / UBC; ICLR 2026)](https://arxiv.org/abs/2505.22954) — An agent that rewrites its own code, judged by benchmark score, including a case of objective hacking. Used in 10.4.
+- [Claude Code — Automate work with scheduled tasks (routines)](https://code.claude.com/docs/en/routines) — Triggers, run caps, untrusted payloads and what "Succeeded" does and does not mean. Used in 10.5.
+- [GitHub Agentic Workflows — Safe outputs](https://github.github.com/gh-aw/reference/safe-outputs/) — Read-only agent jobs that emit requests, executed by a separate job with write permission. Used in 10.5.
+- [GitHub Agentic Workflows — Triggers](https://github.github.com/gh-aw/reference/triggers/) — Fuzzy daily schedules, slash commands, stop-after and cooldown. Used in 10.5.
+- [Google Research — MLE-STAR (Aug 2025)](https://research.google/blog/mle-star-a-state-of-the-art-machine-learning-engineering-agents/) — An ML engineering agent with targeted block refinement and a data-leakage checker. Used in 10.6.
+- [MLE-STAR paper (arXiv 2506.15692)](https://arxiv.org/abs/2506.15692) — The full MLE-STAR paper. Used in 10.6.
+- [Google Research — DS-STAR (Nov 2025)](https://research.google/blog/ds-star-a-state-of-the-art-versatile-data-science-agent/) — A data science agent that describes files first and verifies, then routes, its plan. Used in 10.6.
+- [DS-STAR paper (arXiv 2509.21825)](https://arxiv.org/abs/2509.21825) — The full DS-STAR paper. Used in 10.6.
+- [OpenAI — MLE-bench (Oct 2024)](https://openai.com/index/mle-bench/) — The Kaggle-style benchmark whose graders hold the test set. Used in 10.6.

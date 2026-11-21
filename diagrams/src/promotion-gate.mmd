@@ -1,0 +1,12 @@
+flowchart TD
+    P["Agent proposes<br>a skill"] --> L["Harness lint"]
+    L --> S["Static scan: no network,<br>no writes outside /tmp"]
+    S --> F["Fixtures the agent<br>never saw"]
+    F --> E["Paired 10-trial eval:<br>loads only where it should"]
+    E --> H["Human reviews<br>the diff"]
+    H --> V["Promote with<br>new harness hash"]
+    L -.->|"fail"| X["Not promoted"]
+    S -.->|"fail"| X
+    F -.->|"fail"| X
+    E -.->|"fail"| X
+    H -.->|"fail"| X
