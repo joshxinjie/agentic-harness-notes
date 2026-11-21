@@ -705,11 +705,20 @@ Note that it filters on `available_at` (when the data arrived), not on `timestam
 
 *Figure: filter on when the data arrived, not on the time it describes.*
 
-*Note (2026-11-21, PR #43 review):* dropping rows can break this sketch. The truncated frame no longer holds the target day's rows, so a lag or rolling feature computed on it has no `target_hours` labels, and `.loc[target_hours]` raises instead of answering. Keep every row and blank out the values that had not arrived yet. Then the target hours exist in both results, and a value that is missing at the issue time shows up as a difference:
+*Note (2026-11-21, PR #43 review):* dropping rows can break this sketch. The truncated frame no longer holds the target day's rows, so a lag or rolling feature computed on it has no `target_hours` labels, and `.loc[target_hours]` raises instead of answering. Keep every row and blank out the values that had not arrived yet. Then the target hours exist in both results, and a value that is missing at the issue time shows up as a difference. Treat `timestamp` as a fixed grid of target hours: keep it and `available_at` as they are, and blank only the measurement columns (here `actual_mw`). Masking the whole row, for example with `df.where(...)`, also blanks `timestamp`, so a feature that indexes on it loses the same labels (second PR #43 review).
 
 ```python
-asof = feature_fn(df.where(df.available_at <= issue_time)).loc[target_hours]
+def as_of(df, issue_time):
+    masked = df.copy()
+    late = masked.available_at > issue_time
+    values = masked.columns.difference(["timestamp", "available_at"])
+    masked.loc[late, values] = float("nan")   # blank the measurements only
+    return masked
+
+asof = feature_fn(as_of(df, issue_time)).loc[target_hours]
 ```
+
+A regression check: with `feature_fn = lambda f: f.set_index("timestamp")["actual_mw"].shift(24)`, `.loc[target_hours]` must succeed on the as-of frame. Lag values whose source had arrived by the issue time stay the same; the rest are missing, so `leaks()` reports them.
 
 ### Where it lives in the harness
 
